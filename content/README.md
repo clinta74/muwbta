@@ -53,11 +53,16 @@ not work and walking is the only way home.
 Merge the six into one bundle, check it, then import it once:
 
 ```
-dotnet run tools/merge-bundles.cs content -o build/the-reaches.json
+dotnet run tools/merge-bundles.cs content -o build/the-reaches.json --canon docs/WORLD.md --into the-reaches
 dotnet run tools/check-bundle.cs build/the-reaches.json
 POST /api/builder/import?dryRun=true    # what would happen; changes nothing
 POST /api/builder/import                # do it
 ```
+
+`--canon` writes the canon half of `docs/WORLD.md` into the named configuration as it merges, cut
+at the marker and normalised the way the assist reads it. The document is the reviewed source and
+the merged bundle is how it reaches a server; the server embeds no canon of its own, so a
+configuration that arrives without one tells the assist there is no world description.
 
 Both were Python and are now file-based C# apps, so checking this repo needs only .NET and Node —
 the two things building it already needed. They are **shims**: every rule lives in `BundleValidator`

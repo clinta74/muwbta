@@ -51,6 +51,38 @@ public sealed class BundleMergeTests
     // The rules
     // -----------------------------------------------------------------------
 
+    private static BundleGameConfiguration Configuration(string key) =>
+        new(key, key, "", "w.z.r", "Hello, {name}.");
+
+    /// <summary>
+    /// The canon document is written into the configuration it is for: cut at the marker,
+    /// normalised, and into the one named or the only one there is.
+    /// </summary>
+    [Fact]
+    public void A_canon_document_is_written_into_the_named_configuration()
+    {
+        var bundle = One("w") with { Configurations = [Configuration("the-reaches"), Configuration("other")] };
+        const string document = "# The Reaches\r\n\r\nText.  \r\n\r\n<!-- canon:end -->\r\n## Notes\r\n";
+
+        var (named, error) = BundleMerge.WithCanon(bundle, "the-reaches", document);
+
+        Assert.Null(error);
+        Assert.Equal("# The Reaches\n\nText.\n", named!.Configurations.Single(c => c.Key == "the-reaches").Canon);
+        Assert.Null(named.Configurations.Single(c => c.Key == "other").Canon);
+
+        var (_, ambiguous) = BundleMerge.WithCanon(bundle, null, document);
+        Assert.Contains("say which", ambiguous, StringComparison.Ordinal);
+
+        var (_, missing) = BundleMerge.WithCanon(bundle, "nosuch", document);
+        Assert.Contains("no configuration 'nosuch'", missing, StringComparison.Ordinal);
+
+        var (_, empty) = BundleMerge.WithCanon(bundle, "the-reaches", "<!-- canon:end -->\nnotes only");
+        Assert.Contains("nothing above", empty, StringComparison.Ordinal);
+
+        var (only, _) = BundleMerge.WithCanon(One("w") with { Configurations = [Configuration("solo")] }, null, document);
+        Assert.Equal("# The Reaches\n\nText.\n", only!.Configurations.Single().Canon);
+    }
+
     [Fact]
     public void Merging_nothing_is_refused_rather_than_producing_an_empty_world()
     {

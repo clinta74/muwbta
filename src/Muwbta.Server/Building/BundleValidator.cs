@@ -11,6 +11,7 @@ using Muwbta.Engine;
 using Muwbta.Engine.Inhabitants;
 using Muwbta.Engine.Presentation;
 using Muwbta.Engine.Quests;
+using Muwbta.Server.Assist;
 
 namespace Muwbta.Server.Building;
 
@@ -124,6 +125,7 @@ public static class BundleValidator
         CheckQuests(bundle, mobs, items, Error, Warn);
         CheckAbilities(bundle, Error, Warn);
         CheckTerrain(bundle, Error, Warn);
+        CheckConfigurations(bundle, Warn);
         CheckFlags(bundle, Error);
 
         return new BundleCheck(findings);
@@ -322,6 +324,25 @@ public static class BundleValidator
         foreach (var orphan in rooms.Except(seen).OrderBy(k => k, StringComparer.Ordinal))
         {
             error($"room {orphan} has no path to the rest of the bundle");
+        }
+    }
+
+    /// <summary>
+    /// A configuration's canon against the assist's window (PLAN.md §4.16). A warning, because an
+    /// over-long canon imports and runs; it is only that the model stops reading it part-way,
+    /// and nothing at runtime says so except the warm-up log.
+    /// </summary>
+    private static void CheckConfigurations(WorldBundle bundle, Action<string> warn)
+    {
+        foreach (var configuration in bundle.Configurations)
+        {
+            var tokens = Canon.EstimateTokens(Canon.Resolve(configuration.Canon));
+
+            if (tokens > AssistOptions.DefaultCanonTokenBudget)
+            {
+                warn($"configuration {configuration.Key} carries a canon of ~{tokens:N0} tokens, over the "
+                    + $"{AssistOptions.DefaultCanonTokenBudget:N0} the assist's window budgets; the model will not read all of it");
+            }
         }
     }
 

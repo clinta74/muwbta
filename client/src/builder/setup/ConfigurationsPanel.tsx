@@ -119,7 +119,7 @@ export function ConfigurationsPanel({ list, onChanged }: Props) {
     if (!draft || !list) return null
     const chars = draft.canon.trim().length
     const tokens = chars === 0 ? null : Math.round(chars / list.canonCharsPerToken)
-    if (tokens === null) return <>Built-in canon in use.</>
+    if (tokens === null) return <>No canon: the assist is told there is no world description.</>
     const over = tokens > list.canonTokenBudget
     return (
       <span className={over ? 'bad' : undefined}>
@@ -146,19 +146,6 @@ export function ConfigurationsPanel({ list, onChanged }: Props) {
         ? draft.worldKeys.filter((k) => k !== worldKey)
         : [...draft.worldKeys, worldKey],
     })
-  }
-
-  async function loadEmbedded() {
-    if (!draft) return
-    setBusy(true)
-    try {
-      const embedded = await builderApi.embeddedCanon()
-      setDraft({ ...draft, canon: embedded.text })
-    } catch (e: unknown) {
-      toast.notify(e instanceof Error ? e.message : 'Could not load the built-in canon.', 'bad')
-    } finally {
-      setBusy(false)
-    }
   }
 
   async function save() {
@@ -410,8 +397,9 @@ export function ConfigurationsPanel({ list, onChanged }: Props) {
             hint={
               <>
                 What the builder assist is told about this world before every request, as
-                markdown. Leave it empty to use the canon built into the server. It takes effect
-                for the assist while this configuration is live, on the next request.{' '}
+                markdown. For the Reaches it is <code>docs/WORLD.md</code> above the marker, which
+                the merge tool writes in; for any other world, write it here. It takes effect for
+                the assist while this configuration is live, on the next request.{' '}
                 {canonEstimate}
               </>
             }
@@ -422,15 +410,6 @@ export function ConfigurationsPanel({ list, onChanged }: Props) {
               onChange={(value) => setDraft({ ...draft, canon: value })}
             />
           </Field>
-
-          {draft.canon.trim() === '' && (
-            <p className="dim">
-              <button type="button" disabled={busy} onClick={() => void loadEmbedded()}>
-                Start from the built-in canon
-              </button>{' '}
-              Copies the server's own text in, to edit from.
-            </p>
-          )}
 
           <div className="spawner-actions">
             <Button variant="primary" disabled={!canSave || busy} onClick={() => void save()}>

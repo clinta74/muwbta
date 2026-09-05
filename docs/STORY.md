@@ -512,8 +512,10 @@ thing that lets a *quest* NPC keep talking between quests (gated on their own ch
 in a *full* export, so a realm's content file stays reviewable prose and a scoped import leaves the
 stored canon alone; and the assist reads it from `EngineOptions`, where the rest of the active
 configuration already lives, so a request costs no query and an edit needs no cache to invalidate.
-The panel's "Start from the built-in canon" button is the seed; `tools/sync-canon.cs` is the way
-back into `docs/WORLD.md`.
+`tools/sync-canon.cs` is the way back into `docs/WORLD.md`. **Amended 2026-09-05:** the server
+no longer embeds WORLD.md at all. `merge-bundles --canon docs/WORLD.md --into the-reaches` writes
+the canon into the Reaches' configuration on the way to an import, and a configuration with none
+tells the assist there is no world description rather than handing it the Reaches.
 
 WORLD.md's canon half is compiled into the server as an embedded resource and sent to the builder
 assist as its standing context (`Canon.cs`, budgeted by `CanonTests`). That ties the assist to the

@@ -288,7 +288,7 @@ public sealed class OllamaContentAssistantTests
         ["ossara.gatetown.the-market", "ossara.gatetown.a-room"],
         [new RoomExemplar("The Market", "Awnings snap in the wind off the rim.")]);
 
-    private static (OllamaContentAssistant Assistant, Stub Handler) Build(string responseJson)
+    private static (OllamaContentAssistant Assistant, Stub Handler) Build(string responseJson, string canon = "")
     {
         var handler = new Stub(responseJson);
         var http = new HttpClient(handler) { BaseAddress = new Uri("http://localhost:11434") };
@@ -296,7 +296,7 @@ public sealed class OllamaContentAssistantTests
         var assistant = new OllamaContentAssistant(
             http,
             Options.Create(new AssistOptions { Model = "muwbta-builder" }),
-            new EngineOptions(),
+            new EngineOptions { Canon = canon },
             NullLogger<OllamaContentAssistant>.Instance);
 
         return (assistant, handler);
@@ -332,13 +332,30 @@ public sealed class OllamaContentAssistantTests
     [Fact]
     public async Task The_prompt_begins_with_the_canon()
     {
+        var (assistant, handler) = Build(Good, canon: "# Elsewhere\n\nOne Reach, and it is round.\n");
+
+        await assistant.DraftRoomAsync(Request(), Context, CancellationToken.None);
+
+        var prompt = handler.Sent!["prompt"]!.GetValue<string>();
+
+        Assert.StartsWith("# Elsewhere\n\nOne Reach, and it is round.\n", prompt, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// And with none, it begins by saying so - not with somebody else's world, which is what the
+    /// embedded fallback used to hand every server that had not written its own.
+    /// </summary>
+    [Fact]
+    public async Task Without_a_canon_the_prompt_begins_by_saying_there_is_none()
+    {
         var (assistant, handler) = Build(Good);
 
         await assistant.DraftRoomAsync(Request(), Context, CancellationToken.None);
 
         var prompt = handler.Sent!["prompt"]!.GetValue<string>();
 
-        Assert.StartsWith(Canon.Prefix, prompt, StringComparison.Ordinal);
+        Assert.StartsWith(Canon.None, prompt, StringComparison.Ordinal);
+        Assert.DoesNotContain("Reaches", prompt, StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -421,7 +438,7 @@ public sealed class OllamaContentAssistantTests
 
         var prompt = handler.Sent!["prompt"]!.GetValue<string>();
 
-        Assert.StartsWith(Canon.Prefix, prompt, StringComparison.Ordinal);
+        Assert.StartsWith(Canon.None, prompt, StringComparison.Ordinal);
         Assert.EndsWith("make it colder\n", prompt, StringComparison.Ordinal);
     }
 

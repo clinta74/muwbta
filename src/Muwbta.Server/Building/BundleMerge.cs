@@ -1,3 +1,4 @@
+using Muwbta.Server.Assist;
 using System.Text.Json;
 
 namespace Muwbta.Server.Building;
@@ -49,6 +50,58 @@ public sealed record BundleSource(string Name, WorldBundle Bundle);
 /// </remarks>
 public static class BundleMerge
 {
+    /// <summary>
+    /// The bundle with <paramref name="markdown"/>'s canon written into one configuration - the
+    /// one named, or the only one there is (PLAN.md §4.16).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>How the Reaches' canon gets from <c>docs/WORLD.md</c> to the server.</b> The document is
+    /// the reviewed, version-controlled source; the configuration row is what the assist reads;
+    /// and the merged bundle is the one file that travels between them. Writing the canon in at
+    /// merge time keeps the per-realm content files free of a forty-kilobyte string nobody could
+    /// review, and keeps the server free of an embedded copy that was the Reaches' whether or not
+    /// the server was.
+    /// </para>
+    /// <para>
+    /// Cut and normalised exactly as the assist would (<see cref="Canon.Resolve"/>), so the bundle
+    /// carries what the model is told and the row's estimate is the model's cost.
+    /// </para>
+    /// </remarks>
+    /// <returns>The bundle, or an error a person can act on.</returns>
+    public static (WorldBundle? Bundle, string? Error) WithCanon(
+        WorldBundle bundle,
+        string? configurationKey,
+        string markdown)
+    {
+        ArgumentNullException.ThrowIfNull(bundle);
+
+        var canon = Canon.Resolve(markdown);
+
+        if (canon.Length == 0)
+        {
+            return (null, $"the canon document has nothing above its '{Canon.EndMarker}' marker, or is empty");
+        }
+
+        var candidates = configurationKey is null
+            ? bundle.Configurations
+            : [.. bundle.Configurations.Where(c => string.Equals(c.Key, configurationKey, StringComparison.Ordinal))];
+
+        if (candidates.Count != 1)
+        {
+            return (null, configurationKey is null
+                ? $"the bundle carries {bundle.Configurations.Count} configurations; say which one the canon is for"
+                : $"the bundle carries no configuration '{configurationKey}'");
+        }
+
+        var target = candidates[0];
+
+        return (bundle with
+        {
+            Configurations = [.. bundle.Configurations.Select(c => ReferenceEquals(c, target) ? c with { Canon = canon } : c)],
+        }, null);
+    }
+
     public static BundleMergeResult Merge(IReadOnlyList<BundleSource> sources)
     {
         ArgumentNullException.ThrowIfNull(sources);

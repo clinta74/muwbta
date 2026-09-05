@@ -212,20 +212,6 @@ public sealed class GameConfigurationTests(PostgresFixture postgres) : IAsyncLif
         Assert.Equal(HttpStatusCode.BadRequest, badKey.StatusCode);
     }
 
-    /// <summary>The built-in canon is on offer as a starting point, and is the Reaches.</summary>
-    [Fact]
-    public async Task The_embedded_canon_is_served_for_the_panel()
-    {
-        var factory = postgres.App;
-        using var client = NewClient(factory);
-        await BuilderClient.RegisterBuilderAsync(factory, client);
-
-        var embedded = await client.GetFromJsonAsync<JsonElement>(new Uri("/api/builder/canon/embedded", UriKind.Relative));
-
-        Assert.Contains("The Reaches", embedded.GetProperty("text").GetString(), StringComparison.Ordinal);
-        Assert.True(embedded.GetProperty("tokens").GetInt32() > 1000);
-    }
-
     [Fact]
     public async Task A_configuration_may_name_a_room_that_does_not_exist_yet()
     {

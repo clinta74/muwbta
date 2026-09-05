@@ -3,44 +3,60 @@ using Muwbta.Server.Assist;
 namespace Muwbta.Server.Tests.Assist;
 
 /// <summary>
-/// The canon prefix is present, is only the canon, and still fits the window.
+/// The canon prefix: how a configuration's text is normalised for the model, what leads when
+/// there is none, and that the document the Reaches' canon is written in still fits the window.
 /// </summary>
 public sealed class CanonTests
 {
-    /// <summary>Measured against Gemma 3 on this exact document: 33,970 chars to 10,183 tokens.</summary>
-    /// <remarks>
-    /// Used instead of a tokeniser because a tokeniser is a dependency, a download and a second
-    /// thing to keep in step with the model - and the question here is not "exactly how many
-    /// tokens" but "has this grown past what the window can hold", which a ratio answers.
-    /// </remarks>
-    private const double CharsPerToken = Canon.CharsPerToken;
-
     /// <summary>
-    /// What the prefix may occupy of the 16,384-token window.
+    /// What the prefix may occupy of the 16,384-token window. The rest, from
+    /// <c>Modelfile.builder</c>: ~950 for the schema, ~700 for the zone's exemplars, ~600 to
+    /// generate a room, and headroom.
     /// </summary>
-    /// <remarks>
-    /// The rest of the budget, from <c>Modelfile.builder</c>: ~950 for the schema, ~700 for the
-    /// zone's exemplars, ~600 to generate a room, and headroom. 12,000 leaves the canon room to
-    /// grow by about 18% before anything has to be decided - and this test is the thing that
-    /// decides it, rather than a builder noticing the model has started misremembering.
-    /// </remarks>
     private const int PrefixTokenBudget = 12_000;
 
     /// <summary>
-    /// The budget above is the model's, and the setting the panel measures against must agree
-    /// with it - two numbers for one window is how the panel says "fits" while the model stops
-    /// reading.
+    /// The budget above is the model's, and the setting the panel and the validator measure
+    /// against must agree with it - two numbers for one window is how the panel says "fits"
+    /// while the model stops reading.
     /// </summary>
     [Fact]
     public void The_budget_here_is_the_setting_the_panel_uses()
     {
+        Assert.Equal(PrefixTokenBudget, AssistOptions.DefaultCanonTokenBudget);
         Assert.Equal(PrefixTokenBudget, new AssistOptions().CanonTokenBudget);
     }
 
     /// <summary>
-    /// The sandbox's canon is a register and a map, not a theology, and leaves the model most of
-    /// its window for the room it is drafting.
+    /// The Reaches' canon lives in <c>docs/WORLD.md</c> above the marker, and the merge tool
+    /// writes it into the Reaches' configuration. It still has to fit, with room to work in.
     /// </summary>
+    /// <remarks>
+    /// <b>The test this whole feature was blocked on.</b> An over-long prompt is truncated rather
+    /// than refused, so a canon that outgrows the window does not fail - it quietly stops being
+    /// fully read, and the model reads as though it had learned the world and forgotten most of it.
+    /// If this fails, the question is which section has stopped being canon - not how to raise the
+    /// number.
+    /// </remarks>
+    [Fact]
+    public void The_reaches_canon_in_the_docs_fits_the_window_with_room_to_work()
+    {
+        var document = File.ReadAllText(Path.Combine(RepoPath.Root(), "docs", "WORLD.md"));
+        var canon = Canon.Resolve(document);
+
+        Assert.Contains("The Reaches", canon, StringComparison.Ordinal);
+        Assert.Contains("Yrriska", canon, StringComparison.Ordinal);
+        Assert.DoesNotContain("Authoring notes", canon, StringComparison.Ordinal);
+
+        var tokens = Canon.EstimateTokens(canon);
+
+        Assert.True(
+            tokens <= PrefixTokenBudget,
+            $"The canon is ~{tokens:N0} tokens, over the {PrefixTokenBudget:N0} budgeted. "
+            + "Something above the canon:end marker in docs/WORLD.md has stopped being canon.");
+    }
+
+    /// <summary>The sandbox's canon is a register and a map, not a theology.</summary>
     [Fact]
     public void The_starter_canon_is_small()
     {
@@ -49,19 +65,24 @@ public sealed class CanonTests
         Assert.InRange(tokens, 200, 1_500);
     }
 
-    /// <summary>An empty configuration reads the embedded canon, so nothing changes until somebody writes one.</summary>
+    /// <summary>
+    /// A configuration with no canon is told so, rather than told about somebody else's world.
+    /// </summary>
     [Theory]
     [InlineData(null)]
     [InlineData("")]
     [InlineData("   \n")]
-    public void An_empty_live_canon_resolves_to_the_embedded_one(string? live)
+    public void No_canon_resolves_to_nothing_and_the_prompt_leads_with_saying_so(string? live)
     {
-        Assert.Same(Canon.Prefix, Canon.Resolve(live));
+        Assert.Equal(string.Empty, Canon.Resolve(live));
+        Assert.Same(Canon.None, Canon.ForPrompt(live));
+        Assert.DoesNotContain("Reaches", Canon.None, StringComparison.Ordinal);
     }
 
     /// <summary>
-    /// A live canon is normalised the way the embedded one is, because the cache is byte-exact
-    /// and a textarea is not - and cut at the marker, so pasting the whole document works.
+    /// A live canon is normalised - line endings, trailing whitespace, one final newline - because
+    /// the cache is byte-exact and a textarea is not; and cut at the marker, so pasting the whole
+    /// document works.
     /// </summary>
     [Fact]
     public void A_live_canon_is_normalised_and_cut_at_the_marker()
@@ -69,77 +90,16 @@ public sealed class CanonTests
         var pasted = "# Elsewhere\r\n\r\nA different world.  \r\n\r\n<!-- canon:end -->\r\n## Notes\r\n";
 
         Assert.Equal("# Elsewhere\n\nA different world.\n", Canon.Resolve(pasted));
+        Assert.Equal("# Elsewhere\n\nA different world.\n", Canon.ForPrompt(pasted));
+        Assert.DoesNotContain('\r', Canon.Resolve(pasted));
     }
 
+    /// <summary>Resolving twice is resolving once: a stored canon does not drift on re-save.</summary>
     [Fact]
-    public void The_canon_is_embedded_and_not_empty()
+    public void Resolving_is_idempotent()
     {
-        Assert.False(string.IsNullOrWhiteSpace(Canon.Prefix));
-        Assert.Contains("The Reaches", Canon.Prefix, StringComparison.Ordinal);
-    }
+        var once = Canon.Resolve("# A\r\n\r\nB.  \r\n");
 
-    /// <summary>
-    /// It stops at the marker, so the authoring notes never reach the model.
-    /// </summary>
-    /// <remarks>
-    /// §10 is 3,000 tokens of process - how content lands, what was retired, notes to builders. All
-    /// true; none of it a fact about the world, and the budget does not have 3,000 tokens spare.
-    /// </remarks>
-    [Fact]
-    public void It_stops_where_the_authoring_notes_begin()
-    {
-        Assert.DoesNotContain("Authoring notes", Canon.Prefix, StringComparison.Ordinal);
-        Assert.DoesNotContain(Canon.EndMarker, Canon.Prefix, StringComparison.Ordinal);
-
-        // But it does carry the sections that are the world.
-        Assert.Contains("Yrriska", Canon.Prefix, StringComparison.Ordinal);
-        Assert.Contains("Bind points", Canon.Prefix, StringComparison.Ordinal);
-    }
-
-    /// <summary>
-    /// The canon still fits, with room to work in.
-    /// </summary>
-    /// <remarks>
-    /// <b>The test this whole feature was blocked on.</b> An over-long prompt is truncated rather
-    /// than refused, so a canon that outgrows the window does not fail - it quietly stops being
-    /// fully read, and the model reads as though it had learned the world and forgotten most of it.
-    /// Nothing else in the system can notice that, so this is where it gets noticed.
-    /// <para>
-    /// If this fails, the question is which section has stopped being canon - not how to raise the
-    /// number. Raising it is a decision about <c>num_ctx</c>, and that lives in the Modelfile with
-    /// its own arithmetic.
-    /// </para>
-    /// </remarks>
-    [Fact]
-    public void It_fits_the_window_with_room_to_work()
-    {
-        var tokens = (int)(Canon.Prefix.Length / CharsPerToken);
-
-        Assert.True(
-            tokens <= PrefixTokenBudget,
-            $"The canon is ~{tokens:N0} tokens, over the {PrefixTokenBudget:N0} budgeted. "
-            + "Something above the canon:end marker in docs/WORLD.md has stopped being canon.");
-    }
-
-    /// <summary>
-    /// Line endings are normalised, because the cache is byte-exact.
-    /// </summary>
-    /// <remarks>
-    /// git may check this file out with either ending depending on the machine and the
-    /// <c>.gitattributes</c> in force. A prefix that differs between a developer's server and the
-    /// deployed one shares no KV cache with itself - measured, that is 4.4 s against 187 s - and
-    /// nothing about the answers would look wrong.
-    /// </remarks>
-    [Fact]
-    public void It_carries_no_carriage_returns()
-    {
-        Assert.DoesNotContain('\r', Canon.Prefix);
-    }
-
-    /// <summary>Reading it twice gives the same instance, so the prefix cannot vary per call.</summary>
-    [Fact]
-    public void It_is_the_same_text_every_time()
-    {
-        Assert.Same(Canon.Prefix, Canon.Prefix);
+        Assert.Equal(once, Canon.Resolve(once));
     }
 }

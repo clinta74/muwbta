@@ -31,6 +31,8 @@ using Muwbta.Server.Building;
 
 var inputs = new List<string>();
 string? output = null;
+string? canonPath = null;
+string? canonInto = null;
 
 for (var i = 0; i < args.Length; i++)
 {
@@ -44,6 +46,26 @@ for (var i = 0; i < args.Length; i++)
 
         output = args[i];
     }
+    else if (args[i] == "--canon")
+    {
+        if (++i >= args.Length)
+        {
+            Console.Error.WriteLine("--canon needs a markdown file.");
+            return 2;
+        }
+
+        canonPath = args[i];
+    }
+    else if (args[i] == "--into")
+    {
+        if (++i >= args.Length)
+        {
+            Console.Error.WriteLine("--into needs a configuration key.");
+            return 2;
+        }
+
+        canonInto = args[i];
+    }
     else
     {
         inputs.Add(args[i]);
@@ -53,7 +75,8 @@ for (var i = 0; i < args.Length; i++)
 if (inputs.Count == 0 || output is null)
 {
     Console.Error.WriteLine(
-        "usage: dotnet run tools/merge-bundles.cs <file-or-directory> [...] -o <merged.json>");
+        "usage: dotnet run tools/merge-bundles.cs <file-or-directory> [...] -o <merged.json> "
+        + "[--canon docs/WORLD.md --into <configuration-key>]");
     return 2;
 }
 
@@ -116,7 +139,38 @@ if (!merged.Ok)
     return 1;
 }
 
-var json = BundleFormat.Write(merged.Bundle!);
+var bundleToWrite = merged.Bundle!;
+
+// The canon lives in a reviewed markdown file, not in the per-realm content files (a forty-
+// kilobyte string nobody could review, six times over) and not in the server (an embedded copy
+// that was the Reaches' whether or not the server was). It is written into the configuration
+// here, on the way to the import, cut and normalised as the assist would cut it.
+if (canonPath is not null)
+{
+    if (!File.Exists(canonPath))
+    {
+        Console.WriteLine($"  ERROR  --canon: '{canonPath}' does not exist");
+        Console.WriteLine("FAILED");
+        return 1;
+    }
+
+    var (withCanon, canonError) = BundleMerge.WithCanon(bundleToWrite, canonInto, File.ReadAllText(canonPath));
+
+    if (withCanon is null)
+    {
+        Console.WriteLine($"  ERROR  --canon: {canonError}");
+        Console.WriteLine("FAILED");
+        return 1;
+    }
+
+    bundleToWrite = withCanon;
+    var written = bundleToWrite.Configurations.Single(c => canonInto is null || c.Key == canonInto);
+    Console.WriteLine(
+        $"  canon  {canonPath} -> configuration {written.Key} "
+        + $"(~{Muwbta.Server.Assist.Canon.EstimateTokens(written.Canon):N0} tokens)");
+}
+
+var json = BundleFormat.Write(bundleToWrite);
 
 // Re-read what is about to be written. Cheap, and it is the difference between "the merge produced
 // JSON" and "the merge produced a bundle the import endpoint will accept".
@@ -136,7 +190,7 @@ if (!string.IsNullOrEmpty(directory))
 
 File.WriteAllText(output, json + Environment.NewLine);
 
-var b = merged.Bundle!;
+var b = bundleToWrite;
 Console.WriteLine($"  wrote  {output} (formatVersion {b.FormatVersion}, scope all)");
 Console.WriteLine(
     $"         {b.Worlds.Count} worlds, {b.Zones.Count} zones, {b.ItemTemplates.Count} itemTemplates, "

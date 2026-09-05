@@ -1,31 +1,31 @@
-using System.Reflection;
-
 namespace Muwbta.Server.Assist;
 
 /// <summary>
-/// The world canon, as one byte-stable block of text that goes in front of every request.
+/// The world canon: the block of text that goes in front of every builder-assist request, and
+/// where it comes from (PLAN.md §4.16).
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>Byte-stable is the requirement, not a nicety.</b> Ollama reuses the KV cache for a prompt
-/// that shares a prefix with the last one, and measured, that is the difference between 4.4 s and
-/// 187 s (tools/ollama/README.md). One stray character - a reordered section, a trailing newline
-/// from a different reader - costs three minutes and does so invisibly, because the answer is
-/// still correct.
+/// <b>It belongs to the configuration, and the server embeds none of its own.</b> It used to be
+/// <c>docs/WORLD.md</c> compiled into the assembly - present, identical everywhere, and the
+/// Reaches' forever: any configuration with no canon of its own, on any server, was handed the
+/// Reaches, including a new world's. Now a configuration carries its canon
+/// (<c>GameConfiguration.Canon</c>), the seeder plants one for Aldenmoor, the merge tool writes
+/// <c>docs/WORLD.md</c> into the Reaches' configuration on the way to the import, and a
+/// configuration with none is told so rather than told about somebody else's world.
 /// </para>
 /// <para>
-/// <b>Embedded rather than read from disk.</b> A path in configuration is a path that can be
-/// missing in a container, different between two servers, or edited under a running process - and
-/// each of those is a cache miss or an inconsistency that nothing reports. Embedding makes the
-/// prefix a property of the build: it is present, it is identical everywhere that build runs, and
-/// changing it is a deploy rather than a surprise.
+/// <b>Byte-stable is still the requirement.</b> Ollama reuses the KV cache for a prompt that
+/// shares a prefix with the last one, and measured, that is the difference between 4.4 s and
+/// 187 s (tools/ollama/README.md). The text arrives from a textarea or a file, which is not
+/// byte-stable, so <see cref="Resolve"/> normalises it the one way, every time.
 /// </para>
 /// <para>
-/// <b>Cut at a marker the document declares itself.</b> §10 is authoring process - how content
-/// lands, what was retired, notes to builders - which is true, useful, and no part of what the
-/// world <em>is</em>. It is also 3,000 tokens, and the budget does not have 3,000 tokens spare.
-/// Slicing on a marker rather than a line number or a heading means renumbering the sections does
-/// not silently change what the model is told.
+/// <b>Cut at a marker the document declares itself.</b> WORLD.md's §10 is authoring process, true
+/// and useful and no part of what the world <em>is</em>, and it is 3,000 tokens the budget does not
+/// have. Cutting on the marker rather than a heading means renumbering the sections does not
+/// change what the model is told, and pasting the whole file into the panel gets the same slice
+/// the merge tool takes.
 /// </para>
 /// </remarks>
 public static class Canon
@@ -41,25 +41,35 @@ public static class Canon
     /// </remarks>
     public const double CharsPerToken = 3.34;
 
+    /// <summary>
+    /// What the model is told when the live configuration has no canon: that there is none, and
+    /// how to write anyway.
+    /// </summary>
+    /// <remarks>
+    /// Short and generic on purpose. The alternative - a fallback world - is what this class used
+    /// to be, and it meant a server that had not written its world got somebody else's. Telling
+    /// the model to invent nothing is the honest default; the panel says the same to the builder.
+    /// </remarks>
+    public const string None =
+        "# No world canon\n\n"
+        + "This server has not written a description of its world yet. Draft in plain, concrete, "
+        + "present-tense prose from the facts you are given. Name no gods, places, peoples or "
+        + "history that those facts do not name.\n";
+
     /// <summary>Roughly how many tokens <paramref name="text"/> costs the model.</summary>
     public static int EstimateTokens(string? text) =>
         string.IsNullOrEmpty(text) ? 0 : (int)(text.Length / CharsPerToken);
 
     /// <summary>
-    /// The canon the assist should read: the active configuration's own when it has one,
-    /// otherwise the embedded <see cref="Prefix"/> (PLAN.md §4.16).
+    /// A canon as the model should receive it: line endings normalised, cut at
+    /// <see cref="EndMarker"/>, trailing whitespace trimmed, one final newline. Empty in, empty
+    /// out.
     /// </summary>
-    /// <remarks>
-    /// Normalised the way the embedded one is - line endings, trailing whitespace, one final
-    /// newline - because the KV cache is byte-exact and the text arrives from a browser textarea,
-    /// which is not. Cut at <see cref="EndMarker"/> too, so a builder who pastes the whole of
-    /// docs/WORLD.md into the panel gets the same slice the build would have taken.
-    /// </remarks>
     public static string Resolve(string? live)
     {
         if (string.IsNullOrWhiteSpace(live))
         {
-            return Prefix;
+            return string.Empty;
         }
 
         var text = live.Replace("\r\n", "\n", StringComparison.Ordinal);
@@ -70,42 +80,19 @@ public static class Canon
             text = text[..end];
         }
 
-        return text.TrimEnd() + "\n";
+        text = text.TrimEnd();
+
+        return text.Length == 0 ? string.Empty : text + "\n";
     }
 
-    private const string ResourceName = "Muwbta.Server.Canon.WORLD.md";
-
-    private static readonly Lazy<string> Loaded = new(Load, LazyThreadSafetyMode.ExecutionAndPublication);
-
     /// <summary>
-    /// Everything before <see cref="EndMarker"/>, with line endings normalised.
+    /// What actually leads the prompt: the resolved canon, or <see cref="None"/> when there is
+    /// nothing to resolve.
     /// </summary>
-    /// <remarks>
-    /// Normalised because git may check the file out with either ending depending on the machine,
-    /// and a prefix that differs between a developer's server and the deployed one is a prefix
-    /// that shares no cache with itself.
-    /// </remarks>
-    public static string Prefix => Loaded.Value;
-
-    private static string Load()
+    public static string ForPrompt(string? live)
     {
-        using var stream = typeof(Canon).GetTypeInfo().Assembly.GetManifestResourceStream(ResourceName)
-            ?? throw new InvalidOperationException(
-                $"'{ResourceName}' is not embedded. The assist cannot run without the canon, and a "
-                + "server that started anyway would answer every request from a blank world.");
+        var resolved = Resolve(live);
 
-        using var reader = new StreamReader(stream);
-        var text = reader.ReadToEnd().Replace("\r\n", "\n", StringComparison.Ordinal);
-
-        var end = text.IndexOf(EndMarker, StringComparison.Ordinal);
-
-        if (end < 0)
-        {
-            throw new InvalidOperationException(
-                $"docs/WORLD.md has no '{EndMarker}'. Without it the whole document goes to the "
-                + "model, including the authoring notes, and the prefix no longer fits the window.");
-        }
-
-        return text[..end].TrimEnd() + "\n";
+        return resolved.Length == 0 ? None : resolved;
     }
 }

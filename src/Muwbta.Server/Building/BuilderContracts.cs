@@ -686,8 +686,8 @@ public sealed record MultiplierPreview(
 /// </param>
 /// <param name="Canon">The assist's canon for this configuration, or empty for the built-in one.</param>
 /// <param name="CanonTokens">
-/// Roughly what <paramref name="Canon"/> costs the model (<c>Canon.EstimateTokens</c>), or what
-/// the built-in one costs when it is empty. Against <see cref="GameConfigurationList.CanonTokenBudget"/>.
+/// Roughly what <paramref name="Canon"/> costs the model (<c>Canon.EstimateTokens</c>); zero when
+/// there is none. Against <see cref="GameConfigurationList.CanonTokenBudget"/>.
 /// </param>
 public sealed record GameConfigurationResponse(
     string Key,
@@ -721,8 +721,6 @@ public sealed record GameConfigurationList(
     int CanonTokenBudget,
     double CanonCharsPerToken);
 
-/// <summary>A block of markdown, for the one endpoint that hands the built-in canon to the panel.</summary>
-public sealed record CanonText(string Text, int Tokens);
 
 /// <param name="BlockedWords">
 /// The word list, or null for none. Whole words, one per line or separated by commas; see

@@ -2,8 +2,9 @@
 
 The world this game is set in. **Authored as of 2026-08-15** — the files are in `content/`, and
 where they and this document diverged, the files won (§10.4). Everything above the `canon:end`
-marker is also the builder assist's canon: compiled in as the fallback, and editable per
-configuration in the builder, from where `tools/sync-canon.cs` writes it back here.
+marker is also the builder assist's canon: `tools/merge-bundles.cs --canon` writes it into the
+Reaches' configuration on the way to an import, the builder can edit it there, and
+`tools/sync-canon.cs` writes an edit back here. The server embeds nothing of its own.
 
 `PLAN.md` says what the engine does and why. This says what goes in it. Where the two touch, this
 document cites the code rather than restating it, because the arithmetic below is only correct for

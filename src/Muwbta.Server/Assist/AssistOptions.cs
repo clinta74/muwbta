@@ -90,5 +90,8 @@ public sealed class AssistOptions
     /// model has a different <c>num_ctx</c>, and the number the panel measures the canon against
     /// should be the one for the model actually answering. 12,000 of 16,384 is Gemma 3's.
     /// </remarks>
-    public int CanonTokenBudget { get; set; } = 12_000;
+    public int CanonTokenBudget { get; set; } = DefaultCanonTokenBudget;
+
+    /// <summary>Gemma 3's: 12,000 of a 16,384 window. The bundle validator measures against this.</summary>
+    public const int DefaultCanonTokenBudget = 12_000;
 }

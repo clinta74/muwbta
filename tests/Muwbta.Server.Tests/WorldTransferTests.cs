@@ -109,11 +109,11 @@ public sealed class WorldTransferTests(PostgresFixture postgres)
     }
 
     /// <summary>
-    /// A configuration with no canon of its own is reading the built-in one, and that is what its
-    /// bundle carries - so the file stands on its own wherever it is imported.
+    /// A configuration with no canon exports an empty one: the server embeds nothing to fall back
+    /// on, and the bundle says exactly what the assist is told.
     /// </summary>
     [Fact]
-    public async Task A_configuration_bundle_carries_the_canon_the_assist_actually_reads()
+    public async Task A_configuration_with_no_canon_exports_an_empty_one()
     {
         var factory = postgres.App;
         using var client = NewClient(factory);
@@ -130,7 +130,7 @@ public sealed class WorldTransferTests(PostgresFixture postgres)
             new Uri($"/api/builder/export?configuration={key}", UriKind.Relative)));
 
         var configuration = Assert.Single(bundle.GetProperty("configurations").EnumerateArray());
-        Assert.Contains("The Reaches", configuration.GetProperty("canon").GetString(), StringComparison.Ordinal);
+        Assert.Equal(string.Empty, configuration.GetProperty("canon").GetString());
     }
 
     [Fact]

@@ -183,7 +183,7 @@ public sealed class OllamaContentAssistant : IContentAssistant
             _ => "quest",
         };
 
-        var prompt = new StringBuilder(Canon.Resolve(_engine.Canon));
+        var prompt = new StringBuilder(Canon.ForPrompt(_engine.Canon));
 
         prompt.Append("\n---\n\nYou are writing the words for one ").Append(what)
             .Append(" in the world above. Someone else has already decided what it is; these are ")
@@ -262,7 +262,7 @@ public sealed class OllamaContentAssistant : IContentAssistant
     /// </remarks>
     private string Prompt(RoomDraftRequest request, ZoneContext context)
     {
-        var prompt = new StringBuilder(Canon.Resolve(_engine.Canon));
+        var prompt = new StringBuilder(Canon.ForPrompt(_engine.Canon));
 
         prompt.Append("\n---\n\nYou are drafting one room for a builder, in the world above.\n\n")
             .Append("Zone: ").Append(context.ZoneName).Append('\n')

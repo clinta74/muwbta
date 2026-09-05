@@ -7,15 +7,15 @@
 //     dotnet run tools/sync-canon.cs
 //     dotnet run tools/sync-canon.cs -- --key the-reaches --doc docs/WORLD.md
 //
-// The canon has two homes (PLAN.md §4.16). docs/WORLD.md is the reviewed, version-controlled one,
-// and it is compiled into the server as the fallback for a configuration that carries none. The
-// `canon` column on game_configurations is the live one: what the builder assist actually reads
-// while that configuration is active, and what a builder edits from the configurations panel.
+// The canon has two homes (PLAN.md §4.16). docs/WORLD.md is the reviewed, version-controlled one.
+// The `canon` column on game_configurations is the live one: what the builder assist actually
+// reads while that configuration is active, and what a builder edits from the configurations
+// panel. The server embeds neither.
 // This tool is how an edit made in the panel gets back into the repository - it reads the row and
 // rewrites the file above the marker, leaving the authoring notes below it exactly as they were.
 //
-// It reads the database and writes a file. It never writes the database: seeding the other way is
-// the panel's "Load the built-in canon" button, or a full bundle import.
+// It reads the database and writes a file. It never writes the database: the way in is the merge
+// (tools/merge-bundles.cs --canon docs/WORLD.md --into the-reaches) followed by an import.
 
 using Muwbta.Persistence;
 using Muwbta.Server.Assist;
@@ -80,8 +80,9 @@ if (configuration is null)
 if (string.IsNullOrWhiteSpace(configuration.Canon))
 {
     await Console.Error.WriteLineAsync(
-        $"'{configuration.Key}' carries no canon of its own; the server is using the built-in "
-        + "one from docs/WORLD.md, so there is nothing to write back.");
+        $"'{configuration.Key}' carries no canon, so there is nothing to write back. The way in "
+        + "is the merge: dotnet run tools/merge-bundles.cs content -o build/the-reaches.json "
+        + $"--canon docs/WORLD.md --into {configuration.Key}, then import.");
     return 1;
 }
 

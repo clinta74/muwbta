@@ -22,27 +22,6 @@
   </ItemGroup>
 
   <!--
-    The world canon travels inside the assembly. The builder assist puts it in front of every
-    request and the KV cache only survives if it is byte-identical every time, so it is a property
-    of the build rather than a file the container might or might not have. See Assist/Canon.cs.
-  -->
-  <ItemGroup>
-    <EmbeddedResource Include="..\..\docs\WORLD.md" LogicalName="Muwbta.Server.Canon.WORLD.md" />
-  </ItemGroup>
-
-  <!--
-    Says which file is missing and why it matters, because the compiler does not. Without the
-    canon, csc reports CS1566 "Error reading resource" against a path under /src, which reads like
-    a broken project file and is really a build context that dropped a document nobody had thought
-    of as code. This happened on the first container build after the assist landed.
-  -->
-  <Target Name="EnsureCanonIsPresent" BeforeTargets="BeforeBuild">
-    <Error
-      Condition="!Exists('$(MSBuildThisFileDirectory)..\..\docs\WORLD.md')"
-      Text="docs/WORLD.md is missing from this build. It is embedded as the builder assist's canon (Assist/Canon.cs), which makes it build input rather than documentation - check .dockerignore or whatever assembled this source tree is not excluding it." />
-  </Target>
-
-  <!--
     The drawn realm maps travel inside the assembly, for the reasons the canon above does and one
     more: a map is derived from authored content, so which map a build serves has to be a property
     of that build. A sheet that disagrees with the world it draws is a confusion a player has no

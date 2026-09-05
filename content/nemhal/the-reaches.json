@@ -6165,14 +6165,24 @@
       "name": "Aldenmoor",
       "description": "The original starter world, kept as a sandbox and as the fixture the playtest plans run against. Matches the engine's built-in fallback.",
       "startingRoomKey": "aldenmoor.millbrook.north-gate",
-      "welcomeMessage": "Welcome to Aldenmoor, {name}."
+      "welcomeMessage": "Welcome to Aldenmoor, {name}.",
+      "worldKeys": [
+        "aldenmoor"
+      ]
     },
     {
       "key": "the-reaches",
       "name": "The Reaches",
       "description": "The Reaches as designed in docs/WORLD.md. New characters begin in Gatetown, at the gate that has not opened in living memory.",
       "startingRoomKey": "ossara.gatetown.the-gate-yard",
-      "welcomeMessage": "The Reaches hold, {name}. Welcome back."
+      "welcomeMessage": "The Reaches hold, {name}. Welcome back.",
+      "worldKeys": [
+        "ossara",
+        "grask",
+        "azhen",
+        "nemhal",
+        "the-unlit"
+      ]
     }
   ]
 }

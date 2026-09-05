@@ -578,11 +578,11 @@ export interface GameConfiguration {
   updatedAt: string
   /**
    * What the builder assist is told about this world before every request, as markdown. Empty
-   * means the canon compiled into the server (the Reaches). Activating the configuration makes
-   * the assist read this one; editing it takes effect on the next request.
+   * means the assist is told there is no world description and to invent nothing. Activating the
+   * configuration makes the assist read this one; editing it takes effect on the next request.
    */
   canon: string
-  /** Roughly what `canon` costs the model, or what the built-in one costs when it is empty. */
+  /** Roughly what `canon` costs the model; zero when there is none. */
   canonTokens: number
   /**
    * The worlds this configuration is for. A world belongs to at most one configuration, and
@@ -591,11 +591,6 @@ export interface GameConfiguration {
   worldKeys: string[]
 }
 
-/** The canon compiled into the server, as a starting point for writing one's own. */
-export interface CanonText {
-  text: string
-  tokens: number
-}
 
 export interface GameConfigurationList {
   configurations: GameConfiguration[]
@@ -1026,8 +1021,6 @@ export const builderApi = {
     request<QuestReachability>(`${base}/quests/${key}/reachability`),
 
   configurations: () => request<GameConfigurationList>(`${base}/configurations`),
-
-  embeddedCanon: () => request<CanonText>(`${base}/canon/embedded`),
 
   saveConfiguration: (
     key: string,

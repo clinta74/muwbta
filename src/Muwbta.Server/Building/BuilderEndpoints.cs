@@ -71,7 +71,6 @@ public static class BuilderEndpoints
         group.MapDelete("/configurations/{key}", DeleteConfigurationAsync);
         group.MapPost("/configurations/{key}/activate", ActivateConfigurationAsync);
         group.MapGet("/configurations/{key}/canon", ConfigurationCanonAsync);
-        group.MapGet("/canon/embedded", EmbeddedCanon);
 
         group.MapGet("/worlds", ListWorldsAsync);
         group.MapGet("/worlds/{key}", GetWorldAsync);
@@ -287,12 +286,6 @@ public static class BuilderEndpoints
             : Results.Text(Canon.Resolve(canon), "text/markdown; charset=utf-8");
     }
 
-    /// <summary>
-    /// The canon compiled into the server, which is what an empty configuration uses. The panel
-    /// offers it as the starting point for writing one's own.
-    /// </summary>
-    private static IResult EmbeddedCanon() =>
-        Results.Ok(new CanonText(Canon.Prefix, Canon.EstimateTokens(Canon.Prefix)));
 
     private static async Task<IResult> UpsertConfigurationAsync(
         string key,

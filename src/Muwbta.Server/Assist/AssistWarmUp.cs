@@ -106,7 +106,7 @@ public sealed class AssistWarmUp(
 
     private async Task<int> PrefillAsync(CancellationToken cancellationToken)
     {
-        var estimated = Canon.EstimateTokens(Canon.Resolve(engine.Canon));
+        var estimated = Canon.EstimateTokens(Canon.ForPrompt(engine.Canon));
         if (estimated > options.Value.CanonTokenBudget)
         {
             AssistLog.CanonOverBudget(logger, estimated, options.Value.CanonTokenBudget);
@@ -117,8 +117,8 @@ public sealed class AssistWarmUp(
             ["model"] = options.Value.Model,
             ["stream"] = false,
             // The live one: the active configuration's, which Program.cs has loaded into
-            // EngineOptions before any hosted service starts, or the embedded fallback.
-            ["prompt"] = Canon.Resolve(engine.Canon),
+            // EngineOptions before any hosted service starts - or the line that says there is none.
+            ["prompt"] = Canon.ForPrompt(engine.Canon),
             // One token. The cache is the point; the word is not.
             ["options"] = new System.Text.Json.Nodes.JsonObject { ["num_predict"] = 1 },
             ["keep_alive"] = -1,
