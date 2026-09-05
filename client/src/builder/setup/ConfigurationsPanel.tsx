@@ -361,6 +361,7 @@ export function ConfigurationsPanel({ list, onChanged }: Props) {
           >
             <Textarea
               rows={4}
+              maxRows={12}
               value={draft.blockedWords}
               onChange={(value) => setDraft({ ...draft, blockedWords: value })}
             />
@@ -406,6 +407,7 @@ export function ConfigurationsPanel({ list, onChanged }: Props) {
           >
             <Textarea
               rows={14}
+              maxRows={20}
               value={draft.canon}
               onChange={(value) => setDraft({ ...draft, canon: value })}
             />
