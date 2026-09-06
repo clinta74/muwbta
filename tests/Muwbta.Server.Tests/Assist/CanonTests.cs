@@ -27,34 +27,14 @@ public sealed class CanonTests
         Assert.Equal(PrefixTokenBudget, new AssistOptions().CanonTokenBudget);
     }
 
-    /// <summary>
-    /// The Reaches' canon lives in <c>docs/WORLD.md</c> above the marker, and the merge tool
-    /// writes it into the Reaches' configuration. It still has to fit, with room to work in.
-    /// </summary>
-    /// <remarks>
-    /// <b>The test this whole feature was blocked on.</b> An over-long prompt is truncated rather
-    /// than refused, so a canon that outgrows the window does not fail - it quietly stops being
-    /// fully read, and the model reads as though it had learned the world and forgotten most of it.
-    /// If this fails, the question is which section has stopped being canon - not how to raise the
-    /// number.
-    /// </remarks>
-    [Fact]
-    public void The_reaches_canon_in_the_docs_fits_the_window_with_room_to_work()
-    {
-        var document = File.ReadAllText(Path.Combine(RepoPath.Root(), "docs", "WORLD.md"));
-        var canon = Canon.Resolve(document);
+    // The Reaches' canon used to be checked here, read straight out of docs/WORLD.md. That
+    // document went with the world it describes, and the claim generalised on the way out:
+    // BundleValidator warns when any configuration carries a canon over the assist's budget, so
+    // every bundle is now held to what only one document was. The failure it guards is unchanged -
+    // an over-long prompt is truncated rather than refused, so the model reads as though it had
+    // learned the world and forgotten most of it - and the answer is still which section has
+    // stopped being canon, not how to raise the number.
 
-        Assert.Contains("The Reaches", canon, StringComparison.Ordinal);
-        Assert.Contains("Yrriska", canon, StringComparison.Ordinal);
-        Assert.DoesNotContain("Authoring notes", canon, StringComparison.Ordinal);
-
-        var tokens = Canon.EstimateTokens(canon);
-
-        Assert.True(
-            tokens <= PrefixTokenBudget,
-            $"The canon is ~{tokens:N0} tokens, over the {PrefixTokenBudget:N0} budgeted. "
-            + "Something above the canon:end marker in docs/WORLD.md has stopped being canon.");
-    }
 
     /// <summary>The sandbox's canon is a register and a map, not a theology.</summary>
     [Fact]
