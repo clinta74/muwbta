@@ -37,10 +37,47 @@ public static class CanonResources
         var key = ActiveKey(list)
             ?? throw new McpException(
                 "No configuration is active, so there is no canon to read. The server is running on "
-                + "its configured fallback; the Setup tab is where a configuration is activated.");
+                + "its configured fallback; the Setup tab is where a configuration is activated. "
+                + "muwbta://canon/{configuration} reads a named one.");
 
         return await client
             .GetAsync($"/api/builder/configurations/{Uri.EscapeDataString(key)}/canon", cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Any configuration's canon by key, for authoring against something other than what is live.
+    /// </summary>
+    /// <remarks>
+    /// A template beside the direct resource rather than instead of it. Drafting happens in a world
+    /// that is not the active one - that is the whole shape of the workflow - and an agent that
+    /// could only read the live canon would be writing a draft world in the voice of the running
+    /// one. <c>list_content(kind: 'configuration')</c> is where the keys come from.
+    /// </remarks>
+    [McpServerResource(
+        UriTemplate = "muwbta://canon/{configuration}",
+        Name = "canon-for-configuration",
+        MimeType = "text/markdown")]
+    [Description("""
+        One named configuration's canon, for drafting against a world that is not the live one.
+        The keys come from list_content(kind: 'configuration').
+        """)]
+    public static async Task<string> CanonForAsync(
+        BuilderClient client,
+        string configuration,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(client);
+
+        if (string.IsNullOrWhiteSpace(configuration))
+        {
+            throw new McpException("A configuration key is required. muwbta://canon reads the active one.");
+        }
+
+        return await client
+            .GetAsync(
+                $"/api/builder/configurations/{Uri.EscapeDataString(configuration)}/canon",
+                cancellationToken)
             .ConfigureAwait(false);
     }
 

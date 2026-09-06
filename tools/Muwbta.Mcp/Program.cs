@@ -34,7 +34,7 @@ builder.Services.AddSingleton(options);
 builder.Services.AddHttpClient<BuilderClient>();
 
 builder.Services
-    .AddMcpServer()
+    .AddMcpServer(server => server.ServerInstructions = ServerGuidance.Instructions)
     .WithStdioServerTransport()
     .WithToolsFromAssembly()
     .WithResourcesFromAssembly();

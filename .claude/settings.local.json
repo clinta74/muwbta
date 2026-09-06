@@ -1,0 +1,32 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(docker exec muwbta-postgres psql -U muwbta -d muwbta -c \"\\\\dt\" -c \"\\\\d characters\")",
+      "Bash(curl -s -w \"\\\\nHTTP %{http_code}\\\\n\" http://localhost:5180/health)",
+      "Bash(curl -s -w \"\\\\nHTTP %{http_code}\\\\n\" http://localhost:5180/health/ready)",
+      "Bash(curl -sf http://localhost:5173/health/ready)",
+      "Bash(curl -s -w \"\\\\nHTTP %{http_code}\\\\n\" http://localhost:5173/health/ready)",
+      "Bash(curl -s http://localhost:5173/)",
+      "PowerShell(dotnet test tests/DikuWeb.Domain.Tests --no-build 2>&1)",
+      "PowerShell(dotnet test tests/DikuWeb.Engine.Tests --no-build 2>&1)",
+      "Bash(sed -i 's|- \\\\[x\\\\] 172 .NET tests + 18 client tests|- [x] 232 .NET tests + 18 client tests|' PLAN.md)",
+      "Bash(sed -i 's|dotnet test              # 172 tests: domain, engine, architecture, server integration|dotnet test              # 232 tests: domain, engine, architecture, server integration|' README.md)",
+      "Bash(npx vitest *)",
+      "Bash(npm install *)",
+      "Bash(node *)",
+      "Bash(npx tsc *)",
+      "Bash(echo \"=== EXIT: $? ===\")",
+      "Bash(npx oxlint *)",
+      "Bash(npx vite *)",
+      "Bash(dotnet build *)",
+      "Bash(dotnet test *)",
+      "Bash(git status)",
+      "Bash(git status *)",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Bash(git show *)",
+      "Bash(git worktree *)"
+    ]
+  },
+  "outputStyle": "default"
+}

@@ -296,9 +296,11 @@ input:focus {
   grid-template-columns: minmax(16rem, 22rem) 1fr;
   grid-template-rows: minmax(11rem, auto) 1fr auto auto auto auto;
 
-  /* `notice` carries the reconnect bar and `cooldowns` the ability bar. Both rows are `auto`, so
-     they are zero-height whenever nothing is in them — which is almost always — and the layout
-     does not have to change shape to make room for a bar that only appears sometimes.
+  /* `notice` carries the reconnect bar and `cooldowns` the ability bar. Both rows are `auto`.
+     The notice is zero-height whenever nothing is in it — which is almost always — so the layout
+     does not have to change shape to make room for a bar that only appears sometimes. The
+     cooldowns row is the opposite case: it is always one chip tall, empty or not, because it
+     empties in the middle of a fight and the input must not move when it does.
 
      Every child needs an area here. This grid has named areas and no `grid-auto-columns`, so an
      item without one is auto-placed into column 1 and comes out 22rem wide with the grid's own
@@ -1933,24 +1935,85 @@ code.dim {
 
 /* --- Ability bar ---------------------------------------------------- */
 
-/* Only what is cooling appears here, so the row is short by construction and wrapping is the right
-   answer rather than a sideways scroll - four cooling abilities is a busy rotation, and nothing
-   the player has to drag a scrollbar to see. The whole row is absent when nothing is cooling.
+/* Only what is cooling appears here, so the row is short by construction. It is one line that
+   scrolls sideways, never two: the row keeps a fixed height whether it holds nothing, one chip or
+   a dozen, because it is emptying and refilling exactly when the player is typing under it and a
+   row that changes height moves the input mid-fight. The `:empty` rule below is what holds the
+   height when there is nothing to show — a chip that is not there, drawn invisibly.
+
+   The native scrollbar is hidden; a fade at an edge means there is more past it. AbilityBar
+   measures that and sets `data-more`, because CSS cannot see overflow on its own.
 
    The grid area is not decoration: `.game` places by name, so without one this is auto-placed into
    the first column and renders 22rem wide against the grid's border colour. */
 .ability-bar {
   grid-area: cooldowns;
+  position: relative;
+  border-top: 1px solid var(--border);
+}
+
+.ability-bar-row {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: var(--space-2);
   list-style: none;
   margin: 0;
   padding: var(--space-2) var(--space-3);
-  border-top: 1px solid var(--border);
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
 }
 
-.ability-chip {
+.ability-bar-row::-webkit-scrollbar {
+  display: none;
+}
+
+.ability-bar-row:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+/* A placeholder the height of a chip and nothing else, so an empty row is the same height as a
+   full one. It shares the chip's rules so the two can never drift apart. Invisible rather than
+   absent: `visibility` keeps the box, `display: none` would not. */
+.ability-bar-row:empty::before {
+  content: "█";
+  visibility: hidden;
+}
+
+/* The scroll indicator: a soft fade into the panel background over whichever edge has chips past
+   it. On the wrapper rather than the row so it does not scroll away with the content. Under the
+   pointer it is nothing, so a chip half under the fade is still hoverable for its title. */
+.ability-bar::before,
+.ability-bar::after {
+  content: "";
+  position: absolute;
+  top: 1px;
+  bottom: 0;
+  width: 2.5rem;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 150ms ease;
+}
+
+.ability-bar::before {
+  left: 0;
+  background: linear-gradient(to right, var(--bg), transparent);
+}
+
+.ability-bar::after {
+  right: 0;
+  background: linear-gradient(to left, var(--bg), transparent);
+}
+
+.ability-bar[data-more~="left"]::before,
+.ability-bar[data-more~="right"]::after {
+  opacity: 1;
+}
+
+.ability-chip,
+.ability-bar-row:empty::before {
   display: inline-flex;
   align-items: baseline;
   gap: var(--space-2);

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
-import { act, cleanup, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { AbilityBar } from './AbilityBar'
 import { gameReducer, initialGameState } from '../state/gameReducer'
 import { PULSE_MS, type AbilityEntry } from '../net/protocol'
@@ -47,15 +47,21 @@ afterEach(() => {
   vi.useRealTimers()
 })
 
-it('shows nothing at all when nothing is cooling', () => {
+it('shows no chips when nothing is cooling, but keeps the row', () => {
   // The common case, and the reason the bar was rewritten: a level-45 character has a dozen
   // abilities and is not usually waiting on any of them. A row of ready chips is a row of things
-  // the player already knows, taking space from the transcript.
+  // the player already knows. The row itself stays, empty, so the input under it does not move
+  // when the last chip goes - the height comes from a CSS `:empty` rule, so what matters here is
+  // that the list is truly empty (no whitespace children) for that rule to match.
   const { container } = render(
     <AbilityBar abilities={[kick, bolt]} cooldownUntil={{}} />,
   )
 
-  expect(container.querySelector('.ability-bar')).toBeNull()
+  expect(container.querySelector('.ability-chip')).toBeNull()
+  const row = container.querySelector('.ability-bar-row')
+  expect(row).toBeTruthy()
+  expect(row?.childNodes).toHaveLength(0)
+  expect(row?.matches(':empty')).toBe(true)
 })
 
 it('shows only the ability that is cooling', () => {
@@ -98,7 +104,7 @@ it('keeps a cell while the ability is still refused', () => {
   expect(filled(container)).toBe(1)
 })
 
-it('disappears the moment the cooldown reaches zero', () => {
+it('drops the chip the moment the cooldown reaches zero, and the row stays', () => {
   const until = Date.now() + 24 * PULSE_MS
 
   const { container, rerender } = render(
@@ -110,7 +116,58 @@ it('disappears the moment the cooldown reaches zero', () => {
   act(() => void vi.advanceTimersByTime(6000))
   rerender(<AbilityBar abilities={[kick]} cooldownUntil={{ 'warden.kick': until }} />)
 
-  expect(container.querySelector('.ability-bar')).toBeNull()
+  expect(container.querySelector('.ability-chip')).toBeNull()
+  expect(container.querySelector('.ability-bar-row')?.matches(':empty')).toBe(true)
+})
+
+it('marks the edge that has chips past it, and only that edge', () => {
+  // jsdom lays nothing out, so the row is given the geometry of one that overflows by hand: a
+  // 300px viewport onto 500px of chips. The fade is CSS keyed off `data-more`; this checks the
+  // measurement that drives it, at rest, mid-scroll and at the far end.
+  const { container } = render(
+    <AbilityBar
+      abilities={[kick, bolt]}
+      cooldownUntil={{ 'warden.kick': Date.now() + 4000, 'adept.bolt': Date.now() + 4000 }}
+    />,
+  )
+  const bar = container.querySelector<HTMLElement>('.ability-bar')!
+  const row = container.querySelector<HTMLElement>('.ability-bar-row')!
+
+  // Nothing overflows until told otherwise, so no edge is marked and the row is not a tab stop.
+  expect(bar.dataset.more).toBeUndefined()
+  expect(row.tabIndex).toBe(-1)
+
+  Object.defineProperty(row, 'scrollWidth', { configurable: true, value: 500 })
+  Object.defineProperty(row, 'clientWidth', { configurable: true, value: 300 })
+
+  row.scrollLeft = 0
+  fireEvent.scroll(row)
+  expect(bar.dataset.more).toBe('right')
+  expect(row.tabIndex).toBe(0)
+
+  row.scrollLeft = 100
+  fireEvent.scroll(row)
+  expect(bar.dataset.more).toBe('left right')
+
+  row.scrollLeft = 200
+  fireEvent.scroll(row)
+  expect(bar.dataset.more).toBe('left')
+})
+
+it('turns a plain wheel into a sideways scroll', () => {
+  // Shift-wheel is the browser's answer for horizontal scroll, and nobody will guess it for a
+  // row of chips. The row has no vertical scroll of its own to compete with.
+  const { container } = render(
+    <AbilityBar abilities={[kick]} cooldownUntil={{ 'warden.kick': Date.now() + 4000 }} />,
+  )
+  const row = container.querySelector<HTMLElement>('.ability-bar-row')!
+
+  fireEvent.wheel(row, { deltaY: 40 })
+  expect(row.scrollLeft).toBe(40)
+
+  // A trackpad already moving sideways is left alone.
+  fireEvent.wheel(row, { deltaY: 40, deltaX: 10 })
+  expect(row.scrollLeft).toBe(40)
 })
 
 it('draws no more than a full bar when the roster disagrees with the cooldown', () => {

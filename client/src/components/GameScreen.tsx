@@ -352,7 +352,7 @@ export function GameScreen({
       {/*
         Above the input, because it is a thing you read while deciding what to type next - putting
         it under the input would mean looking past what you are writing to see what is not ready.
-        Absent entirely when nothing is cooling, so an idle screen has no row here at all.
+        Always here, one chip tall, so the input does not move when the last cooldown runs out.
       */}
       <AbilityBar abilities={state.abilities} cooldownUntil={state.cooldownUntil} />
 

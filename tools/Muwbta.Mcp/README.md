@@ -70,9 +70,14 @@ question rather than fetch a row.
 | `where_used` | Which spawners carry a mob or item template, and where they sit. |
 | `export_bundle` | A world or zone as import-shaped bundle JSON, for diffing before anything changes. |
 
-One resource, `muwbta://canon`: the active configuration's canon, the same text `Canon.Resolve`
-feeds the in-editor assist. One source, so an agent working through MCP and a builder using the
-draft button cannot end up in different worlds.
+Two resources: `muwbta://canon` for the active configuration's canon, and
+`muwbta://canon/{configuration}` for a named one — drafting usually happens against a world that
+is not live. Both serve the same text `Canon.Resolve` feeds the in-editor assist, so an agent
+working through MCP and a builder using the draft button cannot end up in different worlds.
+
+The server also sends **instructions** at initialization (`ServerGuidance`), which most clients put
+in front of the model as context. That is where the canon is recommended, the order of work is
+suggested, and the limits of `validate_zone` are spelled out.
 
 ## The thing to be clear about
 
@@ -84,6 +89,13 @@ different game.
 So the loop an agent can close on its own is the wiring, which is the tedious, expensive part at
 zone scale. The prose still needs a person to read it. Plan the review accordingly: this shortens
 authoring, it does not remove the author.
+
+**That is on purpose, and it is not a gap to be closed.** The canon is offered — named in the
+server instructions, first in the suggested order of work, available as a resource before anything
+is written — and never enforced. A canon check in code would be a machine holding an opinion about
+prose, and the moment one existed "it passed" would start being read as "it is good". An agent that
+ignores the canon produces a zone that validates and reads wrong, which is precisely what a human
+reviewer is for.
 
 ## Known gaps
 
