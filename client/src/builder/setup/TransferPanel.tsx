@@ -186,7 +186,7 @@ export function TransferPanel({ onImported }: Props) {
   }
 
   return (
-    <section className="template-editor">
+    <section className="panel setup-panel">
       <div className="setup-head">
         <h3>Export</h3>
       </div>

@@ -169,6 +169,16 @@
   margin-top: var(--space-3);
 }
 
+/* .room-section carries its own top margin for the room editor, where it is the single child under
+   the tab bar and its parent is a plain block with nothing else to space it. Inside a flex column
+   that already has a gap, that margin adds to the gap: the account panel's five sections sat
+   1.5rem apart while every other stack in the builder sits at 0.75. Scoped to the flex parents so
+   the room editor keeps the margin it actually needs. */
+.template-editor > .room-section,
+.setup-panel > .room-section {
+  margin-top: 0;
+}
+
 .section-body {
   display: flex;
   flex-direction: column;
@@ -412,6 +422,32 @@
 
 
 /* --- Setup tab (PLAN.md §4.16, §6) ---------------------------------- */
+
+/* One shape for every panel on this tab. There were four panels and three different roots: a card,
+   two bare flex columns borrowed from the template editor, and one class that was never written -
+   so the tab read as four pages that happened to share a sidebar. The card comes from .panel; this
+   is the rhythm inside it. */
+.setup-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+/* Carried over from .template-editor, which two of these panels used to borrow for it. Inputs are
+   already full width globally; textareas and selects are not. */
+.setup-panel textarea,
+.setup-panel select {
+  width: 100%;
+}
+
+/* Except in a row, where the whole point is several controls side by side. Stated here rather than
+   left to source order, because .row's own rule and the one above have equal specificity and which
+   file loaded last is not a thing anybody should have to know. */
+.setup-panel .row input,
+.setup-panel .row select {
+  width: auto;
+  flex: 1 1 8rem;
+}
 
 .setup-head {
   display: flex;

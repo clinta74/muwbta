@@ -198,7 +198,7 @@ export function ConfigurationsPanel({ list, onChanged }: Props) {
   }
 
   return (
-    <section className="template-editor">
+    <section className="panel setup-panel">
       <div className="setup-head">
         <h3>Starter configurations</h3>
         <Button variant="primary" onClick={() => setDraft(BLANK)}>

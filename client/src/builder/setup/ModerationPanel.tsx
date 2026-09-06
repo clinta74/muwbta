@@ -58,8 +58,10 @@ export function ModerationPanel() {
   }
 
   return (
-    <section className="builder-panel">
-      <h2>Moderation</h2>
+    <section className="panel setup-panel">
+      <div className="setup-head">
+        <h3>Moderation</h3>
+      </div>
 
       {error && <p className="bad">{error}</p>}
 

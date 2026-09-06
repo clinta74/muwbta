@@ -94,8 +94,10 @@ export function TokensPanel() {
   const atCap = list ? list.tokens.filter((t) => !t.isExpired).length >= list.maxTokens : false
 
   return (
-    <section className="panel">
-      <h2>Access tokens</h2>
+    <section className="panel setup-panel">
+      <div className="setup-head">
+        <h3>Access tokens</h3>
+      </div>
 
       <p className="dim">
         A token lets something other than a browser reach the builder API — an MCP server, a
