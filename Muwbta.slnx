@@ -15,5 +15,7 @@
     <Project Path="tools/Muwbta.Balance/Muwbta.Balance.csproj" />
     <Project Path="tools/Muwbta.Playtest/Muwbta.Playtest.csproj" />
     <Project Path="tools/Muwbta.Playtest.Tests/Muwbta.Playtest.Tests.csproj" />
+    <Project Path="tools/Muwbta.Mcp/Muwbta.Mcp.csproj" />
+    <Project Path="tools/Muwbta.Mcp.Tests/Muwbta.Mcp.Tests.csproj" />
   </Folder>
 </Solution>

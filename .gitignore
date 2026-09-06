@@ -62,3 +62,8 @@ runs/
 # ComposeConfigurationKeysTests reads them and is what catches a Sessions__ key that binds to
 # nothing (it caught one in each of two files this week).
 tmp/
+
+# MCP server registration. The muwbta entry carries a live builder session cookie in its env
+# block (tools/Muwbta.Mcp/README.md), which is a credential for a role that can rewrite the
+# world. Same reasoning as the beta compose above, before rather than after.
+.mcp.json
