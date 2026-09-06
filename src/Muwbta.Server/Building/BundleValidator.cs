@@ -339,8 +339,23 @@ public static class BundleValidator
     /// </summary>
     private static void CheckConfigurations(WorldBundle bundle, Action<string> warn)
     {
+        var worlds = bundle.Worlds.Select(w => w.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
+
         foreach (var configuration in bundle.Configurations)
         {
+            // A configuration for none of the worlds here is one that arrived by accident. The
+            // exporter used to put every configuration in every scoped export, so a realm's file
+            // carried the starter configuration of whatever server made it - and importing that
+            // planted a configuration whose starting room the receiving server did not have.
+            // A warning, because a bundle carrying worlds it does not define is legitimate: the
+            // normal order is to write a configuration before importing the world it points into.
+            if (worlds.Count > 0 && configuration.WorldKeys is { Count: > 0 } tagged
+                && !tagged.Any(worlds.Contains))
+            {
+                warn($"configuration {configuration.Key} is for {string.Join(", ", tagged)}, and this "
+                    + "bundle carries none of those worlds");
+            }
+
             var tokens = Canon.EstimateTokens(Canon.Resolve(configuration.Canon));
 
             if (tokens > AssistOptions.DefaultCanonTokenBudget)

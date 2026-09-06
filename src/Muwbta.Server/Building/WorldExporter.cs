@@ -121,9 +121,12 @@ public sealed class WorldExporter(MuwbtaDbContext db, TimeProvider clock)
         // that server happened to have.
         var abilities = await AbilitiesAsync(cancellationToken);
 
-        // Every configuration too, and for the same reason: one belongs to a server rather than to
-        // a zone. Which one is live is left behind deliberately - see BundleGameConfiguration.
-        var configurations = await ConfigurationsAsync(kind, key, cancellationToken);
+        // The configurations that are *for* these worlds. A configuration belongs to a server
+        // rather than to a zone, which is why this used to carry all of them - but it tags the
+        // worlds it serves, so "is this one ours?" has an answer, and a Reaches bundle carrying
+        // the Aldenmoor starter shipped a configuration whose starting room was not in the file.
+        // Which one is live is left behind deliberately - see BundleGameConfiguration.
+        var configurations = await ConfigurationsAsync(kind, key, worlds, cancellationToken);
 
         // Only the sheets for the worlds this export carries. Unlike abilities and configurations
         // a map has an obvious owner, so a zone-scoped bundle takes the one world it names and no
@@ -328,9 +331,22 @@ public sealed class WorldExporter(MuwbtaDbContext db, TimeProvider clock)
     /// be read in review, and forty kilobytes of the same markdown in each of six files is not
     /// that; null there means "leave the stored one alone" on import.
     /// </remarks>
+    /// <summary>
+    /// The configurations this export should carry: all of them for a whole-server export, one for
+    /// a configuration's own bundle, and otherwise the ones tagging a world in this export.
+    /// </summary>
+    /// <remarks>
+    /// The scoped case is the one that was wrong. Every configuration travelled with every export,
+    /// so a realm's content file carried the starter configuration of whatever server it was
+    /// exported from - and importing that file elsewhere planted a configuration whose starting
+    /// room the bundle did not contain, pointing into a world the receiving server may not have.
+    /// Filtered in memory rather than in SQL: <c>WorldKeys</c> is jsonb, a server has a handful of
+    /// configurations, and the alternative is a query nobody can read for no measurable gain.
+    /// </remarks>
     private async Task<IReadOnlyList<BundleGameConfiguration>> ConfigurationsAsync(
         string kind,
         string? key,
+        IReadOnlyList<BundleWorld> worlds,
         CancellationToken cancellationToken)
     {
         var query = db.GameConfigurations.AsNoTracking();
@@ -349,6 +365,15 @@ public sealed class WorldExporter(MuwbtaDbContext db, TimeProvider clock)
         // it was already reading.
         var carriesCanon = IsEverything(kind) || kind == ConfigurationScope;
         var configurations = await query.OrderBy(c => c.Key).ToListAsync(cancellationToken);
+
+        if (!IsEverything(kind) && kind != ConfigurationScope)
+        {
+            var exported = worlds.Select(w => w.Key).ToHashSet(StringComparer.Ordinal);
+
+            // A configuration tagging no world at all is for no world in particular, so a scoped
+            // export is not the place for it.
+            configurations = [.. configurations.Where(c => c.WorldKeys.Any(exported.Contains))];
+        }
 
         return [.. configurations.Select(c => new BundleGameConfiguration(
             c.Key, c.Name, c.Description, c.StartingRoomKey, c.WelcomeMessage,

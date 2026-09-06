@@ -1067,6 +1067,53 @@ public sealed class WorldTransferTests(PostgresFixture postgres)
             questKey);
     }
 
+    /// <summary>
+    /// A scoped export carries the configurations for the worlds it exports, and no others.
+    /// </summary>
+    /// <remarks>
+    /// It used to carry every configuration on the server, whatever the scope, on the reasoning
+    /// that a configuration belongs to a server rather than to a zone. True, and it meant a realm's
+    /// content file shipped the starter configuration of whichever machine exported it - so
+    /// importing that file elsewhere planted a configuration whose starting room the receiving
+    /// server did not have, pointing into a world it may never have heard of. The Reaches' six
+    /// files each carried `aldenmoor-starter` for exactly this reason.
+    /// </remarks>
+    [Fact]
+    public async Task A_scoped_export_leaves_another_world_s_configuration_behind()
+    {
+        var factory = postgres.App;
+        using var client = NewClient(factory);
+        await BuilderClient.RegisterBuilderAsync(factory, client);
+
+        var (worldKey, zoneKey) = await BuilderClient.NewZoneAsync(client);
+        await BuilderClient.NewRoomAsync(client, zoneKey, "start");
+
+        var key = $"cfg-{Guid.NewGuid():N}"[..20];
+
+        // A configuration for a world this export does not carry.
+        var created = await client.PostAsJsonAsync($"/api/builder/configurations/{key}", new
+        {
+            name = "Somewhere else",
+            description = "Authored by a test.",
+            startingRoomKey = "aldenmoor.millbrook.north-gate",
+            welcomeMessage = "Welcome, {name}.",
+            worldKeys = new[] { "aldenmoor" },
+        });
+        Assert.Equal(HttpStatusCode.OK, created.StatusCode);
+
+        var bundle = await ExportZoneAsync(client, zoneKey);
+        var carried = bundle.GetProperty("configurations").EnumerateArray()
+            .Select(c => c.GetProperty("key").GetString())
+            .ToList();
+
+        Assert.DoesNotContain(key, carried);
+        Assert.All(
+            bundle.GetProperty("configurations").EnumerateArray(),
+            c => Assert.Contains(
+                worldKey,
+                c.GetProperty("worldKeys").EnumerateArray().Select(w => w.GetString())));
+    }
+
     // -----------------------------------------------------------------------
     // Helpers
     // -----------------------------------------------------------------------

@@ -496,6 +496,25 @@ public sealed class BundleValidatorTests
         AssertError(bundle with { Quests = [quest] }, complaint);
     }
 
+    /// <summary>
+    /// A configuration for none of the worlds in the bundle arrived by accident.
+    /// </summary>
+    /// <remarks>
+    /// A warning rather than an error, because a bundle naming a world it does not define is
+    /// legitimate - writing a configuration before importing the world it points into is the normal
+    /// order. What is not legitimate is a realm's file carrying a starter configuration for a world
+    /// nothing in the file has heard of, which is what a scoped export used to produce.
+    /// </remarks>
+    [Fact]
+    public void A_configuration_for_no_world_here_is_a_warning()
+    {
+        var bundle = Valid();
+        var stranger = new BundleGameConfiguration(
+            "elsewhere", "Elsewhere", "", "other.zone.room", "Welcome.", null, ["other"]);
+
+        AssertWarning(bundle with { Configurations = [stranger] }, "carries none of those worlds");
+    }
+
     [Fact]
     public void A_marked_offer_is_accepted()
     {
