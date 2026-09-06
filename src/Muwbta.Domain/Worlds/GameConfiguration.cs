@@ -34,9 +34,6 @@ public sealed class GameConfiguration
     public const int MaxNameLength = 96;
     public const int MaxWelcomeLength = 512;
 
-    /// <summary>Room for a few hundred words; a list longer than that is a policy, not a filter.</summary>
-    public const int MaxBlockedWordsLength = 4096;
-
     /// <summary>
     /// A hard cap on <see cref="Canon"/>, well past anything a model window can read. The real
     /// limit is the assist's token budget, which the panel reports; this only stops a paste of
@@ -81,24 +78,6 @@ public sealed class GameConfiguration
     /// their name; a message with no token is sent as written.
     /// </summary>
     public string WelcomeMessage { get; set; } = DefaultWelcomeMessage;
-
-    /// <summary>
-    /// Words nobody may say here - one per line, or separated by commas or spaces. Empty, the
-    /// default, means no filter at all. Compiled by <see cref="WordFilter"/>, which says what
-    /// matches and what deliberately does not.
-    /// </summary>
-    /// <remarks>
-    /// On the configuration rather than in appsettings so a builder can change it from the panel
-    /// and have it take effect without a restart, the way the welcome message does. Whole words,
-    /// case-insensitive; the same list refuses a character name that is exactly a listed word.
-    /// <para>
-    /// <b>It does not travel in a bundle</b> (format 18). What a server refuses to hear belongs to
-    /// whoever runs it and to the people playing there, not to whoever authored the world - so an
-    /// import leaves this alone and an export does not carry it. The engine ships a default that is
-    /// seeded once into a configuration with none; after that this column is the authority.
-    /// </para>
-    /// </remarks>
-    public string BlockedWords { get; set; } = string.Empty;
 
     /// <summary>
     /// What the builder assist is told about this world before every request: the canon, as

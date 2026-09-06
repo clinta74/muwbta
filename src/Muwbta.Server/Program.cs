@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 using Muwbta.Domain.Abilities;
 using Muwbta.Domain.Abilities.Effects;
 using Muwbta.Domain.Accounts;
+using Muwbta.Domain.Moderation;
 using Muwbta.Domain.Worlds;
 using Muwbta.Engine;
 using Muwbta.Engine.Systems;
@@ -437,11 +438,16 @@ else
     // Every environment, like the abilities above and unlike starter content: a server that has
     // never been told what to refuse should not be the one that finds out the hard way. Only fills
     // a configuration that has none, so an operator who cleared the list keeps it cleared.
-    var filtered = await SeedBlockedWordsAsync(db);
-    if (filtered > 0)
+    if (await SeedBlockedWordsAsync(db))
     {
-        ServerLog.BlockedWordsSeeded(logger, filtered);
+        ServerLog.BlockedWordsSeeded(logger);
     }
+
+    // Read into the running filter whether it was just seeded or has been there for months. The
+    // policy is one row for the whole server, so unlike the welcome message and the canon it is
+    // not re-read when a configuration is activated - activating a different realm must not
+    // change what the people playing here may say to each other.
+    await LoadBlockedWordsAsync(db, app.Services);
 
     // After any seeding, for the same reason as the configuration below: a first boot should serve
     // the sheets the world it just planted came with. Failing to read them is not fatal - a server
@@ -467,37 +473,48 @@ else
 /// server down over one editable text field.
 /// </remarks>
 /// <summary>
-/// Writes the shipped blocked-words list into any configuration that has none, and returns how
-/// many it filled.
+/// Writes the shipped blocked-words list, once, if this server has never had one.
 /// </summary>
 /// <remarks>
-/// Add-only, exactly like the ability reconcile: a configuration with a list keeps it, whatever it
-/// says, because the only way to tell an operator's deliberate empty list from an untouched one
-/// would be another column, and the cost of guessing wrong is a server that re-imposes a filter
-/// somebody removed on purpose.
+/// Keyed on the row existing rather than on it being empty, which is the distinction that matters:
+/// an operator who cleared the list on purpose has a row saying so, and a server that re-imposed a
+/// filter somebody removed would be worse than one that never had it. Add-only, like the ability
+/// reconcile, and for the same reason.
 /// </remarks>
-static async Task<int> SeedBlockedWordsAsync(MuwbtaDbContext db)
+static async Task<bool> SeedBlockedWordsAsync(MuwbtaDbContext db)
 {
     if (DefaultBlockedWords.List.Length == 0)
     {
-        return 0;
+        return false;
     }
 
-    var untouched = await db.GameConfigurations
-        .Where(c => c.BlockedWords == string.Empty)
-        .ToListAsync();
+    var policy = await db.ModerationPolicies
+        .FirstOrDefaultAsync(p => p.Key == ModerationPolicy.SingletonKey);
 
-    foreach (var configuration in untouched)
+    if (policy is not null)
     {
-        configuration.BlockedWords = DefaultBlockedWords.List;
+        return false;
     }
 
-    if (untouched.Count > 0)
+    db.ModerationPolicies.Add(new ModerationPolicy
     {
-        await db.SaveChangesAsync();
-    }
+        Key = ModerationPolicy.SingletonKey,
+        BlockedWords = DefaultBlockedWords.List,
+    });
 
-    return untouched.Count;
+    await db.SaveChangesAsync();
+    return true;
+}
+
+/// <summary>Compiles the stored word list into the running filter.</summary>
+static async Task LoadBlockedWordsAsync(MuwbtaDbContext db, IServiceProvider services)
+{
+    var policy = await db.ModerationPolicies.AsNoTracking()
+        .FirstOrDefaultAsync(p => p.Key == ModerationPolicy.SingletonKey);
+
+    // Empty is a real value - "no filter" - so this is assigned either way rather than skipped
+    // when there is no row, which is what an operator who cleared the list has.
+    services.GetRequiredService<EngineOptions>().BlockedWords = policy?.BlockedWords ?? string.Empty;
 }
 
 /// <summary>
@@ -553,9 +570,6 @@ static async Task LoadActiveConfigurationAsync(
     {
         options.WelcomeMessage = active.WelcomeMessage;
     }
-
-    // Empty is a real value here - "no filter" - so no blank check, unlike the welcome.
-    options.BlockedWords = active.BlockedWords;
 
     // Empty is a real value here too: "the built-in canon". Read before the assist warms up,
     // which is a hosted service and so starts after this.

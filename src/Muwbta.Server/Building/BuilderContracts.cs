@@ -695,7 +695,6 @@ public sealed record GameConfigurationResponse(
     string Description,
     string StartingRoomKey,
     string WelcomeMessage,
-    string BlockedWords,
     bool IsActive,
     bool StartingRoomExists,
     DateTimeOffset UpdatedAt,
@@ -735,10 +734,19 @@ public sealed record GameConfigurationRequest(
     string? Description,
     string StartingRoomKey,
     string? WelcomeMessage,
-    string? BlockedWords = null,
     string? Canon = null,
     /// <summary>
     /// The worlds this configuration is for, or null to leave the stored list alone. A world
     /// another configuration already lists is refused, with its owner named.
     /// </summary>
     List<string>? WorldKeys = null);
+
+/// <summary>What this server refuses to hear. One list, for the whole server.</summary>
+/// <param name="BlockedWords">
+/// One word per line, or separated by commas or spaces. Empty means no filter at all, which is a
+/// real answer and not a missing one.
+/// </param>
+public sealed record ModerationResponse(string BlockedWords);
+
+/// <summary>A replacement word list. Empty clears the filter.</summary>
+public sealed record ModerationRequest(string? BlockedWords);

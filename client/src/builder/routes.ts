@@ -35,7 +35,7 @@ export type BuilderTab =
  * because Setup is already the builder-visible home for everything that is not a world, and the
  * alternative was opening the Admin-only Accounts tab to builders to gate a single panel.
  */
-export const SETUP_SECTIONS = ['configurations', 'transfer', 'tokens'] as const
+export const SETUP_SECTIONS = ['configurations', 'moderation', 'transfer', 'tokens'] as const
 export type SetupSection = (typeof SETUP_SECTIONS)[number]
 
 /** The route params react-router extracts from the `world` branch, each a single slug. */

@@ -16,6 +16,7 @@ using Muwbta.Server.Infrastructure;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.EntityFrameworkCore;
 
+using Muwbta.Domain.Moderation;
 using Muwbta.Server.Game;
 
 namespace Muwbta.Server.Building;
@@ -93,6 +94,11 @@ public static class BuilderEndpoints
         group.MapGet("/zones/{key}/unfinished", UnfinishedAsync);
         group.MapGet("/zones/{key}/preview", PreviewAsync);
         group.MapPost("/zones/{key}/respawn", RespawnZoneAsync);
+
+        // One row for the server, so no key in the route: what this server refuses to hear is not
+        // a property of which world is loaded.
+        group.MapGet("/moderation", ModerationAsync);
+        group.MapPut("/moderation", SaveModerationAsync);
 
         group.MapGet("/audit", AuditAsync);
 
@@ -252,7 +258,6 @@ public static class BuilderEndpoints
                 c.Description,
                 c.StartingRoomKey,
                 c.WelcomeMessage,
-                c.BlockedWords,
                 c.IsActive,
                 rooms.Contains(c.StartingRoomKey),
                 c.UpdatedAt,
@@ -336,16 +341,6 @@ public static class BuilderEndpoints
             });
         }
 
-        var blockedWords = request.BlockedWords ?? string.Empty;
-
-        if (blockedWords.Length > GameConfiguration.MaxBlockedWordsLength)
-        {
-            return Results.BadRequest(new
-            {
-                error = $"The word list is limited to {GameConfiguration.MaxBlockedWordsLength} characters.",
-            });
-        }
-
         // Null leaves the stored canon alone; anything else, empty included, replaces it. Stored
         // as typed, and normalised on the way to the model (Canon.Resolve), so what a builder
         // reads back is what they wrote.
@@ -406,7 +401,7 @@ public static class BuilderEndpoints
         var outcome = await editor.ApplyAsync(
             new UpsertGameConfiguration(
                 key, request.Name, request.Description ?? string.Empty,
-                request.StartingRoomKey, welcome, blockedWords, request.Canon, worldKeys, live),
+                request.StartingRoomKey, welcome, request.Canon, worldKeys, live),
             accountId,
             ct);
 
@@ -435,7 +430,7 @@ public static class BuilderEndpoints
 
         return Results.Ok(new GameConfigurationResponse(
             key, request.Name, request.Description ?? string.Empty,
-            request.StartingRoomKey, welcome, blockedWords, live, exists, DateTimeOffset.UtcNow,
+            request.StartingRoomKey, welcome, live, exists, DateTimeOffset.UtcNow,
             canon, Canon.EstimateTokens(Canon.Resolve(canon)), [.. stored?.WorldKeys ?? []]));
     }
 
@@ -506,7 +501,7 @@ public static class BuilderEndpoints
 
         var outcome = await editor.ApplyAsync(
             new ActivateGameConfiguration(
-                key, entity.StartingRoomKey, entity.WelcomeMessage, entity.BlockedWords, entity.Canon),
+                key, entity.StartingRoomKey, entity.WelcomeMessage, entity.Canon),
             accountId,
             ct);
 
@@ -524,7 +519,7 @@ public static class BuilderEndpoints
 
         return Results.Ok(new GameConfigurationResponse(
             entity.Key, entity.Name, entity.Description, entity.StartingRoomKey,
-            entity.WelcomeMessage, entity.BlockedWords, IsActive: true, exists, DateTimeOffset.UtcNow,
+            entity.WelcomeMessage, IsActive: true, exists, DateTimeOffset.UtcNow,
             entity.Canon, Canon.EstimateTokens(Canon.Resolve(entity.Canon)), [.. entity.WorldKeys]));
     }
 
@@ -924,6 +919,52 @@ public static class BuilderEndpoints
     /// states the world already tolerates (§7.4) and refusing them would make importing one zone
     /// of several impossible.
     /// </remarks>
+    // -----------------------------------------------------------------------
+    // Moderation
+    // -----------------------------------------------------------------------
+
+    private static async Task<IResult> ModerationAsync(MuwbtaDbContext db, CancellationToken ct)
+    {
+        var policy = await db.ModerationPolicies.AsNoTracking()
+            .FirstOrDefaultAsync(p => p.Key == ModerationPolicy.SingletonKey, ct);
+
+        return Results.Ok(new ModerationResponse(policy?.BlockedWords ?? string.Empty));
+    }
+
+    /// <summary>
+    /// Replaces the word list. Empty is a real value and means no filter at all.
+    /// </summary>
+    /// <remarks>
+    /// Through the loop like every other content change, because the running filter is compiled
+    /// from this and the loop is the only thread that may touch it. That is also what makes the
+    /// edit take effect on the next line somebody types rather than on the next deploy, which is
+    /// the entire reason this lives in the database instead of in the shipped file.
+    /// </remarks>
+    private static async Task<IResult> SaveModerationAsync(
+        ModerationRequest? request,
+        WorldEditor editor,
+        HttpContext http,
+        CancellationToken ct)
+    {
+        var words = request?.BlockedWords ?? string.Empty;
+
+        if (words.Length > ModerationPolicy.MaxBlockedWordsLength)
+        {
+            return Results.BadRequest(new
+            {
+                error = $"The word list is limited to {ModerationPolicy.MaxBlockedWordsLength} characters.",
+            });
+        }
+
+        http.TryGetAccountId(out var accountId);
+
+        var outcome = await editor.ApplyAsync(new SetBlockedWords(words), accountId, ct);
+
+        return outcome.Ok
+            ? Results.Ok(new ModerationResponse(words))
+            : Results.BadRequest(new { error = Describe(outcome) });
+    }
+
     private static async Task<IResult> ImportAsync(
         WorldBundle? bundle,
         bool? dryRun,

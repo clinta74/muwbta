@@ -479,8 +479,7 @@ public sealed record DeleteQuest(string Key) : WorldChange
 /// scoped bundle deliberately does not carry it, and an import that merged a realm must not wipe
 /// the canon a builder wrote in the panel. The API always sends a string; empty means "use the
 /// built-in one". <c>WorldKeys</c> follows the same rule: null leaves the stored list alone, and
-/// an empty list clears it. <c>BlockedWords</c> too, since it stopped travelling in bundles: an
-/// import must not touch what a server refuses to hear, so only the panel ever sends a value.
+/// an empty list clears it.
 /// </remarks>
 public sealed record UpsertGameConfiguration(
     string Key,
@@ -488,7 +487,6 @@ public sealed record UpsertGameConfiguration(
     string Description,
     string StartingRoomKey,
     string WelcomeMessage,
-    string? BlockedWords,
     string? Canon,
     List<string>? WorldKeys,
     bool Live) : WorldChange
@@ -496,6 +494,21 @@ public sealed record UpsertGameConfiguration(
     public override string EntityKind => "configuration";
 
     public override string EntityKey => Key;
+}
+
+/// <summary>
+/// Sets what this server refuses to hear (<see cref="Domain.Moderation.ModerationPolicy"/>).
+/// </summary>
+/// <remarks>
+/// Its own change rather than a field on a configuration, because it is not a property of which
+/// world is loaded - activating a different realm must not change the moderation policy. One row
+/// for the server, so this carries no key.
+/// </remarks>
+public sealed record SetBlockedWords(string Words) : WorldChange
+{
+    public override string EntityKind => "moderation";
+
+    public override string EntityKey => Domain.Moderation.ModerationPolicy.SingletonKey;
 }
 
 public sealed record DeleteGameConfiguration(string Key) : WorldChange
@@ -524,7 +537,6 @@ public sealed record ActivateGameConfiguration(
     string Key,
     string StartingRoomKey,
     string WelcomeMessage,
-    string BlockedWords,
     string Canon) : WorldChange
 {
     public override string EntityKind => "configuration";

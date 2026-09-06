@@ -5,6 +5,7 @@ using Muwbta.Domain.Inhabitants;
 using Muwbta.Domain.Items;
 using Muwbta.Domain.Quests;
 using Muwbta.Domain.Spawning;
+using Muwbta.Domain.Moderation;
 using Muwbta.Domain.Worlds;
 using Muwbta.Engine.Mutations;
 using Muwbta.Persistence;
@@ -126,6 +127,23 @@ public sealed class WorldWriter(MuwbtaDbContext db, TimeProvider clock)
                 }
 
                 return ContentAction.Delete;
+            }
+
+            case SetBlockedWords c:
+            {
+                var entity = await db.ModerationPolicies
+                    .FirstOrDefaultAsync(x => x.Key == ModerationPolicy.SingletonKey, cancellationToken);
+
+                if (entity is null)
+                {
+                    db.ModerationPolicies.Add(
+                        new ModerationPolicy { Key = ModerationPolicy.SingletonKey, BlockedWords = c.Words });
+
+                    return ContentAction.Create;
+                }
+
+                entity.BlockedWords = c.Words;
+                return ContentAction.Update;
             }
 
             case SetWorldMap c:
@@ -630,11 +648,6 @@ public sealed class WorldWriter(MuwbtaDbContext db, TimeProvider clock)
                 entity.Description = c.Description;
                 entity.StartingRoomKey = c.StartingRoomKey;
                 entity.WelcomeMessage = c.WelcomeMessage;
-                // Null leaves the stored list alone - see UpsertGameConfiguration.BlockedWords.
-                if (c.BlockedWords is not null)
-                {
-                    entity.BlockedWords = c.BlockedWords;
-                }
                 entity.UpdatedAt = clock.GetUtcNow();
 
                 // Null leaves the stored canon alone - see UpsertGameConfiguration.Canon.
@@ -895,7 +908,6 @@ public sealed class WorldWriter(MuwbtaDbContext db, TimeProvider clock)
                     ["description"] = entity.Description,
                     ["startingRoomKey"] = entity.StartingRoomKey,
                     ["welcomeMessage"] = entity.WelcomeMessage,
-                    ["blockedWords"] = entity.BlockedWords,
                     ["canon"] = entity.Canon,
                     ["worldKeys"] = new JsonArray([.. entity.WorldKeys.Select(k => (JsonNode?)k)]),
 

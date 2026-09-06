@@ -567,8 +567,6 @@ export interface GameConfiguration {
   description: string
   startingRoomKey: string
   welcomeMessage: string
-  /** Words nobody may say here: whole words, one per line or comma-separated. Empty means no filter. */
-  blockedWords: string
   isActive: boolean
   /**
    * False when the starting room names a room this server does not have. Advisory: writing a
@@ -591,6 +589,11 @@ export interface GameConfiguration {
   worldKeys: string[]
 }
 
+
+/** The server's word list. Empty means no filter at all, which is an answer rather than a gap. */
+export interface ModerationPolicy {
+  blockedWords: string
+}
 
 export interface GameConfigurationList {
   configurations: GameConfiguration[]
@@ -1022,11 +1025,23 @@ export const builderApi = {
 
   configurations: () => request<GameConfigurationList>(`${base}/configurations`),
 
+  /**
+   * What this server refuses to hear. One list for the server, not one per configuration: it is
+   * not a property of which world is loaded, and activating a realm must not change it.
+   */
+  moderation: () => request<ModerationPolicy>(`${base}/moderation`),
+
+  saveModeration: (blockedWords: string) =>
+    request<ModerationPolicy>(`${base}/moderation`, {
+      method: 'PUT',
+      body: JSON.stringify({ blockedWords }),
+    }),
+
   saveConfiguration: (
     key: string,
     body: Pick<
       GameConfiguration,
-      'name' | 'description' | 'startingRoomKey' | 'welcomeMessage' | 'blockedWords' | 'canon' | 'worldKeys'
+      'name' | 'description' | 'startingRoomKey' | 'welcomeMessage' | 'canon' | 'worldKeys'
     >,
   ) =>
     request<GameConfiguration>(`${base}/configurations/${key}`, {

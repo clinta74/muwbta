@@ -4,6 +4,7 @@ import { BuilderColumns } from '../BuilderColumns'
 import { builderApi, type GameConfigurationList } from '../../net/builderApi'
 import { toSetupPath, type SetupSection } from '../routes'
 import { ConfigurationsPanel } from './ConfigurationsPanel'
+import { ModerationPanel } from './ModerationPanel'
 import { TokensPanel } from './TokensPanel'
 import { TransferPanel } from './TransferPanel'
 
@@ -12,6 +13,11 @@ const SECTIONS: Array<{ value: SetupSection; label: string; hint: string }> = [
     value: 'configurations',
     label: 'Starter configurations',
     hint: 'Where new characters wake up, and what they are told',
+  },
+  {
+    value: 'moderation',
+    label: 'Moderation',
+    hint: 'What nobody may say here, for the whole server',
   },
   {
     value: 'transfer',
@@ -37,7 +43,9 @@ export function SetupTab() {
   const navigate = useNavigate()
   const { section } = useParams()
   const current: SetupSection =
-    section === 'transfer' || section === 'tokens' ? section : 'configurations'
+    section === 'transfer' || section === 'tokens' || section === 'moderation'
+      ? section
+      : 'configurations'
 
   const [list, setList] = useState<GameConfigurationList | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -114,6 +122,7 @@ export function SetupTab() {
           {error && <p className="bad">{error}</p>}
 
           {current === 'configurations' && <ConfigurationsPanel list={list} onChanged={reload} />}
+          {current === 'moderation' && <ModerationPanel />}
           {current === 'transfer' && <TransferPanel onImported={reload} />}
           {current === 'tokens' && <TokensPanel />}
         </main>

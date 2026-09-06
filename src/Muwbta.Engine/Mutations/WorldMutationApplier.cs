@@ -74,6 +74,10 @@ public sealed class WorldMutationApplier(
             // Nothing in the loop reads a map, so there is no state to change and no validation
             // to do that the writer is not better placed to do. Straight through.
             SetWorldMap change => MutationResult.Ok([change]),
+
+            // Recompiled on the loop thread, which is the only place it should be: the filter is
+            // read on every line of speech and written about once a month.
+            SetBlockedWords change => ApplyBlockedWords(change),
             RespawnZone change => ApplyRespawnZone(change),
             UpsertMobTemplate change => ApplyUpsertMobTemplate(change),
             DeleteMobTemplate change => ApplyDeleteMobTemplate(change),
@@ -89,10 +93,10 @@ public sealed class WorldMutationApplier(
             // one always does. Deleting one never does - the endpoint refuses to delete the live
             // one, so there is nothing here to undo.
             UpsertGameConfiguration change => change.Live
-                ? ApplyConfiguration(change, change.StartingRoomKey, change.WelcomeMessage, change.BlockedWords, change.Canon)
+                ? ApplyConfiguration(change, change.StartingRoomKey, change.WelcomeMessage, change.Canon)
                 : MutationResult.Ok([change]),
             ActivateGameConfiguration change =>
-                ApplyConfiguration(change, change.StartingRoomKey, change.WelcomeMessage, change.BlockedWords, change.Canon),
+                ApplyConfiguration(change, change.StartingRoomKey, change.WelcomeMessage, change.Canon),
             DeleteGameConfiguration change => MutationResult.Ok([change]),
             _ => MutationResult.Fail(MutationError.Invalid, "Unsupported change."),
         };
@@ -168,6 +172,12 @@ public sealed class WorldMutationApplier(
         }
 
         world.RemoveWorld(change.Key);
+        return MutationResult.Ok([change]);
+    }
+
+    private MutationResult ApplyBlockedWords(SetBlockedWords change)
+    {
+        options.BlockedWords = change.Words;
         return MutationResult.Ok([change]);
     }
 
@@ -510,7 +520,6 @@ public sealed class WorldMutationApplier(
         WorldChange change,
         string startingRoomKey,
         string welcomeMessage,
-        string? blockedWords,
         string? canon)
     {
         if (!RoomKey.TryParse(startingRoomKey, out var starting))
@@ -522,16 +531,6 @@ public sealed class WorldMutationApplier(
 
         options.StartingRoom = starting;
         options.WelcomeMessage = welcomeMessage;
-
-        // Null is "leave it", like the canon below: an import carries no list at all now, and the
-        // one thing worse than a server with no filter is a server whose filter changed because
-        // somebody imported a realm. Recompiled on the loop thread, once per change, which is the
-        // only place it should be - the filter is read on every line of speech and written about
-        // once a month.
-        if (blockedWords is not null)
-        {
-            options.BlockedWords = blockedWords;
-        }
 
         // Null is "leave it": a scoped bundle carries no canon and must not blank the live one.
         if (canon is not null)

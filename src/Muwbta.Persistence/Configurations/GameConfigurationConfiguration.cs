@@ -32,12 +32,6 @@ internal sealed class GameConfigurationConfiguration : IEntityTypeConfiguration<
             .HasMaxLength(GameConfiguration.MaxWelcomeLength)
             .IsRequired();
 
-        builder.Property(c => c.BlockedWords)
-            .HasColumnName("blocked_words")
-            .HasMaxLength(GameConfiguration.MaxBlockedWordsLength)
-            .IsRequired()
-            .HasDefaultValue(string.Empty);
-
         // Text with no length: the cap is in code, and the real limit is the assist's token
         // budget rather than anything the database should decide.
         builder.Property(c => c.Canon)

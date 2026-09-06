@@ -73,8 +73,8 @@ internal static partial class ServerLog
     [LoggerMessage(
         EventId = 1036,
         Level = LogLevel.Information,
-        Message = "Seeded the shipped blocked-words list into {Count} configuration(s)")]
-    public static partial void BlockedWordsSeeded(ILogger logger, int count);
+        Message = "Seeded the shipped blocked-words list; this server had none")]
+    public static partial void BlockedWordsSeeded(ILogger logger);
 
     [LoggerMessage(
         EventId = 1034,

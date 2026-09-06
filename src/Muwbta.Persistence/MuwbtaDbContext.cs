@@ -6,6 +6,7 @@ using Muwbta.Domain.Inhabitants;
 using Muwbta.Domain.Items;
 using Muwbta.Domain.Quests;
 using Muwbta.Domain.Spawning;
+using Muwbta.Domain.Moderation;
 using Muwbta.Domain.Worlds;
 using Microsoft.EntityFrameworkCore;
 
@@ -28,6 +29,8 @@ public sealed class MuwbtaDbContext(DbContextOptions<MuwbtaDbContext> options) :
     /// why a server holds several and swaps between them.
     /// </summary>
     public DbSet<GameConfiguration> GameConfigurations => Set<GameConfiguration>();
+
+    public DbSet<ModerationPolicy> ModerationPolicies => Set<ModerationPolicy>();
 
     public DbSet<World> Worlds => Set<World>();
 
