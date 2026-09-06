@@ -22,9 +22,14 @@ namespace Muwbta.Mcp;
 public static class ServerGuidance
 {
     public const string Instructions = """
-        This server reads one deployment of muwbta, a text world whose content - rooms, mobs,
-        items, quests, abilities - is authored through its builder API. It is read-only: every
-        tool here fetches, none of them change anything.
+        This server authors one deployment of muwbta, a text world whose content - rooms, mobs,
+        items, quests, abilities - lives behind its builder API.
+
+        Two things it will refuse, so you are not surprised by them mid-task. A read-only token
+        cannot write, whatever you call; that is the server's rule and nothing here can talk it
+        round. And no write may touch a world the running game is serving - authoring happens in a
+        world nobody is playing, and a person activates it from the Setup tab when it is ready.
+        Neither refusal is worth retrying.
 
         Read muwbta://canon before drafting any prose. It is the world's own account of what is
         true in it and the voice it is written in, and it is the only thing here that can tell you
@@ -44,10 +49,18 @@ public static class ServerGuidance
            zone's own prose is a better guide to its voice than any description of it, canon
            included.
         4. validate_zone and check_quest after any change, and act on what they say.
-        5. export_bundle to show your work: it returns the same JSON the builder's import accepts,
+        5. Build layout with dig_room rather than upsert_content: it places the new room beside
+           its neighbour on the grid and links both ways, which you would otherwise have to work
+           out by hand. Give it its prose with upsert_content afterwards.
+        6. export_bundle to show your work: it returns the same JSON the builder's import accepts,
            so a person can diff it before anything reaches the world.
 
-        Prose you draft is a proposal. A person reads it and decides, and this server has no way
-        to apply it in any case.
+        The world is live while you edit it. There is no draft mode and no publish step: a room
+        saved is a room that exists, and a template retuned changes what is already spawned from
+        it. Run where_used before changing a mob or an item that is already placed - those are
+        global, so they have no world for the guard above to protect them with.
+
+        Prose you draft is a proposal. Nothing checks whether it belongs to this world, so say
+        what you wrote and let a person read it before it is treated as finished.
         """;
 }

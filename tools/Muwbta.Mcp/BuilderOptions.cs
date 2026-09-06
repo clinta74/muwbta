@@ -16,7 +16,8 @@ public sealed record BuilderOptions(
     string CookieName,
     string? CookieValue,
     string? Token,
-    TimeSpan Timeout)
+    TimeSpan Timeout,
+    bool AllowActive)
 {
     /// <summary>Matches <c>AuthOptions.CookieName</c>, whose default is the same string.</summary>
     public const string DefaultCookieName = "muwbta.session";
@@ -30,13 +31,18 @@ public sealed record BuilderOptions(
           MUWBTA_COOKIE_NAME  Cookie name, if the deployment renamed it. Default muwbta.session.
           MUWBTA_TIMEOUT      Request timeout in seconds. Default 30.
 
+        Flags:
+          --allow-active      Permit writes to the worlds the active configuration serves. Off by
+                              default: authoring happens in a world nobody is playing, and
+                              activation is a person's click in the Setup tab.
+
         One of MUWBTA_TOKEN or MUWBTA_COOKIE is required, and a token is better: it is meant to be
         held by a program, it reaches the builder API and nothing else, and it does not expire
         the moment somebody signs out of a browser.
         """;
 
-    public static BuilderOptions FromEnvironment() =>
-        From(Environment.GetEnvironmentVariable);
+    public static BuilderOptions FromEnvironment(string[] args) =>
+        From(Environment.GetEnvironmentVariable, args);
 
     /// <summary>
     /// The parsing, given a way to read a variable.
@@ -46,9 +52,10 @@ public sealed record BuilderOptions(
     /// mutates the process environment - which passes alone and fails beside its neighbours, and
     /// takes an afternoon to recognise as the reason.
     /// </remarks>
-    public static BuilderOptions From(Func<string, string?> read)
+    public static BuilderOptions From(Func<string, string?> read, params string[] args)
     {
         ArgumentNullException.ThrowIfNull(read);
+        ArgumentNullException.ThrowIfNull(args);
 
         var url = read("MUWBTA_URL") ?? "http://localhost:5050";
 
@@ -89,11 +96,17 @@ public sealed record BuilderOptions(
             timeout = TimeSpan.FromSeconds(seconds);
         }
 
+        // A flag rather than an environment variable, and deliberately: the person who decides
+        // that an agent may edit the running world is the person who launches the server, and a
+        // flag is visible in the command line that did it.
+        var allowActive = args.Contains("--allow-active", StringComparer.Ordinal);
+
         return new BuilderOptions(
             baseAddress,
             name,
             string.IsNullOrWhiteSpace(cookie) ? null : cookie.Trim(),
             string.IsNullOrWhiteSpace(token) ? null : token,
-            timeout);
+            timeout,
+            allowActive);
     }
 }

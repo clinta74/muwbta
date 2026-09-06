@@ -105,6 +105,21 @@ public class BuilderOptionsTests
                 () => BuilderOptions.From(Env(("MUWBTA_COOKIE", "abc"), ("MUWBTA_TIMEOUT", timeout)))).Message,
             StringComparison.Ordinal);
 
+    /// <summary>
+    /// Off unless the launch command says otherwise, which is the whole safety model of the
+    /// world guard: the decision belongs to whoever starts the process.
+    /// </summary>
+    [Fact]
+    public void Refuses_the_live_world_unless_the_flag_says_otherwise()
+    {
+        Assert.False(BuilderOptions.From(Env(("MUWBTA_TOKEN", "t"))).AllowActive);
+        Assert.True(BuilderOptions.From(Env(("MUWBTA_TOKEN", "t")), "--allow-active").AllowActive);
+    }
+
+    [Fact]
+    public void Ignores_an_unrecognised_flag() =>
+        Assert.False(BuilderOptions.From(Env(("MUWBTA_TOKEN", "t")), "--allow-actives").AllowActive);
+
     [Fact]
     public void Accepts_a_longer_timeout_for_large_exports() =>
         Assert.Equal(

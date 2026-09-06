@@ -3,16 +3,17 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Muwbta.Mcp;
 
-// Phase A of docs/PAT-AND-MCP.md: read-only tools over the builder API, authenticated by a session
-// cookie the operator pastes in. Nothing in src/ changes, and nothing here can write - the client
-// issues GET and only GET (see BuilderClient), so the question this phase exists to answer can be
-// asked without any of the credential work in Part 1 of that document.
+// The MCP server for the builder API (docs/PAT-AND-MCP.md). Reads with any token; writes with a
+// BuilderWrite one, and never into a world the running game is serving unless --allow-active says
+// so. Two guards, in two places on purpose: the scope is the server's and cannot be argued with
+// from here, and WorldGuard is this process's, because "which world is live" is a question only
+// the caller's intent can settle.
 
 BuilderOptions options;
 
 try
 {
-    options = BuilderOptions.FromEnvironment();
+    options = BuilderOptions.FromEnvironment(args);
 }
 catch (InvalidOperationException ex)
 {
@@ -32,6 +33,7 @@ builder.Logging.AddConsole(console => console.LogToStandardErrorThreshold = LogL
 
 builder.Services.AddSingleton(options);
 builder.Services.AddHttpClient<BuilderClient>();
+builder.Services.AddSingleton<WorldGuard>();
 
 builder.Services
     .AddMcpServer(server => server.ServerInstructions = ServerGuidance.Instructions)

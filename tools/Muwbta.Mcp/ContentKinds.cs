@@ -74,6 +74,44 @@ public static class ContentKinds
             ? $"{path}/{Uri.EscapeDataString(key)}"
             : null;
 
+    /// <summary>
+    /// The collection a new entity of this kind is POSTed to when it has no key of its own.
+    /// </summary>
+    /// <remarks>
+    /// Spawners alone. Everything else is created at its own key with a POST to
+    /// <see cref="GetPath"/>, because everything else has a key the author chooses; a spawner is
+    /// identified by a server-minted GUID and so has nowhere to be created *at*.
+    /// </remarks>
+    public static string? CreateCollectionPath(string kind) =>
+        string.Equals(kind, "spawner", StringComparison.OrdinalIgnoreCase)
+            ? "/api/builder/spawners"
+            : null;
+
+    /// <summary>
+    /// The world a key belongs to, or null for a kind that does not live in one.
+    /// </summary>
+    /// <remarks>
+    /// Read off the key rather than fetched, which is sound because the server enforces the shape:
+    /// a zone key is <c>world.zone</c> and a room key is <c>world.zone.room</c> - both refused
+    /// otherwise (RoomKey.TryParse, and the zone endpoint's own check). Mobs, items, quests and
+    /// abilities have no world at all, which is a real hole in the guard rather than an oversight;
+    /// see the note in WorldGuard.
+    /// </remarks>
+    public static string? WorldOfKey(string kind, string key)
+    {
+        if (string.IsNullOrWhiteSpace(key))
+        {
+            return null;
+        }
+
+        return kind.ToLowerInvariant() switch
+        {
+            "world" => key,
+            "zone" or "room" => key.Split('.')[0],
+            _ => null,
+        };
+    }
+
     /// <summary>Where a template is placed. Only mobs and items answer this.</summary>
     public static string? PlacementPath(string kind, string key) => kind.ToLowerInvariant() switch
     {

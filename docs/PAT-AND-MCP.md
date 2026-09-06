@@ -1,10 +1,9 @@
 # Personal Access Tokens and an MCP Authoring Server — Design
 
-> Status: **Phases A and B built** (2026-09-05/06). Part 1 is implemented — `access_tokens`,
-> `AccessTokenHandler`, the `/api/auth/tokens` endpoints, and the Setup panel — and the read-only
-> MCP server in `tools/Muwbta.Mcp` now authenticates with a token. Phase C (write tools) is not
-> built. Where the build learned something the design had wrong, the section says so rather than
-> being quietly rewritten.
+> Status: **built** (2026-09-05/06). Part 1 is implemented — `access_tokens`,
+> `AccessTokenHandler`, the `/api/auth/tokens` endpoints, and the Setup panel. `tools/Muwbta.Mcp`
+> reads, writes, and authenticates with a token. Where the build learned something the design had
+> wrong, the section says so rather than being quietly rewritten.
 
 ## Context
 
@@ -321,10 +320,8 @@ having?* — for about a day's work, and if the answer is no it stops here.
 
 **Phase B — tokens.** §1–§9. The bulk of the work, and worth doing only after Phase A pays.
 
-**Phase C — writes.** Turn on `upsert_content`, `dig_room`, `set_exit`, and `delete_content` behind
-a `BuilderWrite` token and the active-world guard. Not built. The server side is ready for it: a
-`BuilderWrite` token already reaches every builder write, so this is entirely work in
-`tools/Muwbta.Mcp`.
+**Phase C — writes. Built.** `upsert_content`, `dig_room`, `set_exit` and `delete_content`, behind
+a `BuilderWrite` token and the active-world guard.
 
 ### The cheaper alternative to Phase B — not taken
 

@@ -1,16 +1,15 @@
 # Muwbta.Mcp
 
-An MCP server that lets an AI agent **read** the builder API: content, zone maps, validation
-findings, quest reachability, and the world's canon.
+An MCP server that lets an AI agent author through the builder API: read content, validate a zone,
+dig rooms, write prose, and check its own work.
 
-This is **Phase A** of [docs/PAT-AND-MCP.md](../../docs/PAT-AND-MCP.md), and it exists to answer
-one question before any of that document's credential work is written: *is agent-authored content
-actually worth having?* Point an agent at a real world, ask it to draft a zone, and read what comes
-back.
+Phases A and C of [docs/PAT-AND-MCP.md](../../docs/PAT-AND-MCP.md).
 
-It cannot write. `BuilderClient` has no method that sends anything but a GET, so that is a property
-of the code rather than a promise about which tools were registered — which matters, because the
-credential it holds is a real builder's live session.
+**Two things it will refuse.** A `BuilderRead` token cannot write, whatever is asked of it — that
+refusal is the server's and this process cannot argue with it. And no write may touch a world the
+active configuration serves, because people are playing that one; authoring happens in a world
+nobody is in, and a person activates it from the Setup tab when it is ready. `--allow-active` lifts
+the second, and is a decision for whoever launches the server rather than for the agent.
 
 ## Setting it up
 
@@ -21,8 +20,8 @@ dotnet build tools/Muwbta.Mcp
 ```
 
 Mint a token: sign in to the builder as an account with the Builder role, then **Setup → Access
-tokens**. `BuilderRead` is enough for everything here, since none of these tools write. Copy it
-when it is shown — it is not shown twice.
+tokens**. `BuilderWrite` to author; `BuilderRead` if you want an agent that can look and not touch.
+Copy it when it is shown — it is not shown twice.
 
 (A session cookie in `MUWBTA_COOKIE` still works, and was how this ran before tokens existed. It
 expires when the browser session does, and it carries the whole account rather than the builder
@@ -73,6 +72,14 @@ question rather than fetch a row.
 | `check_quest` | Whether a quest can actually be finished. |
 | `where_used` | Which spawners carry a mob or item template, and where they sit. |
 | `export_bundle` | A world or zone as import-shaped bundle JSON, for diffing before anything changes. |
+| `upsert_content` | Creates or updates one piece of content. Decides create-vs-update by asking the server. |
+| `delete_content` | Removes one piece of content. |
+| `dig_room` | Carves a room in a direction and links it both ways, placing it on the editor grid. |
+| `set_exit` | Points an exit at a room, or removes it. States the whole exit, so a lock left out is a lock removed. |
+
+Configurations are readable and not writable: which one is active decides what the running server
+serves and what every new player is told, so activating one stays a person's click. No tool wraps
+those endpoints.
 
 Two resources: `muwbta://canon` for the active configuration's canon, and
 `muwbta://canon/{configuration}` for a named one — drafting usually happens against a world that
@@ -101,14 +108,28 @@ prose, and the moment one existed "it passed" would start being read as "it is g
 ignores the canon produces a zone that validates and reads wrong, which is precisely what a human
 reviewer is for.
 
+## The hole in the world guard
+
+The guard reads a world off a key, which works because the server enforces the shape: a zone key is
+`world.zone` and a room key is `world.zone.room`. **Mobs, items, quests and abilities have no world
+in their key** — they are global, and one of them may be spawned into the live world by a spawner
+this cannot see. So retuning a mob that the live world uses is *not* refused.
+
+That is a real gap, not an oversight, and closing it would mean a placement lookup before every
+template write. `where_used` is what an author has instead, and the server instructions tell an
+agent to run it before changing a placed template.
+
 ## Known gaps
 
-- **The end-to-end run is a script, not a test.** Every tool and the canon resource have been
-  driven against a live server on the seeded Aldenmoor world, but by hand: the checked-in tests
-  cover the path table and option parsing only. Nothing in CI would notice if a route moved.
+- **The end-to-end run is a script, not a test.** Every tool, both refusals, the `--allow-active`
+  escape and the canon resource have been driven against a live server with a real minted token —
+  but by hand. The checked-in tests cover the path table, the option parsing and the guard's two
+  pieces of logic. Nothing in CI would notice if a route moved.
 - **The kind-to-path table can drift from the routes it targets.** `BuilderEndpoints` could rename
   a route and nothing here would fail until an agent got a 404 and concluded the content did not
   exist. A test that enumerates the server's actual endpoints would close this and has not been
   written. This is the same gap as above from the other side, and the one worth closing first if
   Phase A turns into Phase B.
-- **No write tools.** That is Phase C, and it waits on the personal access tokens in Phase B.
+- **No spawner tooling beyond the generic upsert.** Placing a mob means writing a spawner by hand
+  through `upsert_content`, which is the fiddliest thing an agent has to do here and the most
+  likely to want a tool of its own once there is use to learn from.

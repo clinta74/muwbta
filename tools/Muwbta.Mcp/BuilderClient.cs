@@ -1,17 +1,19 @@
 using System.Net;
 using System.Net.Http.Headers;
+using System.Text.Json;
 using ModelContextProtocol;
 
 namespace Muwbta.Mcp;
 
 /// <summary>
-/// Reads the builder API. GET only, by construction.
+/// Talks to the builder API.
 /// </summary>
 /// <remarks>
-/// There is no method that sends anything but a GET, and that is Phase A's safety model in its
-/// entirety (docs/PAT-AND-MCP.md): the agent is pointed at a live world holding a real builder's
-/// session cookie, so "it cannot write" needs to be a property of this file rather than a promise
-/// about which tools were registered.
+/// Phase A made "cannot write" a property of this file - there was no method that sent anything
+/// but a GET. Phase C removes that, so the guarantee moves to where it can still be structural:
+/// the <b>token's scope</b>, checked by the server on every request, and <see cref="WorldGuard"/>,
+/// which refuses to touch a world the running game is serving. A BuilderRead token still cannot
+/// write however this client is called, because the refusal is not this client's to make.
 ///
 /// Responses are passed through as text, unparsed. The API already answers in the shape its own
 /// client understands, and re-modelling it here would be a second opinion about what a room is -
@@ -56,13 +58,49 @@ public sealed class BuilderClient
     /// GETs a path under <c>/api/builder</c> and returns the body, or throws with something the
     /// agent could act on.
     /// </summary>
-    public async Task<string> GetAsync(string path, CancellationToken cancellationToken)
+    public Task<string> GetAsync(string path, CancellationToken cancellationToken) =>
+        SendAsync(HttpMethod.Get, path, null, cancellationToken);
+
+    /// <summary>Whether a path exists, so an upsert can tell a create from an update.</summary>
+    public async Task<bool> ExistsAsync(string path, CancellationToken cancellationToken)
     {
+        try
+        {
+            await GetAsync(path, cancellationToken).ConfigureAwait(false);
+            return true;
+        }
+        catch (McpException) when (LastStatus == HttpStatusCode.NotFound)
+        {
+            return false;
+        }
+    }
+
+    /// <summary>The status of the most recent response, for <see cref="ExistsAsync"/> alone.</summary>
+    private HttpStatusCode? LastStatus { get; set; }
+
+    /// <summary>
+    /// Sends a request and returns the body, or throws with something the agent could act on.
+    /// </summary>
+    public async Task<string> SendAsync(
+        HttpMethod method,
+        string path,
+        string? json,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(method);
+
+        using var request = new HttpRequestMessage(method, path);
+
+        if (json is not null)
+        {
+            request.Content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
+        }
+
         HttpResponseMessage response;
 
         try
         {
-            response = await http.GetAsync(path, cancellationToken).ConfigureAwait(false);
+            response = await http.SendAsync(request, cancellationToken).ConfigureAwait(false);
         }
         catch (HttpRequestException ex)
         {
@@ -82,6 +120,7 @@ public sealed class BuilderClient
 
         using (response)
         {
+            LastStatus = response.StatusCode;
             var body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
 
             return response.IsSuccessStatusCode
@@ -97,11 +136,16 @@ public sealed class BuilderClient
     private string Explain(HttpResponseMessage response, string path, string body) =>
         response.StatusCode switch
         {
+            // The server's own words first, always. It distinguishes an expired token from a
+            // revoked one from a read-only token pointed at a write, and those want different
+            // things done about them - the generic list below sends an agent to mint a
+            // replacement when what it actually needed was a wider scope.
+            HttpStatusCode.Unauthorized when Reason(body) is { Length: > 0 } reason => reason,
+
             HttpStatusCode.Unauthorized => options.Token is { Length: > 0 }
-                ? "The access token in MUWBTA_TOKEN was refused. It has expired, been revoked, or "
-                    + "the account's password changed since it was issued - a new one is minted at "
-                    + "Builder > Setup > Access tokens. The server's reason, if it gave one: "
-                    + Trim(body)
+                ? "The access token in MUWBTA_TOKEN was refused, and the server gave no reason. It "
+                    + "has most likely expired or been revoked; a new one is minted at "
+                    + "Builder > Setup > Access tokens."
                 : "Not signed in. The session cookie in MUWBTA_COOKIE has expired or is wrong - "
                     + "sign in to the builder in a browser and copy the new value. A personal access "
                     + "token in MUWBTA_TOKEN does not have this problem. Retrying will not help.",
@@ -114,6 +158,9 @@ public sealed class BuilderClient
                 $"No such thing at '{path}'."
                 + (string.IsNullOrWhiteSpace(body) ? string.Empty : $" The server said: {Trim(body)}"),
 
+            HttpStatusCode.Conflict =>
+                $"Something already exists at '{path}'. The server said: {Trim(body)}",
+
             HttpStatusCode.TooManyRequests =>
                 "Rate limited by the builder policy"
                 + (response.Headers.RetryAfter?.Delta is { } wait
@@ -123,6 +170,37 @@ public sealed class BuilderClient
             _ => $"The server answered {(int)response.StatusCode} {response.StatusCode} for '{path}'."
                 + (string.IsNullOrWhiteSpace(body) ? string.Empty : $" {Trim(body)}"),
         };
+
+    /// <summary>
+    /// The <c>error</c> an endpoint reported, or nothing when the body is not shaped that way.
+    /// </summary>
+    /// <remarks>
+    /// Every refusal in this API answers <c>{ "error": "..." }</c>, and those messages are written
+    /// to be read - AccessTokenHandler in particular says exactly which of six things went wrong.
+    /// Replacing that with a guess would throw away the useful half of the response.
+    /// </remarks>
+    private static string? Reason(string body)
+    {
+        if (string.IsNullOrWhiteSpace(body))
+        {
+            return null;
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(body);
+
+            return document.RootElement.ValueKind == JsonValueKind.Object
+                && document.RootElement.TryGetProperty("error", out var error)
+                && error.ValueKind == JsonValueKind.String
+                    ? error.GetString()
+                    : null;
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
 
     private static string Trim(string body) =>
         body.Length <= 400 ? body.Trim() : body[..400].Trim() + "...";
