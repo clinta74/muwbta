@@ -46,6 +46,17 @@
     <PackageVersion Include="YamlDotNet" Version="16.3.0" />
   </ItemGroup>
 
+  <ItemGroup Label="Agent authoring">
+    <!--
+      The MCP server in tools/Muwbta.Mcp, which is a read-only client of the builder API rather
+      than part of the server. Stable since 2.0; the transport and the [McpServerTool] attributes
+      are all it is used for, so the surface area at risk from a bump is small.
+    -->
+    <PackageVersion Include="ModelContextProtocol" Version="2.2.0" />
+    <PackageVersion Include="Microsoft.Extensions.Hosting" Version="10.0.10" />
+    <PackageVersion Include="Microsoft.Extensions.Http" Version="10.0.10" />
+  </ItemGroup>
+
   <ItemGroup Label="Testing">
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageVersion Include="xunit" Version="2.9.3" />

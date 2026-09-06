@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>Muwbta.Mcp</RootNamespace>
+  </PropertyGroup>
+
+  <!--
+    No ProjectReference, and that is the design rather than an omission (docs/PAT-AND-MCP.md §10).
+    This is an HTTP client of the builder API: it passes the API's own JSON through to the agent
+    untouched, so it holds no opinion about what a room or a quest looks like. A reference to
+    Server would let a second set of DTOs grow here, and the one that drifts is always the one
+    nobody runs - the same reasoning tools/Muwbta.Balance uses to justify the reference it *does*
+    take.
+  -->
+  <ItemGroup>
+    <PackageReference Include="ModelContextProtocol" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" />
+    <PackageReference Include="Microsoft.Extensions.Http" />
+  </ItemGroup>
+
+</Project>
