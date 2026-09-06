@@ -33,10 +33,13 @@ public sealed class BundleFormatTests
     /// </summary>
     public static TheoryData<string> ContentFiles()
     {
-        var root = Path.Combine(RepoPath.Root(), "content");
+        // Both directories this repository ships bundles from: content/ is the authored world,
+        // shipped/ is what the engine carries whichever world is loaded. A file in either one is
+        // imported by the same endpoint and has to declare the same version.
         var data = new TheoryData<string>();
 
-        foreach (var path in Directory.EnumerateFiles(root, "*.json", SearchOption.AllDirectories))
+        foreach (var path in BundleDirectories.All()
+            .SelectMany(root => Directory.EnumerateFiles(root, "*.json", SearchOption.AllDirectories)))
         {
             data.Add(Path.GetRelativePath(RepoPath.Root(), path));
         }

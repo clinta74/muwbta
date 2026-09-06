@@ -229,7 +229,7 @@ public sealed class AbilityCooldownsTests
     }
 
     // The four walls, and everything else about the timer the game actually ships, moved to
-    // AbilityContentTests when the ability set moved to content/abilities.json. What stays here is
+    // AbilityContentTests when the ability set moved to shipped/abilities.json. What stays here is
     // the timer's behaviour, which is Domain's and is asked of fixtures.
 
     // -----------------------------------------------------------------------

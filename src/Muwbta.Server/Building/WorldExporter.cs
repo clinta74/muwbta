@@ -166,7 +166,7 @@ public sealed class WorldExporter(MuwbtaDbContext db, TimeProvider clock)
     /// <remarks>
     /// <para>
     /// <b>The return leg of how an ability is tuned.</b> Abilities are content now: they live in
-    /// <c>content/abilities.json</c>, a builder retunes them in the editor against a running
+    /// <c>shipped/abilities.json</c>, a builder retunes them in the editor against a running
     /// database, and the change has to come back to the file or the next fresh install loses it.
     /// Without this the only way back was to export the whole world and delete nine collections out
     /// of the JSON by hand — which is a step nobody does twice, so the file drifts from the

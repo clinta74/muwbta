@@ -108,7 +108,7 @@ public static class AbilityCatalogue
     /// <b>This was the game's ability set, and is now an example of one.</b> Sixty-nine entries
     /// lived here, and the reason they moved is the reason worlds are not written in C# either:
     /// editing them retuned a fresh install and reached a running server not at all. The set is
-    /// <c>content/abilities.json</c>, it travels through the same import as everything else, and
+    /// <c>shipped/abilities.json</c>, it travels through the same import as everything else, and
     /// <c>BundleValidator</c> checks it on the way in.
     /// </para>
     /// <para>

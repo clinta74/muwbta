@@ -10,7 +10,7 @@ namespace Muwbta.Domain.Tests.Abilities;
 /// <remarks>
 /// <para>
 /// These tests used to run against <c>AbilityCatalogue</c>, which was the shipped set and made a
-/// convenient fixture — until the set moved to <c>content/abilities.json</c> and the catalogue
+/// convenient fixture — until the set moved to <c>shipped/abilities.json</c> and the catalogue
 /// became four examples. Nothing about "does level 3 grant what level 3 unlocks" was ever a
 /// question about content, so pointing them at a fixture is what they should have done anyway:
 /// a logic test that fails when a designer retunes an unlock level is a test that reports the

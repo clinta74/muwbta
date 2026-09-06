@@ -10,7 +10,7 @@ namespace Muwbta.Domain.Tests.Abilities;
 /// <remarks>
 /// <para>
 /// <b>This file used to hold twenty-three guards over the game's whole ability set.</b> The set is
-/// <c>content/abilities.json</c> now and the guards went with it, to
+/// <c>shipped/abilities.json</c> now and the guards went with it, to
 /// <c>AbilityContentTests</c> — every one of them was written after the thing it forbids had
 /// already shipped, so none of them was dropped and none of them was weakened. What is asserted
 /// here is what the catalogue still is: a floor, so a brand-new database has something castable on

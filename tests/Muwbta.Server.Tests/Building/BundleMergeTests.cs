@@ -24,10 +24,13 @@ public sealed class BundleMergeTests
 {
     private static IReadOnlyList<BundleSource> AuthoredContent()
     {
-        var root = Path.Combine(RepoPath.Root(), "content");
         var sources = new List<BundleSource>();
 
-        foreach (var path in Directory.EnumerateFiles(root, "*.json", SearchOption.AllDirectories)
+        // content/ and shipped/ together, because that is what actually gets imported: the world
+        // and the ability set it is played with. Merging one without the other would prove less
+        // than the real command does.
+        foreach (var path in BundleDirectories.All()
+            .SelectMany(root => Directory.EnumerateFiles(root, "*.json", SearchOption.AllDirectories))
             .OrderBy(p => p, StringComparer.Ordinal))
         {
             Assert.True(BundleFormat.TryRead(File.ReadAllText(path), out var bundle, out var error), error);

@@ -37,7 +37,7 @@ namespace Muwbta.Persistence.Migrations
     /// </para>
     /// <para>
     /// <b>Keys and the Path, and nothing else.</b> Names and descriptions are content: they live in
-    /// <c>content/abilities.json</c> and arrive by import. Copying seventeen names and descriptions
+    /// <c>shipped/abilities.json</c> and arrive by import. Copying seventeen names and descriptions
     /// into a migration would be a second place they are written down, disagreeing with the first
     /// the moment anybody edits the prose — the exact defect that moved abilities out of C# in the
     /// first place. A database that migrates without importing shows the old wording against the

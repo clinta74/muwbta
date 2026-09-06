@@ -94,7 +94,7 @@ public sealed class AbilityListingTests
         // Both halves from the shipped file, which is what DefineAbility loads.
         //
         // The expected side used to come from AbilityCatalogue, and that quietly asserted the code
-        // seed and content/abilities.json still agree about every number. They are not meant to:
+        // seed and shipped/abilities.json still agree about every number. They are not meant to:
         // Ability's own doc says the catalogue is the set a fresh database is seeded from and
         // "stops being consulted the moment a row exists". The day the shipped abilities were
         // retuned, this test started comparing a listing built from one source against phrases

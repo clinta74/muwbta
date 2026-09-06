@@ -8,7 +8,7 @@ namespace Muwbta.Domain.Tests.Abilities;
 /// </summary>
 /// <remarks>
 /// These ran against <c>AbilityCatalogue</c> while it was the shipped set. It is four examples
-/// now and the set is <c>content/abilities.json</c>, but the change these tests wanted was never
+/// now and the set is <c>shipped/abilities.json</c>, but the change these tests wanted was never
 /// content anyway: "level 3 grants what level 3 unlocks" is a question about
 /// <see cref="AbilityProgression"/>, and a logic test that fails when a designer retunes an
 /// unlock level reports the wrong thing.

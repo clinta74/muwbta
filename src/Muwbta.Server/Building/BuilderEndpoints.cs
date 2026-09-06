@@ -865,7 +865,7 @@ public static class BuilderEndpoints
         CancellationToken ct)
     {
         // Abilities on their own, which is the return leg of tuning one: they are content, they
-        // live in content/abilities.json, and a retune made in the editor has to be able to get
+        // live in shipped/abilities.json, and a retune made in the editor has to be able to get
         // back to the file. Wins over world and zone rather than combining with them - an ability
         // belongs to a Path and not to a place, so there is nothing for a zone to narrow.
         if (string.Equals(only, WorldExporter.AbilitiesScope, StringComparison.OrdinalIgnoreCase))

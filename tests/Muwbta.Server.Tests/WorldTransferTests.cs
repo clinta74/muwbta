@@ -597,7 +597,7 @@ public sealed class WorldTransferTests(PostgresFixture postgres)
     /// </summary>
     /// <remarks>
     /// <b>Asked for while a retune sat in a database and nowhere else.</b> Abilities are content —
-    /// they live in <c>content/abilities.json</c> and a fresh install seeds from the file — so a
+    /// they live in <c>shipped/abilities.json</c> and a fresh install seeds from the file — so a
     /// change made in the editor has to be able to get back to it. Every other export carries the
     /// whole world, and hand-deleting nine collections out of the JSON is a step nobody does twice.
     /// </remarks>
@@ -636,7 +636,7 @@ public sealed class WorldTransferTests(PostgresFixture postgres)
     /// The property that makes the file useful rather than merely readable. A bundle whose other
     /// nine collections are empty must merge as "change these abilities, leave everything else" —
     /// an import is a merge and absence is not deletion (§6.1) — or saving one over
-    /// <c>content/abilities.json</c> would quietly empty a world on the next import.
+    /// <c>shipped/abilities.json</c> would quietly empty a world on the next import.
     /// </remarks>
     [Fact]
     public async Task An_abilities_export_imports_without_touching_anything_else()

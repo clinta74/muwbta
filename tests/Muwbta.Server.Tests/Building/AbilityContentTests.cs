@@ -14,7 +14,7 @@ namespace Muwbta.Server.Tests.Building;
 /// <para>
 /// <b>These guards used to run over <c>AbilityCatalogue</c>, and moved here with the abilities
 /// themselves.</b> The catalogue is four examples now — enough to seed an empty database, not
-/// enough to be a game — and <c>content/abilities.json</c> is the set. Assertions about the
+/// enough to be a game — and <c>shipped/abilities.json</c> is the set. Assertions about the
 /// shipped set belong with the shipped set, which is the same move <see cref="WeaponBalanceTests"/>
 /// made for weapons.
 /// </para>
@@ -72,7 +72,7 @@ public sealed class AbilityContentTests
     {
         get
         {
-            var path = Path.Combine(RepoPath.Root(), "content", "abilities.json");
+            var path = Path.Combine(RepoPath.Root(), "shipped", "abilities.json");
 
             Assert.True(File.Exists(path), $"{path} is the ability set and is missing.");
             Assert.True(

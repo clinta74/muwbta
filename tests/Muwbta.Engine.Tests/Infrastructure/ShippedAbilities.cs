@@ -11,7 +11,7 @@ namespace Muwbta.Engine.Tests.Infrastructure;
 /// <remarks>
 /// <para>
 /// <b>These used to come from <c>AbilityCatalogue</c>.</b> The set moved to
-/// <c>content/abilities.json</c> and the catalogue is four examples, so the sixty-nine tests that
+/// <c>shipped/abilities.json</c> and the catalogue is four examples, so the sixty-nine tests that
 /// cast a named ability had to follow it. The alternative was a fixture set with convenient
 /// numbers, which would have quietly given up the property those tests exist for: that a cast in
 /// the harness spends the same cost, waits the same cooldown, and carries the same effect
@@ -37,7 +37,7 @@ internal static class ShippedAbilities
         Loaded.Value.TryGetValue(key, out var ability)
             ? ability
             : throw new InvalidOperationException(
-                $"No ability '{key}' in content/abilities.json. It carries "
+                $"No ability '{key}' in shipped/abilities.json. It carries "
                 + $"{Loaded.Value.Count} abilities; a renamed key needs renaming here too.");
 
     private static IReadOnlyDictionary<string, Ability> Load()
@@ -51,7 +51,7 @@ internal static class ShippedAbilities
 
         var path = Path.Combine(
             dir?.FullName ?? throw new InvalidOperationException("No repository root above the test binary."),
-            "content",
+            "shipped",
             "abilities.json");
 
         var bundle = JsonSerializer.Deserialize<Bundle>(File.ReadAllText(path), Options)

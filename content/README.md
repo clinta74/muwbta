@@ -19,7 +19,6 @@ next one and each file's exits are applied before the next file's rooms exist.
 | `azhen/the-reaches.json` | the Camp, Ummath, Serrivet, Thessivar |
 | `nemhal/the-reaches.json` | the Hold, Vurrach, Olmenneth, Keshvaun |
 | `the-unlit/the-reaches.json` | the Crossing, the Regard |
-| `abilities.json` | every ability all four Paths learn — no rooms, no world, just the set |
 | `map/*.svg` | the drawn realm sheets, folded into the merge as `maps` and served to players |
 | `unplaced.json` | templates nothing places yet — no rooms, no world, just the templates |
 
@@ -51,10 +50,10 @@ not work and walking is the only way home.
 
 ## Applying them
 
-Merge the six into one bundle, check it, then import it once:
+Merge these and the engine's own bundles into one, check it, then import it once:
 
 ```
-dotnet run tools/merge-bundles.cs content -o build/the-reaches.json --canon docs/WORLD.md --into the-reaches
+dotnet run tools/merge-bundles.cs content shipped -o build/the-reaches.json --canon docs/WORLD.md --into the-reaches
 dotnet run tools/check-bundle.cs build/the-reaches.json
 POST /api/builder/import?dryRun=true    # what would happen; changes nothing
 POST /api/builder/import                # do it

@@ -218,7 +218,7 @@ internal sealed class WorldHarness
     /// rather than a hand-built stand-in with convenient numbers.
     /// </summary>
     /// <remarks>
-    /// Read from <c>content/abilities.json</c>, which is where the set lives — it used to come
+    /// Read from <c>shipped/abilities.json</c>, which is where the set lives — it used to come
     /// from <c>AbilityCatalogue</c>, which is four examples now. The intent is unchanged and is
     /// the whole value of these tests: a cast in here spends the same cost, waits the same
     /// cooldown, and applies the same effect parameters as a cast in the game.
