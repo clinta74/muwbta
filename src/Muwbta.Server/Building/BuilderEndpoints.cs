@@ -16,6 +16,8 @@ using Muwbta.Server.Infrastructure;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.EntityFrameworkCore;
 
+using Muwbta.Server.Game;
+
 namespace Muwbta.Server.Building;
 
 /// <summary>
@@ -926,6 +928,8 @@ public static class BuilderEndpoints
         WorldBundle? bundle,
         bool? dryRun,
         WorldImporter importer,
+        MapSheets sheets,
+        MuwbtaDbContext db,
         HttpContext http,
         CancellationToken ct)
     {
@@ -944,6 +948,19 @@ public static class BuilderEndpoints
         http.TryGetAccountId(out var accountId);
 
         var report = await importer.ImportAsync(bundle, accountId, dryRun ?? false, ct);
+
+        // Re-read the sheets whenever an import could have written one. Unlike the canon - which
+        // is deliberately not re-warmed here, because an import says what a configuration means
+        // rather than which one is live - a map has no equivalent of activation. It is served the
+        // moment its rooms are, or it is a map of the world before this import.
+        if (!(dryRun ?? false) && bundle.Maps.Count > 0)
+        {
+            var loaded = await db.WorldMaps.AsNoTracking()
+                .Select(m => new { m.WorldKey, m.Svg })
+                .ToListAsync(ct);
+
+            sheets.Load(loaded.Select(m => (m.WorldKey, m.Svg)));
+        }
 
         // A partial import is not a success, and reporting one as 200 is how a half-applied zone
         // gets noticed a week later. The report is the body either way, since which entities

@@ -116,7 +116,40 @@ public sealed class WorldWriter(MuwbtaDbContext db, TimeProvider clock)
                     db.Worlds.Remove(entity);
                 }
 
+                // By hand, because world_maps carries no foreign key to lean on - see
+                // WorldMapConfiguration for why it does not. A sheet outliving its world would be
+                // served to nobody and exported into the next bundle, which is how orphans travel.
+                var orphan = await db.WorldMaps.FirstOrDefaultAsync(m => m.WorldKey == c.Key, cancellationToken);
+                if (orphan is not null)
+                {
+                    db.WorldMaps.Remove(orphan);
+                }
+
                 return ContentAction.Delete;
+            }
+
+            case SetWorldMap c:
+            {
+                var entity = await db.WorldMaps.FirstOrDefaultAsync(m => m.WorldKey == c.Key, cancellationToken);
+
+                if (c.Svg is null)
+                {
+                    if (entity is not null)
+                    {
+                        db.WorldMaps.Remove(entity);
+                    }
+
+                    return ContentAction.Delete;
+                }
+
+                if (entity is null)
+                {
+                    db.WorldMaps.Add(new WorldMap { WorldKey = c.Key, Svg = c.Svg });
+                    return ContentAction.Create;
+                }
+
+                entity.Svg = c.Svg;
+                return ContentAction.Update;
             }
 
             case UpsertZone c:

@@ -37,6 +37,25 @@ internal sealed class WorldConfiguration : IEntityTypeConfiguration<World>
     }
 }
 
+internal sealed class WorldMapConfiguration : IEntityTypeConfiguration<WorldMap>
+{
+    public void Configure(EntityTypeBuilder<WorldMap> builder)
+    {
+        builder.ToTable("world_maps");
+
+        // Keyed by the world it draws, which is what makes "at most one sheet per world" a
+        // property of the schema rather than of whoever writes to it. No foreign key to worlds:
+        // the importer applies collections one kind at a time and a sheet may legitimately land
+        // beside a world in the same bundle, so ordering would be the only thing enforcing it.
+        builder.HasKey(m => m.WorldKey);
+        builder.Property(m => m.WorldKey).HasColumnName("world_key").HasMaxLength(32);
+
+        // Unbounded: the sheets run to about 190 KB and a cap here would be a number nobody could
+        // defend. Never loaded by the game loop - only MapSheets reads this table.
+        builder.Property(m => m.Svg).HasColumnName("svg").IsRequired();
+    }
+}
+
 internal sealed class ZoneConfiguration : IEntityTypeConfiguration<Zone>
 {
     public void Configure(EntityTypeBuilder<Zone> builder)

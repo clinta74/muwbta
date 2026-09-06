@@ -1,5 +1,5 @@
 {
-  "formatVersion": 16,
+  "formatVersion": 17,
   "exportedAt": "2026-08-22T22:18:58.0341816+00:00",
   "scope": {
     "kind": "abilities",
@@ -389,7 +389,7 @@
       "path": "Warden",
       "unlockLevel": 43,
       "name": "Sundering Blow",
-      "description": "Take the guard apart so that everyone else\u0027s work lands on what is left.",
+      "description": "Take the guard apart so that everyone else's work lands on what is left.",
       "costType": "Stamina",
       "costValue": 34,
       "cooldownPulses": 120,

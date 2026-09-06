@@ -31,6 +31,8 @@ public sealed class MuwbtaDbContext(DbContextOptions<MuwbtaDbContext> options) :
 
     public DbSet<World> Worlds => Set<World>();
 
+    public DbSet<WorldMap> WorldMaps => Set<WorldMap>();
+
     public DbSet<Zone> Zones => Set<Zone>();
 
     public DbSet<Room> Rooms => Set<Room>();

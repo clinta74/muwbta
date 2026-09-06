@@ -138,6 +138,7 @@ public static class BundleMerge
         var spawners = Collect(sources, b => b.Spawners, s => s.Id.ToString(), "spawners", errors);
         var quests = Collect(sources, b => b.Quests, q => q.Key, "quests", errors);
         var configurations = Collect(sources, b => b.Configurations, c => c.Key, "configurations", errors);
+        var maps = Collect(sources, b => b.Maps, m => m.WorldKey, "maps", errors);
 
         if (errors.Count > 0)
         {
@@ -149,7 +150,7 @@ public static class BundleMerge
                 sources[0].Bundle.FormatVersion,
                 sources.Max(s => s.Bundle.ExportedAt),
                 new BundleScope("all", null),
-                worlds, zones, rooms, items, mobs, abilities, spawners, quests, configurations),
+                worlds, zones, rooms, items, mobs, abilities, spawners, quests, configurations, maps),
             []);
     }
 

@@ -70,6 +70,10 @@ public sealed class WorldMutationApplier(
             SetRoomFlag change => ApplySetFlag(change),
             SetZoneFlag change => ApplySetZoneFlag(change),
             SetWorldFlag change => ApplySetWorldFlag(change),
+
+            // Nothing in the loop reads a map, so there is no state to change and no validation
+            // to do that the writer is not better placed to do. Straight through.
+            SetWorldMap change => MutationResult.Ok([change]),
             RespawnZone change => ApplyRespawnZone(change),
             UpsertMobTemplate change => ApplyUpsertMobTemplate(change),
             DeleteMobTemplate change => ApplyDeleteMobTemplate(change),

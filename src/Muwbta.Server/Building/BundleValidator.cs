@@ -13,6 +13,8 @@ using Muwbta.Engine.Presentation;
 using Muwbta.Engine.Quests;
 using Muwbta.Server.Assist;
 
+using System.Xml;
+
 namespace Muwbta.Server.Building;
 
 /// <summary>How much a finding matters. Only <see cref="Error"/> stops anything.</summary>
@@ -126,6 +128,7 @@ public static class BundleValidator
         CheckAbilities(bundle, Error, Warn);
         CheckTerrain(bundle, Error, Warn);
         CheckConfigurations(bundle, Warn);
+        CheckMaps(bundle, Error, Warn);
         CheckFlags(bundle, Error);
 
         return new BundleCheck(findings);
@@ -343,6 +346,79 @@ public static class BundleValidator
                 warn($"configuration {configuration.Key} carries a canon of ~{tokens:N0} tokens, over the "
                     + $"{AssistOptions.DefaultCanonTokenBudget:N0} the assist's window budgets; the model will not read all of it");
             }
+        }
+    }
+
+    /// <summary>
+    /// The drawn sheets: one per world, naming a world, and readable enough to serve.
+    /// </summary>
+    /// <remarks>
+    /// The size check is the one worth having. <c>MapSheets</c> reads the intrinsic width and
+    /// height back out of the document when it serves it and skips a sheet it cannot read, so a
+    /// malformed drawing is a map that silently does not exist. Catching it here is the difference
+    /// between a failed check and a player told there is no map of the realm they are standing in.
+    /// </remarks>
+    private static void CheckMaps(WorldBundle bundle, Action<string> error, Action<string> warn)
+    {
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var worlds = bundle.Worlds.Select(w => w.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var map in bundle.Maps)
+        {
+            if (!seen.Add(map.WorldKey))
+            {
+                error($"two maps are drawn for world {map.WorldKey}; only one can be served");
+            }
+
+            // A warning, not an error: a maps-only bundle is a legitimate thing to import, and it
+            // carries no worlds to check against.
+            if (bundle.Worlds.Count > 0 && !worlds.Contains(map.WorldKey))
+            {
+                warn($"map {map.WorldKey} names a world this bundle does not carry");
+            }
+
+            if (MapSheetSize(map.Svg) is { } why)
+            {
+                error($"map {map.WorldKey} {why}");
+            }
+        }
+    }
+
+    /// <summary>Why this sheet could not be measured, or null if it can.</summary>
+    private static string? MapSheetSize(string svg)
+    {
+        try
+        {
+            using var reader = XmlReader.Create(
+                new StringReader(svg),
+                new XmlReaderSettings { DtdProcessing = DtdProcessing.Prohibit });
+
+            while (reader.Read())
+            {
+                if (reader.NodeType != XmlNodeType.Element)
+                {
+                    continue;
+                }
+
+                if (reader.Name != "svg")
+                {
+                    return "does not open with an <svg> element";
+                }
+
+                var width = reader.GetAttribute("width");
+                var height = reader.GetAttribute("height");
+
+                return int.TryParse(width, out var w) && w > 0
+                    && int.TryParse(height, out var h) && h > 0
+                    ? null
+                    : "has no usable width and height on its root element";
+            }
+
+            return "is empty";
+        }
+        catch (XmlException failure)
+        {
+            return $"is not readable XML: {failure.Message}";
         }
     }
 

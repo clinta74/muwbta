@@ -47,8 +47,20 @@ public sealed record WorldBundle(
     IReadOnlyList<BundleAbility> Abilities,
     IReadOnlyList<BundleSpawner> Spawners,
     IReadOnlyList<BundleQuest> Quests,
-    IReadOnlyList<BundleGameConfiguration> Configurations)
+    IReadOnlyList<BundleGameConfiguration> Configurations,
+    IReadOnlyList<BundleMap> Maps = null!)
 {
+    /// <summary>
+    /// The rendered sheets, one per world at most, and the only optional collection here.
+    /// </summary>
+    /// <remarks>
+    /// Optional because it is the one collection a hand-authored file is likely to leave out
+    /// entirely - most content has no map and wants none - and a missing key deserialising to null
+    /// would fail at the first thing that read it rather than at the file. Normalised on the way
+    /// in so nothing downstream has to ask.
+    /// </remarks>
+    public IReadOnlyList<BundleMap> Maps { get; init; } = Maps ?? [];
+
     /// <summary>
     /// The only format this build writes, and the only one it reads.
     /// </summary>
@@ -106,6 +118,14 @@ public sealed record WorldBundle(
     /// *writing*: an export at v10 no longer emits them, so a v9 file and a v10 file describe the
     /// same world with different fields, and a version number is what stops somebody diffing the
     /// two and concluding content was lost (BUGS.md #17).
+    ///
+    /// <b>17 because a world carries the map of itself.</b> A v16 bundle has no <c>maps</c>, so
+    /// read as v17 every world in it arrives with no sheet - which is the weak direction and
+    /// harmless on its own. The bump is about the writing, and about what the sheets replaced: the
+    /// maps used to be compiled into the server, which meant a build served whatever drawing it
+    /// was built with while the rooms came from the database. The two could disagree and nothing
+    /// could tell. Carried here they arrive together, and a file labelled 16 that carries a v17
+    /// key would be a lie about the one property this change exists to establish.
     ///
     /// <b>16 because an item can be eaten.</b> A v15 bundle has no <c>foodValue</c> or
     /// <c>drinkValue</c>, so read as v16 every item in it arrives inedible. That is the weak
@@ -165,7 +185,7 @@ public sealed record WorldBundle(
     /// spawner in it would quietly change behaviour - which is the silent partial apply this
     /// number exists to refuse, arriving through a rename rather than through a new field.
     /// </remarks>
-    public const int CurrentFormatVersion = 16;
+    public const int CurrentFormatVersion = 17;
 }
 
 /// <summary>
@@ -216,6 +236,16 @@ public sealed record BundleGameConfiguration(
 /// <param name="Kind">"all", "world", or "zone".</param>
 /// <param name="Key">The world or zone key, or null when the scope is everything.</param>
 public sealed record BundleScope(string Kind, string? Key);
+
+/// <summary>
+/// One rendered sheet, drawn by <c>tools/render-map.cs</c> from the rooms it names.
+/// </summary>
+/// <param name="WorldKey">The world this draws. At most one sheet per world.</param>
+/// <param name="Svg">
+/// The SVG document itself. Title and intrinsic size are read back out of its own header rather
+/// than authored beside it, so a sheet cannot claim a size it is not drawn at.
+/// </param>
+public sealed record BundleMap(string WorldKey, string Svg);
 
 public sealed record BundleWorld(
     string Key,

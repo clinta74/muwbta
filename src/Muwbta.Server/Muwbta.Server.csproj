@@ -21,34 +21,6 @@
     </PackageReference>
   </ItemGroup>
 
-  <!--
-    The drawn realm maps travel inside the assembly, for the reasons the canon above does and one
-    more: a map is derived from authored content, so which map a build serves has to be a property
-    of that build. A sheet that disagrees with the world it draws is a confusion a player has no
-    way to diagnose. See Game/MapSheets.cs.
-
-    Globbed rather than listed, so a sixth realm is drawn and served without touching this file.
-    Only the SVGs: render-map.cs writes a PNG beside each one, and they are the same drawing at
-    twelve times the size and none of the scalability.
-  -->
-  <ItemGroup>
-    <EmbeddedResource Include="..\..\content\map\*.svg">
-      <LogicalName>Muwbta.Server.Maps.%(Filename).svg</LogicalName>
-    </EmbeddedResource>
-  </ItemGroup>
-
-  <!--
-    The same courtesy the canon gets, for the same reason: a build context that dropped content/
-    reports CS1566 against a path under /src, which reads like a broken project file. Warning
-    rather than Error - the server runs perfectly well with no maps to serve, and refusing to
-    build would make a drawing a hard dependency of the game.
-  -->
-  <Target Name="WarnWhenMapsAreMissing" BeforeTargets="BeforeBuild">
-    <Warning
-      Condition="!Exists('$(MSBuildThisFileDirectory)..\..\content\map')"
-      Text="content/map is missing from this build, so this server will serve no realm maps (Game/MapSheets.cs). Check .dockerignore or whatever assembled this source tree." />
-  </Target>
-
   <!-- WebApplicationFactory in the integration tests needs to see the entry point. -->
   <ItemGroup>
     <InternalsVisibleTo Include="Muwbta.Server.Tests" />

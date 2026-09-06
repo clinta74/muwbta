@@ -107,6 +107,10 @@ public sealed class WorldImporter(MuwbtaDbContext db, WorldEditor editor)
         // wanting the intermediate states to read correctly to a player standing in the zone
         // while the import runs.
         await ApplyAsync("world", bundle.Worlds, w => w.Key, WorldChangeFor);
+
+        // After the worlds, because a sheet is only meaningful beside the rooms it draws - though
+        // nothing enforces that ordering, so a maps-only bundle applies perfectly well on its own.
+        await ApplyAsync("map", bundle.Maps, m => m.WorldKey, MapChangeFor);
         await ApplyAsync("zone", bundle.Zones, z => z.Key, ZoneChangeFor);
         await ApplyAsync("item-template", bundle.ItemTemplates, i => i.Key, ItemChangeFor);
         await ApplyAsync("mob-template", bundle.MobTemplates, m => m.Key, MobChangeFor);
@@ -359,6 +363,8 @@ public sealed class WorldImporter(MuwbtaDbContext db, WorldEditor editor)
 
     private static WorldChange WorldChangeFor(BundleWorld w) =>
         new UpsertWorld(w.Key, w.Name, w.Description, w.SortOrder, Flags(w.Flags), Multipliers(w.Multipliers));
+
+    private static WorldChange MapChangeFor(BundleMap m) => new SetWorldMap(m.WorldKey, m.Svg);
 
     private static WorldChange ZoneChangeFor(BundleZone z) =>
         new UpsertZone(z.Key, z.WorldKey, z.Name, z.Description, z.MinLevel, z.MaxLevel,

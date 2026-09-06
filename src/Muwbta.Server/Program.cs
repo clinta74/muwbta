@@ -433,6 +433,11 @@ else
         }
     }
 
+    // After any seeding, for the same reason as the configuration below: a first boot should serve
+    // the sheets the world it just planted came with. Failing to read them is not fatal - a server
+    // that will not start because a drawing is unreadable has traded a map for a world.
+    await LoadMapSheetsAsync(db, app.Services, logger);
+
     // Last, and after any seeding, so a first boot can point at a room that now exists. The
     // database is the authority for these two (§4.16); EngineOptions carries whatever came from
     // configuration until this overwrites it, and stays as-is when nothing is active.
@@ -451,6 +456,30 @@ else
 /// is a starting room that at least exists in code, where refusing to boot would take the whole
 /// server down over one editable text field.
 /// </remarks>
+/// <summary>
+/// Hands the map service every sheet in the database. Called at startup and again after an import,
+/// which is the only thing that can change them.
+/// </summary>
+static async Task LoadMapSheetsAsync(
+    MuwbtaDbContext db,
+    IServiceProvider services,
+    ILogger logger)
+{
+    try
+    {
+        var sheets = await db.WorldMaps.AsNoTracking()
+            .Select(m => new { m.WorldKey, m.Svg })
+            .ToListAsync();
+
+        services.GetRequiredService<MapSheets>().Load(sheets.Select(m => (m.WorldKey, m.Svg)));
+        ServerLog.MapSheetsLoaded(logger, sheets.Count);
+    }
+    catch (Exception failure) when (failure is DbUpdateException or InvalidOperationException or NpgsqlException)
+    {
+        ServerLog.MapSheetsUnavailable(logger, failure);
+    }
+}
+
 static async Task LoadActiveConfigurationAsync(
     MuwbtaDbContext db,
     IServiceProvider services,

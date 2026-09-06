@@ -249,6 +249,22 @@ public sealed record SetWorldFlag(string Key, string Flag, bool? Value) : WorldC
 }
 
 /// <summary>
+/// Sets or clears the rendered sheet for one world (<see cref="Domain.Worlds.WorldMap"/>).
+/// </summary>
+/// <remarks>
+/// The one change here the live world does not act on. A map is served to a player who asks for
+/// it and is never read by the loop, so the applier passes this straight through to persistence
+/// rather than touching any state - the same shape a configuration edit takes when it is not the
+/// live one.
+/// </remarks>
+public sealed record SetWorldMap(string Key, string? Svg) : WorldChange
+{
+    public override string EntityKind => "map";
+
+    public override string EntityKey => Key;
+}
+
+/// <summary>
 /// Takes down everything this zone's spawners put in the world and fills them again at once
 /// (PLAN.md §7.5).
 /// </summary>

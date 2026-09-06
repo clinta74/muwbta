@@ -125,6 +125,11 @@ public sealed class WorldExporter(MuwbtaDbContext db, TimeProvider clock)
         // a zone. Which one is live is left behind deliberately - see BundleGameConfiguration.
         var configurations = await ConfigurationsAsync(kind, key, cancellationToken);
 
+        // Only the sheets for the worlds this export carries. Unlike abilities and configurations
+        // a map has an obvious owner, so a zone-scoped bundle takes the one world it names and no
+        // others - and a world with nothing drawn for it simply contributes nothing.
+        var maps = await MapsAsync(worlds, cancellationToken);
+
         return new WorldBundle(
             WorldBundle.CurrentFormatVersion,
             clock.GetUtcNow(),
@@ -137,7 +142,22 @@ public sealed class WorldExporter(MuwbtaDbContext db, TimeProvider clock)
             abilities,
             spawners,
             quests,
-            configurations);
+            configurations,
+            maps);
+    }
+
+    /// <summary>The rendered sheets belonging to the worlds in this export.</summary>
+    private async Task<IReadOnlyList<BundleMap>> MapsAsync(
+        IReadOnlyList<BundleWorld> worlds,
+        CancellationToken cancellationToken)
+    {
+        var keys = worlds.Select(w => w.Key).ToList();
+
+        return await db.WorldMaps.AsNoTracking()
+            .Where(m => keys.Contains(m.WorldKey))
+            .OrderBy(m => m.WorldKey)
+            .Select(m => new BundleMap(m.WorldKey, m.Svg))
+            .ToListAsync(cancellationToken);
     }
 
     /// <summary>

@@ -120,6 +120,43 @@ foreach (var path in paths)
     sources.Add(new BundleSource(path, bundle!));
 }
 
+// The drawn sheets are folded in from the .svg files themselves rather than from a bundle that
+// quotes them. They are content and they have to reach the server, but 190 KB of escaped XML
+// committed inside a JSON file would be a diff nobody can read and a copy that can fall out of
+// step with the drawing beside it. Kept as SVGs, packed at merge time - which is the only moment
+// anything needs them in bundle shape.
+var drawings = new List<BundleMap>();
+
+foreach (var input in inputs.Where(Directory.Exists))
+{
+    var mapDir = Path.Combine(input, "map");
+
+    if (!Directory.Exists(mapDir))
+    {
+        continue;
+    }
+
+    foreach (var sheet in Directory.GetFiles(mapDir, "*.svg").OrderBy(p => p, StringComparer.Ordinal))
+    {
+        Console.WriteLine($"  draw   {sheet}");
+        drawings.Add(new BundleMap(Path.GetFileNameWithoutExtension(sheet), File.ReadAllText(sheet)));
+    }
+}
+
+if (drawings.Count > 0)
+{
+    // As a source of its own, so two files claiming one world collide through the same conflict
+    // check everything else does rather than through a silent last-one-wins here.
+    sources.Add(new BundleSource(
+        "content/map",
+        new WorldBundle(
+            WorldBundle.CurrentFormatVersion,
+            DateTimeOffset.MinValue,
+            new BundleScope("all", null),
+            [], [], [], [], [], [], [], [], [],
+            drawings)));
+}
+
 if (failed)
 {
     Console.WriteLine("FAILED");
@@ -196,6 +233,6 @@ Console.WriteLine(
     $"         {b.Worlds.Count} worlds, {b.Zones.Count} zones, {b.ItemTemplates.Count} itemTemplates, "
     + $"{b.MobTemplates.Count} mobTemplates, {b.Rooms.Count} rooms, {b.Spawners.Count} spawners, "
     + $"{b.Quests.Count} quests, {b.Abilities.Count} abilities, "
-    + $"{b.Configurations.Count} configurations");
+    + $"{b.Configurations.Count} configurations, {b.Maps.Count} maps");
 Console.WriteLine("OK");
 return 0;

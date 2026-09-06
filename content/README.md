@@ -20,6 +20,7 @@ next one and each file's exits are applied before the next file's rooms exist.
 | `nemhal/the-reaches.json` | the Hold, Vurrach, Olmenneth, Keshvaun |
 | `the-unlit/the-reaches.json` | the Crossing, the Regard |
 | `abilities.json` | every ability all four Paths learn — no rooms, no world, just the set |
+| `map/*.svg` | the drawn realm sheets, folded into the merge as `maps` and served to players |
 | `unplaced.json` | templates nothing places yet — no rooms, no world, just the templates |
 
 A bundle carries the world row above its zones, so any one file is enough to stand its realm up in
@@ -102,7 +103,7 @@ not come back should say so in its own prose; that part is authoring, not toolin
 ## Three properties of the import path that shape how these are written
 
 - **`formatVersion` must match the server exactly.** It is the one hard refusal in the whole path.
-  Author against `WorldBundle.CurrentFormatVersion` — these files are at **16** — not against this
+  Author against `WorldBundle.CurrentFormatVersion` — these files are at **17** — not against this
   sentence, which has now been wrong twice — and is now the last hand-kept copy, because a test
   fails if it disagrees with `BundleFormat.CurrentVersion` or if any tool starts carrying its own.
   The shims reference the constant and cannot drift; the merge refuses files that disagree.

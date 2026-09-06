@@ -71,6 +71,18 @@ internal static partial class ServerLog
     public static partial void StreamClosed(ILogger logger, string character);
 
     [LoggerMessage(
+        EventId = 1034,
+        Level = LogLevel.Information,
+        Message = "Loaded {Count} realm map sheet(s)")]
+    public static partial void MapSheetsLoaded(ILogger logger, int count);
+
+    [LoggerMessage(
+        EventId = 1035,
+        Level = LogLevel.Warning,
+        Message = "Could not read the realm map sheets; this server will serve no maps")]
+    public static partial void MapSheetsUnavailable(ILogger logger, Exception failure);
+
+    [LoggerMessage(
         EventId = 1029,
         Level = LogLevel.Information,
         Message = "Planted the starter game configuration '{Key}'")]
