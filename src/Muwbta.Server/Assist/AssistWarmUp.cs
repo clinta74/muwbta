@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Threading.Channels;
 using Muwbta.Engine;
 using Microsoft.Extensions.Options;
 
@@ -55,6 +56,29 @@ public sealed class AssistWarmUp(
         new(TaskCreationOptions.RunContinuationsAsynchronously);
 
     /// <summary>
+    /// A request to prefill again, coalesced to one outstanding.
+    /// </summary>
+    /// <remarks>
+    /// Bounded at one and dropping writes, because ten edits in a minute are one re-warm: what
+    /// matters is that the canon in front of the model is the current one by the time anybody
+    /// drafts, not that every intermediate version was cached on its way past.
+    /// </remarks>
+    private readonly Channel<byte> _refresh = Channel.CreateBounded<byte>(
+        new BoundedChannelOptions(1) { FullMode = BoundedChannelFullMode.DropWrite });
+
+    /// <summary>
+    /// The canon last sent to the model, or null when none has been. Compared against the live one
+    /// to decide whether a re-warm has anything to do.
+    /// </summary>
+    /// <remarks>
+    /// Volatile because it is written on the background loop and read on request threads. A stale
+    /// read costs one unnecessary prefill or one missed one, and the next edit corrects it - the
+    /// alternative is a lock around a string comparison on a path that runs when a builder saves a
+    /// form.
+    /// </remarks>
+    private volatile string? _prefilled;
+
+    /// <summary>
     /// Completes when the model has the canon cached, or when warming is given up on.
     /// </summary>
     /// <remarks>
@@ -67,6 +91,41 @@ public sealed class AssistWarmUp(
     /// <summary>Whether the canon is cached. Reported to the builder so it can say why it waits.</summary>
     public bool IsWarm { get; private set; }
 
+    /// <summary>
+    /// Says the live canon may have moved, and re-warms in the background if it actually has.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>The prompt's leading substring is the cache key.</b> Ollama reuses the KV cache only for
+    /// a prompt sharing a prefix with the last one, and the canon is that prefix - so changing one
+    /// character of it costs the next request a full re-evaluation of every token. Measured on the
+    /// Reaches canon, that is seconds against minutes. Doing it here means the server pays it
+    /// instead of whoever presses Suggest first.
+    /// </para>
+    /// <para>
+    /// <b>Only when it has genuinely changed.</b> Saving a configuration is one call whatever the
+    /// builder touched, so most saves reach here having changed a welcome message or a starting
+    /// room; re-warming on those would throw away a good cache and stall the model for minutes to
+    /// arrive at the text it already had. The comparison is against what was last <em>sent</em>,
+    /// not against what is stored, because those differ until a prefill finishes.
+    /// </para>
+    /// </remarks>
+    /// <returns>True when a re-warm was queued.</returns>
+    public bool CanonChanged()
+    {
+        if (!options.Value.Enabled || !options.Value.WarmUpOnStart)
+        {
+            return false;
+        }
+
+        if (string.Equals(_prefilled, Canon.ForPrompt(engine.Canon), StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        return _refresh.Writer.TryWrite(0);
+    }
+
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         if (!options.Value.WarmUpOnStart)
@@ -75,15 +134,55 @@ public sealed class AssistWarmUp(
             return;
         }
 
+        await WarmAsync(stoppingToken).ConfigureAwait(false);
+
+        _ready.TrySetResult();
+
+        // Then stay, and warm again whenever the canon moves. One loop rather than a task per
+        // edit, so two prefills can never be in flight at once - which would put the model's
+        // cache in a race with itself and leave whichever finished last as the winner.
+        try
+        {
+            while (await _refresh.Reader.WaitToReadAsync(stoppingToken).ConfigureAwait(false))
+            {
+                while (_refresh.Reader.TryRead(out _))
+                {
+                    // Drain: several edits while a prefill ran are still one re-warm.
+                }
+
+                await WarmAsync(stoppingToken).ConfigureAwait(false);
+            }
+        }
+        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+        {
+            // Shutting down. The process is going away and the cache with it.
+        }
+    }
+
+    /// <summary>
+    /// Puts the live canon in front of the model, and records what was sent.
+    /// </summary>
+    /// <remarks>
+    /// Never throws. A warm-up that could not run is a reason for the next draft to be slow, not a
+    /// reason to bring the server down or to stop listening for the next edit.
+    /// </remarks>
+    private async Task WarmAsync(CancellationToken stoppingToken)
+    {
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
         timeout.CancelAfter(TimeSpan.FromSeconds(Math.Max(1, options.Value.WarmUpTimeoutSeconds)));
 
         var started = Stopwatch.StartNew();
+        var canon = Canon.ForPrompt(engine.Canon);
         AssistLog.WarmingUp(logger, options.Value.Model);
+
+        // Recorded before the request rather than after it. A prefill that fails partway has still
+        // changed what the model holds, and a failed attempt that left this null would re-warm on
+        // every save from then on; the next real edit queues another attempt either way.
+        _prefilled = canon;
 
         try
         {
-            var tokens = await PrefillAsync(timeout.Token).ConfigureAwait(false);
+            var tokens = await PrefillAsync(canon, timeout.Token).ConfigureAwait(false);
 
             IsWarm = true;
             AssistLog.Warm(logger, tokens, (int)started.Elapsed.TotalSeconds);
@@ -96,17 +195,14 @@ public sealed class AssistWarmUp(
         {
             // Never fatal. A server whose model is not up yet still has to serve the builder, and
             // the first draft will pay the prefill instead - slowly, but it will work.
+            IsWarm = false;
             AssistLog.WarmUpFailed(logger, (int)started.Elapsed.TotalSeconds, e);
-        }
-        finally
-        {
-            _ready.TrySetResult();
         }
     }
 
-    private async Task<int> PrefillAsync(CancellationToken cancellationToken)
+    private async Task<int> PrefillAsync(string canon, CancellationToken cancellationToken)
     {
-        var estimated = Canon.EstimateTokens(Canon.ForPrompt(engine.Canon));
+        var estimated = Canon.EstimateTokens(canon);
         if (estimated > options.Value.CanonTokenBudget)
         {
             AssistLog.CanonOverBudget(logger, estimated, options.Value.CanonTokenBudget);
@@ -118,7 +214,7 @@ public sealed class AssistWarmUp(
             ["stream"] = false,
             // The live one: the active configuration's, which Program.cs has loaded into
             // EngineOptions before any hosted service starts - or the line that says there is none.
-            ["prompt"] = Canon.ForPrompt(engine.Canon),
+            ["prompt"] = canon,
             // One token. The cache is the point; the word is not.
             ["options"] = new System.Text.Json.Nodes.JsonObject { ["num_predict"] = 1 },
             ["keep_alive"] = -1,

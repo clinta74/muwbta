@@ -292,6 +292,7 @@ public static class BuilderEndpoints
         GameConfigurationRequest request,
         WorldEditor editor,
         MuwbtaDbContext db,
+        IServiceProvider services,
         HttpContext http,
         CancellationToken ct)
     {
@@ -412,6 +413,16 @@ public static class BuilderEndpoints
             return Results.BadRequest(new { error = Describe(outcome) });
         }
 
+        // The assist reads the live configuration's canon as the leading substring of every
+        // prompt, and the model caches prompts by that prefix - so an edit to it has to be put in
+        // front of the model again before somebody drafts, or the first draft pays minutes for it.
+        // Asked rather than told: the call does nothing unless the text actually moved, and most
+        // saves move a welcome message instead.
+        if (live)
+        {
+            RewarmAssist(services);
+        }
+
         var exists = await db.Rooms.AsNoTracking().AnyAsync(r => r.Key == startingRoom, ct);
 
         // Read back rather than echoed, because a null canon or world list in the request meant
@@ -477,6 +488,7 @@ public static class BuilderEndpoints
         string key,
         WorldEditor editor,
         MuwbtaDbContext db,
+        IServiceProvider services,
         HttpContext http,
         CancellationToken ct)
     {
@@ -501,6 +513,10 @@ public static class BuilderEndpoints
             return Results.BadRequest(new { error = Describe(outcome) });
         }
 
+        // Activation swaps the canon along with the starting room, so the same re-warm applies -
+        // and a swap between two configurations that carry the same canon still costs nothing.
+        RewarmAssist(services);
+
         var exists = RoomKey.TryParse(entity.StartingRoomKey, out var parsed)
             && await db.Rooms.AsNoTracking().AnyAsync(r => r.Key == parsed, ct);
 
@@ -509,6 +525,18 @@ public static class BuilderEndpoints
             entity.WelcomeMessage, entity.BlockedWords, IsActive: true, exists, DateTimeOffset.UtcNow,
             entity.Canon, Canon.EstimateTokens(Canon.Resolve(entity.Canon)), [.. entity.WorldKeys]));
     }
+
+    /// <summary>
+    /// Asks the assist to put the live canon in front of the model again, if it has moved.
+    /// </summary>
+    /// <remarks>
+    /// Resolved rather than injected, because the assist is registered only when it is configured
+    /// (<c>Program.cs</c>) and a server without a model behind it must still be able to save a
+    /// configuration. <see cref="AssistWarmUp.CanonChanged"/> decides whether there is anything to
+    /// do; this only knows where to ask.
+    /// </remarks>
+    private static void RewarmAssist(IServiceProvider services) =>
+        services.GetService<AssistWarmUp>()?.CanonChanged();
 
     /// <summary>
     /// Why an edit did not stick, told apart properly.

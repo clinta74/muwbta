@@ -460,6 +460,11 @@ on the way to an import. `tools/sync-canon.cs` is the return leg, from a panel e
 file. The server embeds no canon of its own: a configuration that arrives without one tells the
 assist there is no world description rather than handing it somebody else's.
 
+An edit to the **live** configuration's canon reaches the assist on the next request, and the
+server re-warms the model's prompt cache in the background as it lands — but only when the text
+actually moved, since a prefill is minutes of work to arrive at what was already cached. An import
+does not: it writes what a configuration *means*, and activation is what makes the server obey it.
+
 **A configuration tags the worlds it is for**, so `?configuration=the-reaches` exports the five
 realms, the templates they need, the abilities, and the configuration with its canon — the unit the
 story is authored in, and the one that should travel.
