@@ -79,10 +79,19 @@ question rather than fetch a row.
 | `upsert_content` | Creates or updates one piece of content. Decides create-vs-update by asking the server. |
 | `delete_content` | Removes one piece of content. |
 | `set_exit` | Points an exit at a room, or removes it. States the whole exit, so a lock left out is a lock removed. |
+| `update_canon` | Rewrites a configuration's canon, and nothing else about it. |
 
-Configurations are readable and not writable: which one is active decides what the running server
-serves and what every new player is told, so activating one stays a person's click. No tool wraps
-those endpoints.
+A configuration's *settings* are not writable here — which one is active decides what the running
+server serves and what every new player is told, so the starting room, the welcome message and
+activation itself stay a person's business, and no tool wraps those endpoints. Its **canon** is the
+exception: `update_canon` rewrites that text and carries every other field across untouched.
+
+That exception exists because the first zone drafted through these tools found the canon
+contradicting the world it describes — it called for two or three paragraphs a room where all
+twelve were one, and stated second person as the rule where one room in twelve used it. An author
+who can see that and cannot fix it is being made to file a bug about a text file. It is worth being
+plain that this is a tool for editing the agent's own instructions, and that a person should read
+what it changed.
 
 Two resources: `muwbta://canon` for the active configuration's canon, and
 `muwbta://canon/{configuration}` for a named one — drafting usually happens against a world that

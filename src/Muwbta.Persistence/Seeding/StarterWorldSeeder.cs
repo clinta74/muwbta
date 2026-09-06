@@ -348,9 +348,9 @@ public static class StarterWorldSeeder
     public const string StarterCanon = """
         # Aldenmoor
 
-        The development world: one zone, twelve rooms, kept as the fixture the playtest plans run
-        against and as a sandbox for trying the builder. Nothing here is linked to the Reaches and
-        nothing here is canon for them.
+        The development world: the village of Millbrook and whatever a builder has added around it,
+        kept as the fixture the playtest plans run against and as a sandbox for trying the builder.
+        Nothing here is linked to the Reaches and nothing here is canon for them.
 
         ## Setting
 
@@ -364,9 +364,11 @@ public static class StarterWorldSeeder
 
         Plain, close, faintly damp. Describe what is there: rot on the mill paddles, a heron that
         does not acknowledge you, straw drifting against the kerb. No dread and no doom. Things
-        are old and running down and nobody is dramatic about it. Second person, present tense,
-        two or three short paragraphs to a room, and the room describes what is there rather than
-        how to feel about it.
+        are old and running down and nobody is dramatic about it. Present tense, one short paragraph
+        of two or three sentences - twenty-five to thirty-five words is the whole of it - and the
+        room describes what is there rather than how to feel about it. Second person only where it
+        falls out naturally, the way the heron does; that is one room in the village, not the
+        habit.
 
         ## Places
 

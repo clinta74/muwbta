@@ -9,7 +9,7 @@ namespace Muwbta.Mcp;
 /// The write half of the tool surface (docs/PAT-AND-MCP.md §11, Phase C).
 /// </summary>
 /// <remarks>
-/// Three tools. <c>set_exit</c> is separate because an exit is stated whole rather than patched -
+/// Four tools. <c>set_exit</c> is separate because an exit is stated whole rather than patched -
 /// a lock left out of the call is a lock removed - which is not what <c>upsert_content</c> means
 /// by a field.
 ///
@@ -20,6 +20,13 @@ namespace Muwbta.Mcp;
 /// anyway - it writes the title, the prose and the grid position in one call, where a dig leaves a
 /// placeholder room that has to be written over. It cost a throttle, a second concept and a tool
 /// slot, against saving one call and some arithmetic.
+///
+/// <c>update_canon</c> is the narrow exception to configurations being read-only here. The canon is
+/// prose about the world rather than a deployment setting - changing it alters nothing a player
+/// sees - and the first zone drafted through these tools found the canon contradicting the world it
+/// describes. An author who can see that and not fix it is being made to file a bug about a text
+/// file. It carries every other field of the configuration across untouched and cannot reach
+/// <c>/activate</c> at all.
 ///
 /// Every write passes <see cref="WorldGuard"/> first. The token's scope is the other guard and is
 /// the server's; a BuilderRead token is refused there no matter what is registered here.
@@ -58,10 +65,10 @@ public static class WriteTools
         if (string.Equals(kind, "configuration", StringComparison.OrdinalIgnoreCase))
         {
             throw new McpException(
-                "Configurations are read-only here. Which configuration is active decides what the "
-                + "running server serves and what every new player is told, so it is changed by a "
-                + "person in the Setup tab and not by anything holding a token. Author the world; "
-                + "let somebody activate it.");
+                "A configuration is not written through this tool. Which one is active decides what "
+                + "the running server serves and what every new player is told, so the starting "
+                + "room, the welcome message and activation itself belong to a person in the Setup "
+                + "tab. Its canon is the exception - update_canon rewrites that and nothing else.");
         }
 
         if (fields.ValueKind != JsonValueKind.Object)
@@ -131,10 +138,10 @@ public static class WriteTools
         if (string.Equals(kind, "configuration", StringComparison.OrdinalIgnoreCase))
         {
             throw new McpException(
-                "Configurations are read-only here. Which configuration is active decides what the "
-                + "running server serves and what every new player is told, so it is changed by a "
-                + "person in the Setup tab and not by anything holding a token. Author the world; "
-                + "let somebody activate it.");
+                "A configuration is not written through this tool. Which one is active decides what "
+                + "the running server serves and what every new player is told, so the starting "
+                + "room, the welcome message and activation itself belong to a person in the Setup "
+                + "tab. Its canon is the exception - update_canon rewrites that and nothing else.");
         }
 
         var path = ContentKinds.GetPath(kind, Require(key, "key"))
@@ -190,6 +197,80 @@ public static class WriteTools
             JsonSerializer.Serialize(new { to }),
             cancellationToken).ConfigureAwait(false);
     }
+
+    [McpServerTool(Name = "update_canon")]
+    [Description("""
+        Rewrites one configuration's canon - the text that says what is true in this world and how
+        it is written. Nothing else about the configuration changes: not which world it serves, not
+        the starting room, not the welcome message, and above all not whether it is active. Use it
+        when the canon and the world have come apart, and say in your reply what you changed and
+        why, because this is the one thing here that edits your own instructions.
+        """)]
+    public static async Task<string> UpdateCanonAsync(
+        BuilderClient client,
+        [Description("The configuration key, from list_content(kind: 'configuration').")]
+        string configuration,
+        [Description("The whole canon, in markdown. This replaces the previous text entirely.")]
+        string canon,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(client);
+
+        var key = Require(configuration, "configuration");
+
+        if (canon is null)
+        {
+            throw new McpException("'canon' is required. Pass the whole text; this is not a patch.");
+        }
+
+        // Read the row and write it back with one field changed. The endpoint is a whole-object
+        // upsert, so sending a partial body would blank the starting room and the welcome message -
+        // and a configuration whose starting room went missing is a server that cannot place a new
+        // character. Everything but the canon is carried across untouched.
+        var list = await client
+            .GetAsync("/api/builder/configurations", cancellationToken)
+            .ConfigureAwait(false);
+
+        using var document = JsonDocument.Parse(list);
+
+        var row = document.RootElement.TryGetProperty("configurations", out var rows)
+            ? rows.EnumerateArray().FirstOrDefault(
+                c => string.Equals(c.GetProperty("key").GetString(), key, StringComparison.Ordinal))
+            : default;
+
+        if (row.ValueKind != JsonValueKind.Object)
+        {
+            throw new McpException(
+                $"No configuration '{key}'. list_content(kind: 'configuration') has the keys.");
+        }
+
+        var payload = JsonSerializer.Serialize(new
+        {
+            name = row.GetProperty("name").GetString(),
+            description = Text(row, "description"),
+            startingRoomKey = row.GetProperty("startingRoomKey").GetString(),
+            welcomeMessage = Text(row, "welcomeMessage"),
+            blockedWords = Text(row, "blockedWords"),
+            canon,
+            worldKeys = row.TryGetProperty("worldKeys", out var worlds)
+                    && worlds.ValueKind == JsonValueKind.Array
+                ? worlds.EnumerateArray().Select(w => w.GetString()).ToList()
+                : null,
+        });
+
+        // Note the absence of any call to /activate. Whether this configuration is the one the
+        // server serves is not a question this tool can reach.
+        return await client.SendAsync(
+            HttpMethod.Post,
+            $"/api/builder/configurations/{Uri.EscapeDataString(key)}",
+            payload,
+            cancellationToken).ConfigureAwait(false);
+    }
+
+    private static string? Text(JsonElement row, string name) =>
+        row.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String
+            ? value.GetString()
+            : null;
 
     private static string? StringField(JsonElement fields, string name) =>
         fields.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String

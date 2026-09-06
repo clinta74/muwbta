@@ -268,6 +268,7 @@ grows, and the REST surface is shaped for a React client that already knows the 
 | `upsert_content` | `POST`/`PATCH` by kind — one tool, kind-tagged payload |
 | `delete_content` | the `DELETE` endpoints |
 | `set_exit` | `PUT`/`DELETE /rooms/{key}/exits/{direction}` |
+| `update_canon` | `POST /configurations/{key}`, canon only — every other field carried across |
 | `validate_zone` | `/zones/{key}/validate` + `/unfinished` + `/storyline`, merged — the agent wants "what is wrong here", not three calls |
 | `spawn_preview` | `/zones/{key}/preview` |
 | `check_quest` | `/quests/{key}/reachability` |
@@ -275,6 +276,14 @@ grows, and the REST surface is shaped for a React client that already knows the 
 
 `validate_zone` is the important one. Everything else is typing; that tool is what turns a
 generator into an author.
+
+`update_canon` is the one write that reaches a configuration, and it is deliberately narrow: the
+canon is prose about the world, not a deployment setting, and changing it alters nothing a player
+sees. It exists because the first drafted zone found the canon contradicting the world — two or
+three paragraphs a room where every room was one, second person as the rule where it appeared in
+one room of twelve. An author who can see that and cannot fix it is filing a bug about a text file.
+It cannot reach `/activate`, and the tool says plainly that it edits the agent's own instructions
+and that a person should read the change.
 
 The storyline sits under it rather than beside the spawn preview, which is where Phase A first put
 it: `cycles`, `unreachable` and `missingPrerequisites` are the same kind of finding as a dangling
