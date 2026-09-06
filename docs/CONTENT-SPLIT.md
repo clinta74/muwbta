@@ -97,10 +97,17 @@ engine repo real shipped content to assert against — content it owns, not a fi
 agree with the test. Note it needs a live Postgres to regenerate (it runs the real seeder against a
 scratch database), so it is committed and refreshed deliberately, not built in CI.
 
-**What genuinely weakens.** Aldenmoor is twelve rooms against the Reaches' 238, so breadth
-assertions lose their teeth — `MobIconTests` reasons across 68 templates, `MobReachTests` and the
-balance tests over five tuned realms. Those either move to the content repo's CI or accept a
-narrower claim. Pretending otherwise would be the wrong way to write this down.
+**What actually happened, which is better than the plan.** The starter-world fixture was not needed:
+once the generalising rules moved into `BundleValidator` — every quest offer marks exactly one
+thing inside its sentence, and every mob a spawner places can be hit and can hit back — the engine
+had no test left that wanted a world. Committing a derived Aldenmoor bundle with no consumer would
+have been worse than not having one, so it was not done.
+
+**What genuinely weakens.** `WeaponBalanceTests` and `QuestRewardBalanceTests` do not generalise —
+"the epic tiers rank Blade, Warden, Hallow, Adept" is a claim about `epic-warden-1` and its
+siblings, and asserted here it would fail against every other world. They went with the content, as
+source rather than as a running suite, and they run again when §6 is decided. Until then those two
+checks are not being made anywhere. Pretending otherwise would be the wrong way to write this down.
 
 ---
 
@@ -136,11 +143,22 @@ Not decided here. It does not block §2–§5, and it should be decided by whoev
 
 ## 7. Order
 
+**Steps 1 to 4 are done.** Maps became imported content (format 17), the ability set moved to
+`shipped/` — joined by the blocked-words list, which turned out to be the same argument — the
+content rules that generalise moved into `BundleValidator`, and `content/` left for a repository
+of its own with its history intact. What remains is §6, the dependency pointing the other way,
+which is best decided by whoever authors most.
+
+The record of the order, as planned:
+
 1. **Maps as imported content** (§2) — removes the only build-time coupling. Format 17.
 2. **`abilities.json` moves** (§3) — small, independent.
 3. **Starter world committed as a fixture; content tests re-pointed or moved** (§4).
 4. **Subtree split and the new repository** (§5) — only safe once 1–3 land, because it is the step
-   that makes `content/` genuinely absent.
+   that makes `content/` genuinely absent. Done: `git subtree split -P content` carried 48
+   commits back to *"Gatetown, and a gate that has never opened"*; `WORLD.md` and `STORY.md`
+   arrived as a copy, since a split takes a directory prefix and they lived under `docs/`. Their
+   history stays in this repository, where nothing deletes it.
 5. **Tooling ergonomics** (§6) — after, informed by using it.
 
 Each step leaves the suite green on its own. Nothing here requires beta to be touched: beta runs

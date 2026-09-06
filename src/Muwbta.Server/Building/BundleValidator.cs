@@ -129,6 +129,8 @@ public static class BundleValidator
         CheckTerrain(bundle, Error, Warn);
         CheckConfigurations(bundle, Warn);
         CheckMaps(bundle, Error, Warn);
+        CheckQuestOffers(bundle, Error);
+        CheckMobReach(bundle, Error);
         CheckFlags(bundle, Error);
 
         return new BundleCheck(findings);
@@ -347,6 +349,153 @@ public static class BundleValidator
                     + $"{AssistOptions.DefaultCanonTokenBudget:N0} the assist's window budgets; the model will not read all of it");
             }
         }
+    }
+
+    /// <summary>
+    /// Every quest can be taken on by clicking its own prose (PLAN.md §4.9).
+    /// </summary>
+    /// <remarks>
+    /// Marking the words is optional to the engine - an unmarked offer falls back to a dim line
+    /// naming the command - which is exactly why this is checked here. An offer that quietly lost
+    /// its marker still works, still reads fine, and is discoverable only by playing that quest.
+    /// <para>
+    /// These rules were a test in the engine repository that read the shipped world off disk. That
+    /// made them assertions about one authored world rather than about the format, so they moved to
+    /// the checker every bundle passes through, wherever its content lives.
+    /// </para>
+    /// </remarks>
+    private static void CheckQuestOffers(WorldBundle bundle, Action<string> error)
+    {
+        foreach (var quest in bundle.Quests)
+        {
+            var offer = quest.Dialogue?.GetValueOrDefault(QuestDialogue.GiverOffer) ?? string.Empty;
+            var marked = QuestOffer.Keywords(offer);
+
+            if (marked.Count == 0)
+            {
+                error($"quest {quest.Key} marks nothing in its offer, so it can only be taken on "
+                    + "from the dim fallback line");
+                continue;
+            }
+
+            // One link per offer. Two would both work, and would read as two errands in one
+            // sentence.
+            if (marked.Count > 1)
+            {
+                error($"quest {quest.Key} marks {marked.Count} things in its offer; one is the link");
+                continue;
+            }
+
+            // The marker sits on the noun the errand is about. One wrapping the whole line is a
+            // parenthetical with extra steps.
+            if (marked[0].Length >= QuestOffer.Plain(offer).Length / 2)
+            {
+                error($"quest {quest.Key} marks '{marked[0]}', which is most of the line");
+            }
+        }
+    }
+
+    /// <summary>
+    /// Every mob a spawner places can be hit, and can hit back (PLAN.md §4.6).
+    /// </summary>
+    /// <remarks>
+    /// <b>The clamps make this failure silent by construction.</b> <see cref="DamageCalculator"/>
+    /// bounds the hit chance, so a defence pushed past what a level-appropriate player can answer
+    /// does not error anywhere - the numbers go on making sense and the fight simply stops being
+    /// winnable. Every other guard on scaling asks whether a stat came out at the right multiple.
+    /// This asks the only question a player cares about.
+    /// <para>
+    /// The player modelled is the floor rather than the average: someone who has reached the mob's
+    /// level carrying nothing special. A guard modelling a well-equipped player would pass while
+    /// the zone was unplayable for anybody who arrived without the right weapon, and arriving
+    /// without it is what happens on the way in.
+    /// </para>
+    /// </remarks>
+    private static void CheckMobReach(WorldBundle bundle, Action<string> error)
+    {
+        var worlds = bundle.Worlds.ToDictionary(w => w.Key, w => Dials(w.Multipliers), StringComparer.Ordinal);
+        var zones = bundle.Zones.ToDictionary(z => z.Key, StringComparer.Ordinal);
+        var mobs = bundle.MobTemplates.ToDictionary(m => m.Key, StringComparer.Ordinal);
+
+        foreach (var spawner in bundle.Spawners.Where(s => s.TemplateKind == TemplateKind.Mob))
+        {
+            if (!zones.TryGetValue(spawner.ZoneKey, out var zone)
+                || !mobs.TryGetValue(spawner.TemplateKey, out var mob))
+            {
+                continue;
+            }
+
+            var worldKey = zone.Key.Split('.')[0];
+            var world = worlds.TryGetValue(worldKey, out var w) ? w : new Multipliers();
+
+            var scaling = spawner.FightsAtLevel is { } target
+                ? MobScaling.FromTarget(mob.Level, target)
+                : MobScaling.FromZone(mob.Level, world, Dials(zone.Multipliers), zone.MinLevel);
+
+            var resolved = scaling.ResolveStats(mob.BaseStats);
+            var defence = StatReader.TryReadInt(resolved, "defense", out var d) ? d : 0;
+            var armor = StatReader.TryReadInt(resolved, "armor", out var a) ? a : 0;
+
+            var attacker = new AttackerStats(
+                Level: scaling.Level,
+                AttackRating: (int)Math.Round(
+                    DamageCalculator.CharacterSkill * (scaling.Level + 5), MidpointRounding.AwayFromZero),
+                BaseDamage: 0,
+                MinDamage: 1,
+                MaxDamage: 1);
+
+            var chance = DamageCalculator.HitChance(
+                attacker, new DefenderStats(scaling.Level, defence, armor));
+
+            if (chance < LeastReachable)
+            {
+                error($"{mob.Key} in {zone.Key} can be hit {chance:P0} of the time by a level "
+                    + $"{scaling.Level} player carrying nothing special; {LeastReachable:P0} is the floor");
+            }
+
+            var absorbed = ArmorCurve.Mitigation(armor, scaling.Level, 0);
+
+            if (absorbed > WorstAbsorbed)
+            {
+                error($"{mob.Key} in {zone.Key} absorbs {absorbed:P0} of a blow; {WorstAbsorbed:P0} is the ceiling");
+            }
+        }
+    }
+
+    /// <summary>The least often a level-appropriate player should be able to land a blow.</summary>
+    /// <remarks>
+    /// Deliberately loose. The point is to catch a wall, not to tune evasiveness - a mob that wants
+    /// to be hard to hit is entitled to be.
+    /// </remarks>
+    private const double LeastReachable = 0.25;
+
+    /// <summary>The most a blow should ever be absorbed. <see cref="ArmorCurve.Cap"/> allows 75%.</summary>
+    /// <remarks>
+    /// Separate from the roll, and looser, because armour is a fraction with a ceiling rather than a
+    /// comparison - it can make a fight long, and it cannot make one impossible.
+    /// </remarks>
+    private const decimal WorstAbsorbed = 0.65m;
+
+    /// <summary>A bundle's multiplier bag as the dials the domain reads.</summary>
+    private static Multipliers Dials(IReadOnlyDictionary<string, decimal>? values)
+    {
+        var dials = new Multipliers();
+
+        if (values is null)
+        {
+            return dials;
+        }
+
+        decimal Get(string key) => values.TryGetValue(key, out var v) ? v : 1m;
+
+        dials.Strength = Get("strength");
+        dials.Health = Get("health");
+        dials.Damage = Get("damage");
+        dials.Xp = Get("xp");
+        dials.Gold = Get("gold");
+        dials.ItemValue = Get("itemValue");
+
+        return dials;
     }
 
     /// <summary>

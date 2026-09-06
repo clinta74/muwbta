@@ -39,6 +39,14 @@ add-only, like the ability reconcile: a configuration with a list keeps it, what
 operator who cleared theirs on purpose keeps it cleared. Editing the file changes what a *new*
 server starts with; editing the panel changes what a running one enforces.
 
+## The format version
+
+**`formatVersion` must match the server exactly.** It is the one hard refusal in the whole import
+path. Author against `WorldBundle.CurrentFormatVersion` — these files are at **18** — not against
+this sentence, which has been wrong twice; a test fails if it disagrees with
+`BundleFormat.CurrentVersion`. The same applies to any world bundle imported here, whichever
+repository it comes from.
+
 ## Applying it
 
 It merges alongside the world, and the same command takes both:

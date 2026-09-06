@@ -462,7 +462,11 @@ public sealed class BundleValidatorTests
     public void Every_dialogue_key_the_engine_reads_is_accepted()
     {
         var bundle = Valid();
-        var dialogue = Muwbta.Domain.Quests.QuestDialogue.All.ToDictionary(key => key, _ => "text");
+        // A marked offer, because an unmarked one is now its own error and this test is about
+        // which dialogue keys are accepted rather than about what the offer says.
+        var dialogue = Muwbta.Domain.Quests.QuestDialogue.All.ToDictionary(
+            key => key,
+            key => key == "giverOffer" ? "Bring me those <things>." : "text");
 
         Assert.True(Check(bundle with { Quests = [Quest("q1", dialogue)] }).Ok);
     }
@@ -500,6 +504,53 @@ public sealed class BundleValidatorTests
             "q1", new Dictionary<string, string> { ["giverOffer"] = "Bring me those <things>." });
 
         Assert.True(Check(bundle with { Quests = [quest] }).Ok);
+    }
+
+    /// <summary>
+    /// An offer with no marker at all, which the engine tolerates and a player barely finds.
+    /// </summary>
+    /// <remarks>
+    /// Marking is optional to the engine - an unmarked offer falls back to a dim line naming the
+    /// command - which is exactly why it is checked here. This and the two below were a test in
+    /// this repository that read the shipped world off disk, making them assertions about one
+    /// authored world rather than about the format. They belong to every bundle, including one
+    /// from a repository this engine has never seen.
+    /// </remarks>
+    [Fact]
+    public void An_offer_that_marks_nothing_cannot_be_clicked()
+    {
+        var bundle = Valid();
+        var quest = Quest(
+            "q1", new Dictionary<string, string> { ["giverOffer"] = "Bring me those things." });
+
+        AssertError(bundle with { Quests = [quest] }, "marks nothing in its offer");
+    }
+
+    /// <summary>One link per offer. Two would both work, and read as two errands in one sentence.</summary>
+    [Fact]
+    public void An_offer_marks_one_thing_and_not_two()
+    {
+        var bundle = Valid();
+        var quest = Quest(
+            "q1",
+            new Dictionary<string, string> { ["giverOffer"] = "He wants <a thing> and <another>." });
+
+        AssertError(bundle with { Quests = [quest] }, "one is the link");
+    }
+
+    /// <summary>The marker sits on the noun the errand is about, not around the whole line.</summary>
+    [Fact]
+    public void A_marker_wrapping_the_line_is_a_parenthetical_with_extra_steps()
+    {
+        var bundle = Valid();
+        var quest = Quest(
+            "q1",
+            new Dictionary<string, string>
+            {
+                ["giverOffer"] = "<He would like you to go and fetch the thing for him>.",
+            });
+
+        AssertError(bundle with { Quests = [quest] }, "which is most of the line");
     }
 
     /// <summary>

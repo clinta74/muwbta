@@ -297,7 +297,7 @@ seam is drawn as a road or track running between them, which is what a road does
   unnamed paths are on the Midgaard sheet.
 - **`edge`** — the outline of the land simply stops. Ground fill terminates in a ragged edge and
   there is nothing past it. No border, no cliff hatching, no label saying it is dangerous —
-  §1.4 of [WORLD.md](WORLD.md) is explicit that the horror is structural, and this is the one place
+  §1.4 of WORLD.md (in the Reaches repository) is explicit that the horror is structural, and this is the one place
   the map can honour that directly.
 - **`ruin`** — a broken rectangle, three walls and a gap, over stipple.
 
@@ -520,7 +520,7 @@ Two drawing faults did surface, both from Ossara simply never having the case:
 
 All 21 rooms are `edge` (7 `rim`, 14 `standing`). Drawn by the normal rules, every room tore its own
 outward side and the realm came out as a **chewed tan continent on cream paper** — which decorates
-the idea instead of making it, exactly what §1.4 of [WORLD.md](WORLD.md) and §10.1's note on
+the idea instead of making it, exactly what §1.4 of WORLD.md (in the Reaches repository) and §10.1's note on
 `standing` warn against.
 
 So a realm more than a third `standing` is drawn **adrift**: the palette inverts, there is no land

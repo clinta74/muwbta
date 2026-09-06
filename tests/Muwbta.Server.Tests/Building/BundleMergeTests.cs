@@ -22,13 +22,19 @@ namespace Muwbta.Server.Tests.Building;
 /// </remarks>
 public sealed class BundleMergeTests
 {
+    /// <summary>
+    /// Every bundle this repository ships, as merge sources.
+    /// </summary>
+    /// <remarks>
+    /// This used to read the authored world. It reads what the engine ships now - the ability set,
+    /// and whatever else lands beside it - because the world moved to a repository of its own. The
+    /// tests that needed a world to say anything went with it; what is left is a property of the
+    /// merge rather than of any content, and holds for one file as well as for eight.
+    /// </remarks>
     private static IReadOnlyList<BundleSource> AuthoredContent()
     {
         var sources = new List<BundleSource>();
 
-        // content/ and shipped/ together, because that is what actually gets imported: the world
-        // and the ability set it is played with. Merging one without the other would prove less
-        // than the real command does.
         foreach (var path in BundleDirectories.All()
             .SelectMany(root => Directory.EnumerateFiles(root, "*.json", SearchOption.AllDirectories))
             .OrderBy(p => p, StringComparer.Ordinal))
@@ -40,6 +46,7 @@ public sealed class BundleMergeTests
         Assert.NotEmpty(sources);
         return sources;
     }
+
 
     private static JsonElement NoFlags => JsonDocument.Parse("{}").RootElement;
 
@@ -189,54 +196,7 @@ public sealed class BundleMergeTests
     // What it usefully checked - that the real content merges - is asserted below, as a property
     // rather than a number.
 
-    /// <summary>
-    /// <b>The whole point of merging.</b> Each file alone warns about references it cannot resolve,
-    /// because a realm's gate names a room in the next realm; merged, there is nothing left to
-    /// dangle. The count is asserted as zero of <em>everything</em>, errors and warnings both.
-    /// </summary>
-    [Fact]
-    public void What_the_parts_warn_about_the_whole_does_not()
-    {
-        var sources = AuthoredContent();
 
-        var apart = sources.Sum(s => BundleValidator.Validate(s.Bundle).Findings.Count);
-        Assert.True(apart > 0, "the per-file runs used to warn; if they no longer do, this proves nothing");
-
-        var merged = BundleMerge.Merge(sources);
-        Assert.True(merged.Ok, string.Join("\n", merged.Errors));
-
-        var whole = BundleValidator.Validate(merged.Bundle!);
-
-        Assert.True(
-            whole.Findings.Count == 0,
-            $"the merged world should be clean, and reported:\n  "
-            + string.Join("\n  ", whole.Findings.Select(f => $"{f.Level}: {f.Message}")));
-    }
-
-    /// <summary>
-    /// The merged bundle survives being written and read back — which is the check a tool shuffling
-    /// raw JSON cannot make, since well-formed JSON and "a bundle the endpoint will bind" are
-    /// different claims.
-    /// </summary>
-    [Fact]
-    public void The_merged_bundle_round_trips_through_the_format_the_endpoint_reads()
-    {
-        var merged = BundleMerge.Merge(AuthoredContent());
-        Assert.True(merged.Ok);
-
-        var json = BundleFormat.Write(merged.Bundle!);
-
-        Assert.True(BundleFormat.TryRead(json, out var reread, out var error), error);
-        Assert.Equal(merged.Bundle!.Rooms.Count, reread!.Rooms.Count);
-        Assert.Equal(merged.Bundle.Spawners.Count, reread.Spawners.Count);
-
-        // Mob attacks are authored in PascalCase and are the field that silently defaults under a
-        // case-sensitive reader, so they are what a round-trip test has to look at.
-        var attacks = reread.MobTemplates.SelectMany(m => m.Attacks).ToList();
-        Assert.NotEmpty(attacks);
-        Assert.Contains(attacks, a => a.Verb != Domain.Combat.AttackTiming.DefaultVerb);
-        Assert.Contains(attacks, a => a.EffectKey is not null);
-    }
 
     /// <summary>
     /// Re-merging unchanged content produces the same bytes, which is what makes it safe to leave

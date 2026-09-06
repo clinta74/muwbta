@@ -171,18 +171,18 @@ public sealed class BundleFormatTests
     // -----------------------------------------------------------------------
 
     /// <summary>
-    /// <c>content/README.md</c> tells an author which version to write. It said 9 through two bumps.
+    /// <c>shipped/README.md</c> tells an author which version to write. It said 9 through two bumps.
     /// </summary>
     [Fact]
     public void The_content_readme_names_the_version_this_build_reads()
     {
-        var readme = File.ReadAllText(Path.Combine(RepoPath.Root(), "content", "README.md"));
+        var readme = File.ReadAllText(Path.Combine(RepoPath.Root(), "shipped", "README.md"));
 
         var stated = Regex.Match(readme, @"these files are at \*\*(\d+)\*\*");
 
         Assert.True(
             stated.Success,
-            "content/README.md no longer states the format version in the shape this reads. "
+            "shipped/README.md no longer states the format version in the shape this reads. "
             + "Restore the sentence or delete this test deliberately - silently losing the check "
             + "is how it was wrong for two bumps.");
 

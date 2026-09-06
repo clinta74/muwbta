@@ -212,7 +212,7 @@ A change made in the builder lives in **that server's database and nowhere else*
 3. **Re-merge**, so the single-file bundle agrees with the parts:
 
    ```
-   dotnet run tools/merge-bundles.cs content shipped -o build/the-reaches.json
+   dotnet run tools/merge-bundles.cs <path-to-reaches>/content shipped -o build/the-reaches.json
    dotnet run tools/check-bundle.cs build/the-reaches.json
    ```
 
