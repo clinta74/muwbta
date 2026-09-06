@@ -9,9 +9,17 @@ namespace Muwbta.Mcp;
 /// The write half of the tool surface (docs/PAT-AND-MCP.md §11, Phase C).
 /// </summary>
 /// <remarks>
-/// Four tools, and two of them exist only because layout has semantics the generic upsert cannot
-/// express: digging a room places it beside another and links both ways, and setting an exit
-/// states a whole exit rather than patching one. Everything else is <c>upsert_content</c>.
+/// Three tools. <c>set_exit</c> is separate because an exit is stated whole rather than patched -
+/// a lock left out of the call is a lock removed - which is not what <c>upsert_content</c> means
+/// by a field.
+///
+/// There was a fourth, <c>dig_room</c>, wrapping the walk-and-build endpoint. It went after the
+/// first zone was drafted through these tools, which is the only evidence worth having: it failed
+/// (DigThrottle paces one dig every two seconds, for a builder holding a movement key), the
+/// fallback of upsert plus set_exit produced the same zone, and the fallback is the better path
+/// anyway - it writes the title, the prose and the grid position in one call, where a dig leaves a
+/// placeholder room that has to be written over. It cost a throttle, a second concept and a tool
+/// slot, against saving one call and some arithmetic.
 ///
 /// Every write passes <see cref="WorldGuard"/> first. The token's scope is the other guard and is
 /// the server's; a BuilderRead token is refused there no matter what is registered here.
@@ -25,7 +33,8 @@ public static class WriteTools
         quest, spawner. Give the fields as an object shaped like what get_content returns for that
         kind - read one first if you are unsure. Omitted fields are left alone on an update.
         A spawner has no key of its own: omit key to create one, and pass its id to update it.
-        Refuses to touch a world the running game is serving.
+        A room wants editorX and editorY, its square on the builder's map: read the zone's existing
+        rooms first and place new ones beside their neighbours, or they all land on the origin.
         """)]
     public static async Task<string> UpsertContentAsync(
         BuilderClient client,
@@ -100,8 +109,7 @@ public static class WriteTools
     [Description("""
         Deletes one piece of content. This is not reversible from here and the world is live for
         anything already active, so prefer where_used first for a mob or an item, and prefer
-        leaving a room in place over removing one somebody's exit points at. Refuses to touch a
-        world the running game is serving.
+        leaving a room in place over removing one somebody's exit points at.
         """)]
     public static async Task<string> DeleteContentAsync(
         BuilderClient client,
@@ -141,53 +149,13 @@ public static class WriteTools
         return string.IsNullOrWhiteSpace(body) ? $"Deleted {kind} '{key}'." : body;
     }
 
-    [McpServerTool(Name = "dig_room")]
-    [Description("""
-        Carves a new room in a direction from an existing one and links them both ways. This is
-        how a zone's layout is built: it places the new room beside its neighbour on the editor
-        grid, which upsert_content would leave you to work out by hand. Directions: north, east,
-        south, west, up, down. The new room arrives unnamed and undescribed - upsert_content gives
-        it its prose. Refuses to touch a world the running game is serving.
-        """)]
-    public static async Task<string> DigRoomAsync(
-        BuilderClient client,
-        WorldGuard guard,
-        [Description("The room to dig from, as world.zone.room.")] string from,
-        [Description("north, east, south, west, up, or down.")] string direction,
-        [Description("Key for the new room, as world.zone.room. The server picks one if omitted.")]
-        string? newRoomKey = null,
-        [Description("Whether the new room links back. True unless you mean a one-way passage.")]
-        bool reciprocal = true,
-        CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(client);
-        ArgumentNullException.ThrowIfNull(guard);
-
-        var key = Require(from, "from");
-
-        await guard.EnsureWritableAsync("room", [key, newRoomKey], cancellationToken)
-            .ConfigureAwait(false);
-
-        var payload = JsonSerializer.Serialize(new
-        {
-            direction = Require(direction, "direction"),
-            reciprocal,
-            newRoomKey,
-        });
-
-        return await client.SendAsync(
-            HttpMethod.Post,
-            $"/api/builder/rooms/{Uri.EscapeDataString(key)}/dig",
-            payload,
-            cancellationToken).ConfigureAwait(false);
-    }
-
     [McpServerTool(Name = "set_exit")]
     [Description("""
         Points one room's exit at another, or removes it when 'to' is omitted. The destination
-        does not have to exist yet. This states the whole exit: any lock or condition not named
-        here is removed, which is how a locked door is unlocked. For a new room and its link in
-        one step, dig_room is the tool. Refuses to touch a world the running game is serving.
+        does not have to exist yet, so a zone can be linked before it is written. This states the
+        whole exit: any lock or condition not named here is removed, which is how a locked door is
+        unlocked. Exits do not pair themselves - call it twice, once each way, unless you mean a
+        one-way passage.
         """)]
     public static async Task<string> SetExitAsync(
         BuilderClient client,

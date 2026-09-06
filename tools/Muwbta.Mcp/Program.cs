@@ -3,11 +3,10 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Muwbta.Mcp;
 
-// The MCP server for the builder API (docs/PAT-AND-MCP.md). Reads with any token; writes with a
-// BuilderWrite one, and never into a world the running game is serving unless --allow-active says
-// so. Two guards, in two places on purpose: the scope is the server's and cannot be argued with
-// from here, and WorldGuard is this process's, because "which world is live" is a question only
-// the caller's intent can settle.
+// The MCP server for the builder API (docs/PAT-AND-MCP.md). Reads with any token, writes with a
+// BuilderWrite one - the scope is the server's and cannot be argued with from here. WorldGuard is
+// this process's and is off unless --protect-active asks for it, because editing the live world is
+// what a builder already does and this holds a builder's token.
 
 BuilderOptions options;
 

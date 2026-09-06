@@ -106,19 +106,19 @@ public class BuilderOptionsTests
             StringComparison.Ordinal);
 
     /// <summary>
-    /// Off unless the launch command says otherwise, which is the whole safety model of the
-    /// world guard: the decision belongs to whoever starts the process.
+    /// The live world is writable by default, which is the answer the builder UI already gives an
+    /// account with this role. Protecting it is the operator's opt-in, made at the command line.
     /// </summary>
     [Fact]
-    public void Refuses_the_live_world_unless_the_flag_says_otherwise()
+    public void Writes_the_live_world_unless_the_flag_says_otherwise()
     {
-        Assert.False(BuilderOptions.From(Env(("MUWBTA_TOKEN", "t"))).AllowActive);
-        Assert.True(BuilderOptions.From(Env(("MUWBTA_TOKEN", "t")), "--allow-active").AllowActive);
+        Assert.False(BuilderOptions.From(Env(("MUWBTA_TOKEN", "t"))).ProtectActive);
+        Assert.True(BuilderOptions.From(Env(("MUWBTA_TOKEN", "t")), "--protect-active").ProtectActive);
     }
 
     [Fact]
     public void Ignores_an_unrecognised_flag() =>
-        Assert.False(BuilderOptions.From(Env(("MUWBTA_TOKEN", "t")), "--allow-actives").AllowActive);
+        Assert.False(BuilderOptions.From(Env(("MUWBTA_TOKEN", "t")), "--protect-actives").ProtectActive);
 
     [Fact]
     public void Accepts_a_longer_timeout_for_large_exports() =>

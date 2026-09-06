@@ -4,12 +4,25 @@ using ModelContextProtocol;
 namespace Muwbta.Mcp;
 
 /// <summary>
-/// Refuses writes to a world the running game is serving (docs/PAT-AND-MCP.md §14).
+/// Refuses writes to a world the running game is serving, when asked to (docs/PAT-AND-MCP.md §14).
 /// </summary>
 /// <remarks>
-/// The blast radius of an agent authoring at zone scale is a live world edited by accident, and
-/// the fix is not to make the agent careful - it is to make the careless case impossible. Drafting
-/// happens in a world that is not active; activation stays a human click in the Setup tab.
+/// <b>Off unless <c>--protect-active</c> says otherwise</b>, and that default is a correction. It
+/// was on, on the theory that an agent editing a live world is a blast radius worth closing - and
+/// the first zone drafted through these tools ran straight into it, because the world's own canon
+/// says a new zone stays under <c>aldenmoor.</c> and <c>aldenmoor</c> is the world being served.
+/// The guard blocked the documented workflow and prevented nothing.
+///
+/// The deeper reason it was wrong: live editing with no publish gate is a decision this codebase
+/// already made deliberately (PLAN.md §7.4, and the comment on the exit endpoint that says a
+/// destination is allowed not to exist yet for exactly that reason). A builder deletes the live
+/// starting room from the UI with two clicks, and this holds a token for an account with that same
+/// role. A guard here was a publish gate invented for agents alone, second-guessing a settled
+/// decision.
+///
+/// It survives as an opt-in because one case is real: an agent pointed at a server people are
+/// playing on, where the cost of a mistake is not a re-import but an interrupted evening. That is
+/// the operator's call, made at the command line, and not the agent's.
 ///
 /// <b>What this does not cover, and cannot.</b> Mobs, items, quests and abilities have no world:
 /// they are global, and one of them may be placed in the live world by a spawner that this has no
@@ -48,7 +61,7 @@ public sealed class WorldGuard(BuilderClient client, BuilderOptions options)
     {
         ArgumentNullException.ThrowIfNull(keys);
 
-        if (options.AllowActive)
+        if (!options.ProtectActive)
         {
             return;
         }
@@ -76,10 +89,10 @@ public sealed class WorldGuard(BuilderClient client, BuilderOptions options)
 
         throw new McpException(
             $"'{string.Join("', '", blocked)}' belongs to the configuration this server is running, "
-            + "so people are playing it. Author in a world that is not live and let a person "
-            + "activate it from Setup when it is ready. (If editing the live world really is the "
-            + "intent, this server has to be started with --allow-active, which is a decision for "
-            + "whoever runs it and not one you can make from here.)");
+            + "and this server was started with --protect-active. Author in a world that is not "
+            + "live and let a person activate it from Setup when it is ready. Whether an agent may "
+            + "edit the live world is settled at the command line by whoever runs this, so it is "
+            + "not a decision you can make from here.");
     }
 
     /// <summary>The worlds the active configuration claims, refreshed when stale.</summary>

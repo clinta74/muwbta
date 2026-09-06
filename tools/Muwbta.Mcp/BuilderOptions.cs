@@ -17,7 +17,7 @@ public sealed record BuilderOptions(
     string? CookieValue,
     string? Token,
     TimeSpan Timeout,
-    bool AllowActive)
+    bool ProtectActive)
 {
     /// <summary>Matches <c>AuthOptions.CookieName</c>, whose default is the same string.</summary>
     public const string DefaultCookieName = "muwbta.session";
@@ -32,9 +32,10 @@ public sealed record BuilderOptions(
           MUWBTA_TIMEOUT      Request timeout in seconds. Default 30.
 
         Flags:
-          --allow-active      Permit writes to the worlds the active configuration serves. Off by
-                              default: authoring happens in a world nobody is playing, and
-                              activation is a person's click in the Setup tab.
+          --protect-active    Refuse writes to the worlds the active configuration serves. Off by
+                              default, because a builder editing the live world is what the builder
+                              already does - this is for pointing an agent at a server people are
+                              playing on.
 
         One of MUWBTA_TOKEN or MUWBTA_COOKIE is required, and a token is better: it is meant to be
         held by a program, it reaches the builder API and nothing else, and it does not expire
@@ -96,10 +97,10 @@ public sealed record BuilderOptions(
             timeout = TimeSpan.FromSeconds(seconds);
         }
 
-        // A flag rather than an environment variable, and deliberately: the person who decides
-        // that an agent may edit the running world is the person who launches the server, and a
-        // flag is visible in the command line that did it.
-        var allowActive = args.Contains("--allow-active", StringComparer.Ordinal);
+        // Off by default, which is the same answer the builder UI gives: an account with the
+        // Builder role edits the live world, and this holds a token for exactly such an account.
+        // Opt in when an agent is pointed at a server people are actually playing on.
+        var protectActive = args.Contains("--protect-active", StringComparer.Ordinal);
 
         return new BuilderOptions(
             baseAddress,
@@ -107,6 +108,6 @@ public sealed record BuilderOptions(
             string.IsNullOrWhiteSpace(cookie) ? null : cookie.Trim(),
             string.IsNullOrWhiteSpace(token) ? null : token,
             timeout,
-            allowActive);
+            protectActive);
     }
 }

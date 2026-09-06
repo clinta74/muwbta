@@ -25,11 +25,11 @@ public static class ServerGuidance
         This server authors one deployment of muwbta, a text world whose content - rooms, mobs,
         items, quests, abilities - lives behind its builder API.
 
-        Two things it will refuse, so you are not surprised by them mid-task. A read-only token
-        cannot write, whatever you call; that is the server's rule and nothing here can talk it
-        round. And no write may touch a world the running game is serving - authoring happens in a
-        world nobody is playing, and a person activates it from the Setup tab when it is ready.
-        Neither refusal is worth retrying.
+        One thing it will refuse, so you are not surprised by it mid-task: a read-only token
+        cannot write, whatever you call. That is the server's rule and nothing here can talk it
+        round, so it is not worth retrying. Writing to the world the game is currently serving is
+        allowed - a builder does that from the editor every day - unless this server was started
+        with --protect-active, which says so plainly when it refuses.
 
         Read muwbta://canon before drafting any prose. It is the world's own account of what is
         true in it and the voice it is written in, and it is the only thing here that can tell you
@@ -49,9 +49,10 @@ public static class ServerGuidance
            zone's own prose is a better guide to its voice than any description of it, canon
            included.
         4. validate_zone and check_quest after any change, and act on what they say.
-        5. Build layout with dig_room rather than upsert_content: it places the new room beside
-           its neighbour on the grid and links both ways, which you would otherwise have to work
-           out by hand. Give it its prose with upsert_content afterwards.
+        5. Build a layout by writing each room with upsert_content, giving it editorX and editorY
+           beside its neighbours, then set_exit twice for each link - once each way. Exits do not
+           pair themselves, and a room with no coordinates lands on the origin along with every
+           other one.
         6. export_bundle to show your work: it returns the same JSON the builder's import accepts,
            so a person can diff it before anything reaches the world.
 

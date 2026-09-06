@@ -89,6 +89,38 @@ public sealed class BuilderClient
     {
         ArgumentNullException.ThrowIfNull(method);
 
+        // A 429 here is pacing, not refusal, and the two limits an author meets are both tuned for
+        // a person: the builder bucket for someone editing quickly, and DigThrottle for a held-down
+        // movement key carving forty rooms. An agent laying out a zone digs six times in half a
+        // second and is entirely legitimate, so waiting is the correct response and giving up is
+        // not - a dig refused leaves the room unlinked and the zone quietly broken, which is what
+        // this cost the first time it happened.
+        for (var attempt = 0; ; attempt++)
+        {
+            try
+            {
+                return await SendOnceAsync(method, path, json, cancellationToken).ConfigureAwait(false);
+            }
+            catch (McpException) when (LastStatus == HttpStatusCode.TooManyRequests && attempt < RetryLimit)
+            {
+                await Task.Delay(RetryWait, cancellationToken).ConfigureAwait(false);
+            }
+        }
+    }
+
+    /// <summary>Twice is enough for both limits; more would be waiting out a real problem.</summary>
+    private const int RetryLimit = 2;
+
+    /// <summary>Longer than DigThrottle's two seconds, and long enough to refill the bucket.</summary>
+    private static readonly TimeSpan RetryWait = TimeSpan.FromMilliseconds(2500);
+
+    private async Task<string> SendOnceAsync(
+        HttpMethod method,
+        string path,
+        string? json,
+        CancellationToken cancellationToken)
+    {
+
         using var request = new HttpRequestMessage(method, path);
 
         if (json is not null)
@@ -162,10 +194,10 @@ public sealed class BuilderClient
                 $"Something already exists at '{path}'. The server said: {Trim(body)}",
 
             HttpStatusCode.TooManyRequests =>
-                "Rate limited by the builder policy"
+                (Reason(body) ?? "Rate limited by the builder policy.")
                 + (response.Headers.RetryAfter?.Delta is { } wait
-                    ? $"; it will let the next call through in about {(int)wait.TotalSeconds}s."
-                    : ". Slow down and try again."),
+                    ? $" It will let the next call through in about {(int)wait.TotalSeconds}s."
+                    : " Waiting and retrying is the right response; this client already did, twice."),
 
             _ => $"The server answered {(int)response.StatusCode} {response.StatusCode} for '{path}'."
                 + (string.IsNullOrWhiteSpace(body) ? string.Empty : $" {Trim(body)}"),

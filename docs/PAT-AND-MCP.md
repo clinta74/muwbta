@@ -267,7 +267,6 @@ grows, and the REST surface is shaped for a React client that already knows the 
 | `get_content` | the `GET /{key}` endpoints, same `kind` |
 | `upsert_content` | `POST`/`PATCH` by kind — one tool, kind-tagged payload |
 | `delete_content` | the `DELETE` endpoints |
-| `dig_room` | `POST /rooms/{key}/dig` — layout is the operation agents do most, and the one with real semantics |
 | `set_exit` | `PUT`/`DELETE /rooms/{key}/exits/{direction}` |
 | `validate_zone` | `/zones/{key}/validate` + `/unfinished` + `/storyline`, merged — the agent wants "what is wrong here", not three calls |
 | `spawn_preview` | `/zones/{key}/preview` |
@@ -305,9 +304,19 @@ The agent must not edit the live world by accident. Two guards:
 
 1. The token's account is a builder, so `/api/admin` is closed to it by policy before scope is even
    consulted.
-2. The MCP server refuses to write to a world belonging to the **active** configuration unless
-   started with an explicit `--allow-active` flag. Authoring happens in a draft world; activation
-   stays a human click in the Setup tab.
+2. `WorldGuard` refuses to write to a world belonging to the **active** configuration — but only
+   when started with `--protect-active`, and it is **off by default**. Separately, and
+   unconditionally, no tool wraps the configuration endpoints, so activating one is not something
+   a token can do however it is asked.
+
+**The guard was on by default, and that was wrong.** It came off after the first zone was drafted
+through these tools. Aldenmoor's canon says a new zone stays under `aldenmoor.`; `aldenmoor` is the
+world being served; so the guard blocked the workflow the canon prescribes and prevented nothing.
+The deeper error was second-guessing a settled decision — live editing with no publish gate is what
+PLAN.md §7.4 chose, and a builder deletes the live starting room from the UI with two clicks. This
+holds a token for an account with that same role, so a gate here imposed on agents a restriction
+the product does not impose on people. It survives as an opt-in for the one case that is real: an
+agent pointed at a server people are playing on.
 
 ---
 
@@ -320,8 +329,15 @@ having?* — for about a day's work, and if the answer is no it stops here.
 
 **Phase B — tokens.** §1–§9. The bulk of the work, and worth doing only after Phase A pays.
 
-**Phase C — writes. Built.** `upsert_content`, `dig_room`, `set_exit` and `delete_content`, behind
-a `BuilderWrite` token and the active-world guard.
+**Phase C — writes. Built.** `upsert_content`, `set_exit` and `delete_content`, behind a
+`BuilderWrite` token.
+
+`dig_room` was built and then removed. `DigThrottle` paces the walk-and-build endpoint at one dig
+every two seconds — it exists to stop a held-down movement key carving forty rooms — and an agent
+laying out a zone digs six times in half a second. Five were refused, the rooms went in unlinked,
+and `validate_zone` reported four orphan rooms. `upsert_content` plus `set_exit` produced the same
+zone and is the better path: one call writes the title, the prose and the grid position, where a
+dig leaves a placeholder to be written over.
 
 ### The cheaper alternative to Phase B — not taken
 
