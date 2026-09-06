@@ -174,7 +174,7 @@ Findings from reading all of it in one sitting. Numbered so §3 can point at the
    strongest writing in the game and reachable by nobody for a long time. Some of the Marker Road
    can be seeded at level 8 without spending it (§3.1 A).
 9. **Unplaced.** `azhen-dust-mite`, `nemhal-crypt-mite`, `golden-goose`. The first two are
-   chassis-1 vermin in realms that use chassis 7–10 only (WORLD.md §10.4), so they can never be in
+   chassis-1 vermin in realms that use chassis 7–10 only (WORLD.md §10.3), so they can never be in
    band; the goose is a fixture. Delete the mites or give them a pin.
 
 Not a finding: the quest text has no encoding damage. The "�" seen in a console dump was the
@@ -503,7 +503,8 @@ thing that lets a *quest* NPC keep talking between quests (gated on their own ch
    markers, forty and the face, and - once the stones are brought - Yrriska, which she answers by
    not answering. **The content pass is complete.**
 4. ~~Re-read WORLD.md §7.1 and §10.4 against what landed and correct them.~~ Done 2026-09-04: §7.1
-   was rewritten with §4.1, and §10.4 records the roster pass and the boss key.
+   was rewritten with §4.1, and §10.3 records the roster pass. WORLD.md was cut back to the world and
+   the authoring rules on 2026-09-05; the engine arithmetic it used to tabulate lives in §10.2 now.
 5. ~~Decide §4.5, and build it if the answer is yes.~~ Built 2026-09-04.
 
 ### 4.5 The canon belongs to the active world — built
