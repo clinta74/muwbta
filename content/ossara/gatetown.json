@@ -906,6 +906,26 @@
       "paths": []
     },
     {
+      "key": "ossara-empty-cup",
+      "name": "an empty cup",
+      "description": "The same thick brown clay, cool now, with a ring of barley stuck to the bottom where the last of it dried. It is Khaldra's crockery, and Khaldra's crockery goes back.",
+      "icon": "i",
+      "slots": [],
+      "isTwoHanded": false,
+      "weight": 1,
+      "baseValue": 0,
+      "baseStats": {},
+      "attackDelayPulses": null,
+      "attackVerb": null,
+      "isQuestItem": true,
+      "isLore": false,
+      "isNoDrop": false,
+      "isLightSource": false,
+      "foodValue": null,
+      "drinkValue": null,
+      "paths": []
+    },
+    {
       "key": "ossara-hand-axe",
       "name": "a hand axe",
       "description": "A wood axe with the handle cut down. Half the town owns one for the wood and has never thought of it as anything else.",
@@ -924,6 +944,26 @@
       "attackDelayPulses": 8,
       "attackVerb": "chop",
       "isQuestItem": false,
+      "isLore": false,
+      "isNoDrop": false,
+      "isLightSource": false,
+      "foodValue": null,
+      "drinkValue": null,
+      "paths": []
+    },
+    {
+      "key": "ossara-hearth-cup",
+      "name": "a filled cup",
+      "description": "Thick brown clay with a handle on either side, filled to a thumb's width from the rim. What is in it is mostly barley and is definitely not tea.",
+      "icon": "i",
+      "slots": [],
+      "isTwoHanded": false,
+      "weight": 1,
+      "baseValue": 0,
+      "baseStats": {},
+      "attackDelayPulses": null,
+      "attackVerb": null,
+      "isQuestItem": true,
       "isLore": false,
       "isNoDrop": false,
       "isLightSource": false,
@@ -1440,6 +1480,10 @@
             "keyword": "ember",
             "text": "'A woman took a coal from this fire the first winter I had it. Paid in a knife I still use. She has not aged a day in nineteen years and she has never come back for the coal. If you meet a smith with no forge, that is her.'",
             "requiresQuest": "a1-3-a-gate-does-not-break"
+          },
+          {
+            "keyword": "cups",
+            "text": "'I do not count them. I know where they are, which is a different thing and takes less arithmetic.' He glances at the shelf without meaning to. 'Fourteen. That is not counting. That is looking.'"
           }
         ]
       },
@@ -3584,9 +3628,80 @@
       "wanders": false,
       "fightsAtLevel": null,
       "nameModifier": null
+    },
+    {
+      "id": "b7c4e2a1-9f3d-4c58-8e1a-6d05b3f27a94",
+      "zoneKey": "ossara.gatetown",
+      "templateKey": "ossara-hearth-cup",
+      "templateKind": "Item",
+      "roomKeys": [
+        "ossara.gatetown.khaldras-hearth"
+      ],
+      "targetCount": 1,
+      "respawnSeconds": 60,
+      "wanders": false,
+      "fightsAtLevel": null,
+      "nameModifier": null
     }
   ],
-  "quests": [],
+  "quests": [
+    {
+      "key": "s1-1-a-cup-for-the-ferry",
+      "zoneKey": "ossara.gatetown",
+      "name": "A Cup for the Ferry",
+      "summary": "Carry a filled cup from Khaldra's hearth down to Old Ossa.",
+      "description": "Corun fills a cup for the ferryman most days and gets it down to him on about half of them. Neither of them will leave their post, and the cup does not walk.",
+      "giverMobKey": "ossara-innkeeper",
+      "turninMobKey": "ossara-ferryman",
+      "requiredItemKey": "ossara-hearth-cup",
+      "requiredCount": 1,
+      "rewardXp": 80,
+      "rewardGold": 0,
+      "rewardItemKey": "ossara-empty-cup",
+      "rewardItemCount": 1,
+      "rewardFlagKey": null,
+      "prerequisiteQuestKeys": [],
+      "isRepeatable": false,
+      "autoStart": false,
+      "paths": [],
+      "dialogue": {
+        "giverOffer": "Corun fills a cup without being asked and sets it on the end of the long table. 'That one is Ossa's. He will not leave the rope and I will not leave the fire, so one of us has to be you.' He pushes the <hot cup> an inch closer. 'Walk like it is hot.'",
+        "turninReady": "Ossa takes it in both hands, drinks a third of it standing, then sits down on the nailed stool to do the rest properly. 'He does this,' he says. 'I have told him I can walk up the hill myself.' He does not look like a man about to walk up a hill.",
+        "giverComplete": "'He got it hot, then. Good. Cold is an insult and he would drink it anyway, which is worse.'",
+        "giverInProgress": "'Still on the table, is it. It does not improve with standing there.'"
+      },
+      "sortOrder": 1
+    },
+    {
+      "key": "s1-2-what-comes-back",
+      "zoneKey": "ossara.gatetown",
+      "name": "What Comes Back",
+      "summary": "Take Old Ossa's empty cup back up to Corun.",
+      "description": "Ossa is not walking up the hill and the cup is not staying on the raft. Corun keeps track of his crockery, and has kept track of it for nineteen years.",
+      "giverMobKey": "ossara-ferryman",
+      "turninMobKey": "ossara-innkeeper",
+      "requiredItemKey": "ossara-empty-cup",
+      "requiredCount": 1,
+      "rewardXp": 70,
+      "rewardGold": 8,
+      "rewardItemKey": "bread",
+      "rewardItemCount": 1,
+      "rewardFlagKey": null,
+      "prerequisiteQuestKeys": [
+        "s1-1-a-cup-for-the-ferry"
+      ],
+      "isRepeatable": false,
+      "autoStart": true,
+      "paths": [],
+      "dialogue": {
+        "giverOffer": "Ossa turns the cup over, taps the last of it into the river, and holds out the <empty cup>. 'Back up the hill with that. He counts them.' He settles onto the stool and takes up the rope. 'He will tell you he does not count them.'",
+        "turninReady": "Corun takes the cup, looks into it out of habit, and stands it upside down on the shelf with the others. 'Fourteen,' he says, to nobody in particular. Then he cuts the end off a loaf and puts it in your hand without discussing it.",
+        "giverComplete": "'It got there. It always gets there. That is not the same as it getting there on its own.'",
+        "giverInProgress": "'Still holding it? Up the hill. Four turns and not one of them steep.'"
+      },
+      "sortOrder": 2
+    }
+  ],
   "configurations": [
     {
       "key": "aldenmoor-starter",
