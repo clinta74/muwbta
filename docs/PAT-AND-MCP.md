@@ -1,7 +1,10 @@
 # Personal Access Tokens and an MCP Authoring Server — Design
 
-> Status: planned, not scheduled. Written 2026-09-05. This is a design/evaluation document
-> for a future build; no code has been changed.
+> Status: **Phases A and B built** (2026-09-05/06). Part 1 is implemented — `access_tokens`,
+> `AccessTokenHandler`, the `/api/auth/tokens` endpoints, and the Setup panel — and the read-only
+> MCP server in `tools/Muwbta.Mcp` now authenticates with a token. Phase C (write tools) is not
+> built. Where the build learned something the design had wrong, the section says so rather than
+> being quietly rewritten.
 
 ## Context
 
@@ -229,12 +232,16 @@ and target both the account itself for self-service and the admin as actor for a
 `ServerMetrics` gains a counter for token auth outcomes (`accepted`, `expired`, `revoked`,
 `unknown`, `banned`, `scope-refused`). A rise in `unknown` is somebody trying tokens.
 
-## 9. Client surface
+## 9. Client surface — **built, and not where this said**
 
-A **Tokens** section in the existing Accounts area (`client/src/builder/accounts/`), visible to any
-builder rather than to admins only — which means `BuilderShell.tsx:82` either shows the tab to
-builders with only that section inside, or the section moves to a small self-service panel reached
-from the shell. The former is less new surface.
+It landed as a third **Setup** section (`client/src/builder/setup/TokensPanel.tsx`), not in
+Accounts.
+
+The reasoning above was wrong on a fact: Accounts is Admin-only and administers *other people*,
+while a token is personal and every builder needs one. Showing that tab to builders would have
+meant exposing the account-administration chrome in order to gate a single panel inside it. Setup
+is already the builder-visible home for the things that are not a world, and this is one more of
+them — one section entry, no change to who sees which tab.
 
 One-time-secret UX: a modal with the token in a copy field and a plain sentence saying it will not
 be shown again.
@@ -315,9 +322,11 @@ having?* — for about a day's work, and if the answer is no it stops here.
 **Phase B — tokens.** §1–§9. The bulk of the work, and worth doing only after Phase A pays.
 
 **Phase C — writes.** Turn on `upsert_content`, `dig_room`, `set_exit`, and `delete_content` behind
-a `BuilderWrite` token and the active-world guard.
+a `BuilderWrite` token and the active-world guard. Not built. The server side is ready for it: a
+`BuilderWrite` token already reaches every builder write, so this is entirely work in
+`tools/Muwbta.Mcp`.
 
-### The cheaper alternative to Phase B
+### The cheaper alternative to Phase B — not taken
 
 If the only person doing this is the operator on the dev box, bind a loopback-only endpoint that
 accepts a shared secret from configuration and issues a builder principal. Perhaps thirty lines: no

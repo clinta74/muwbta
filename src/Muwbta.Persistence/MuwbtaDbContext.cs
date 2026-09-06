@@ -56,6 +56,9 @@ public sealed class MuwbtaDbContext(DbContextOptions<MuwbtaDbContext> options) :
 
     public DbSet<AdminAudit> AdminAudits => Set<AdminAudit>();
 
+    /// <summary>Non-interactive credentials for the builder API (docs/PAT-AND-MCP.md).</summary>
+    public DbSet<AccessToken> AccessTokens => Set<AccessToken>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         ArgumentNullException.ThrowIfNull(modelBuilder);

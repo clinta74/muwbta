@@ -67,4 +67,40 @@ public sealed class AuthOptions
     /// "own an account": without it the real owner could never get back in.
     /// </summary>
     public int LoginBackoffMaxSeconds { get; set; } = 900;
+
+    /// <summary>
+    /// The longest life a personal access token may be given, in days (docs/PAT-AND-MCP.md §4).
+    /// </summary>
+    /// <remarks>
+    /// A ceiling rather than a default, because the failure mode is not a token that expires too
+    /// soon - it is one that never does. A credential with no end date is one nobody revokes,
+    /// since nothing ever reminds them it exists. Ninety days is long enough that renewing is
+    /// rare and short enough that a token forgotten on a decommissioned laptop stops mattering.
+    ///
+    /// A guess, and worth a real number once there is use to look at.
+    /// </remarks>
+    public int TokenMaxLifetimeDays { get; set; } = 90;
+
+    /// <summary>
+    /// How many live tokens one account may hold at once.
+    /// </summary>
+    /// <remarks>
+    /// So a compromised session cannot quietly mint a hundred of them and leave one behind after
+    /// the obvious ones are revoked. Ten is more than anybody needs and few enough to read.
+    /// </remarks>
+    public int TokensPerAccount { get; set; } = 10;
+
+    /// <summary>
+    /// How stale <c>last_used_at</c> may get before a request writes it, in minutes.
+    /// </summary>
+    /// <remarks>
+    /// The column answers "is this token still in use", not "what minute was it last used", and
+    /// writing it on every call would put an UPDATE on the path of every authenticated builder
+    /// request to record something nobody reads at that resolution. An hour keeps the list
+    /// useful and the write rare.
+    /// </remarks>
+    public int TokenLastUsedIntervalMinutes { get; set; } = 60;
+
+    public TimeSpan TokenLastUsedInterval =>
+        TimeSpan.FromMinutes(Math.Max(0, TokenLastUsedIntervalMinutes));
 }

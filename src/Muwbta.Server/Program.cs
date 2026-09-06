@@ -19,6 +19,7 @@ using Muwbta.Server.Game;
 using Muwbta.Server.Infrastructure;
 using Muwbta.Server.Infrastructure.Repositories;
 using Muwbta.Server.Telemetry;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.HttpOverrides;
@@ -143,8 +144,22 @@ builder.Services.AddSingleton<LoginThrottle>();
 builder.Services.AddSingleton<ServerMetrics>(sp =>
     new ServerMetrics(sp.GetService<System.Diagnostics.Metrics.IMeterFactory>()));
 
+// Two credentials, one policy scheme to choose between them (docs/PAT-AND-MCP.md §6). The cookie
+// is unchanged and stays the browser's; a request carrying an Authorization header is a program
+// holding a personal access token. Selecting on the header rather than on the path means every
+// existing RequireAuthorization(...) keeps working untouched, and HttpContext.TryGetAccountId
+// works for both because both emit NameIdentifier.
+//
+// The cookie remains the default for anything with neither, which includes the SSE endpoints the
+// browser's EventSource cannot put a header on.
 builder.Services
-    .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+    .AddAuthentication(options => options.DefaultScheme = MuwbtaAuthentication.PolicyScheme)
+    .AddPolicyScheme(MuwbtaAuthentication.PolicyScheme, "cookie or access token", options =>
+        options.ForwardDefaultSelector = context =>
+            context.Request.Headers.Authorization.Count > 0
+                ? AccessTokenDefaults.Scheme
+                : CookieAuthenticationDefaults.AuthenticationScheme)
+    .AddScheme<AuthenticationSchemeOptions, AccessTokenHandler>(AccessTokenDefaults.Scheme, null)
     .AddCookie(options =>
     {
         options.Cookie.Name = authOptions.CookieName;
@@ -300,6 +315,7 @@ app.UseRateLimiter();
 // Endpoints
 // ---------------------------------------------------------------------------
 app.MapAuthEndpoints();
+app.MapAccessTokenEndpoints();
 app.MapCharacterEndpoints();
 app.MapGameEndpoints();
 app.MapMapEndpoints();

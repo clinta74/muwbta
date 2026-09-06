@@ -38,7 +38,17 @@ public sealed class BuilderClient
         this.options = options;
         http.BaseAddress = options.BaseAddress;
         http.Timeout = options.Timeout;
-        http.DefaultRequestHeaders.Add("Cookie", $"{options.CookieName}={options.CookieValue}");
+        // A token when there is one. It is the credential this was built for: a cookie is a
+        // browser's, it expires when its session does, and it carries the whole account rather
+        // than the builder surface alone.
+        if (options.Token is { Length: > 0 } token)
+        {
+            http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        }
+        else
+        {
+            http.DefaultRequestHeaders.Add("Cookie", $"{options.CookieName}={options.CookieValue}");
+        }
         http.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
     }
 
@@ -84,13 +94,17 @@ public sealed class BuilderClient
     /// The failure messages an agent will actually read. A bare "401" sends it round the loop
     /// again with the same cookie; naming the fix ends the attempt instead.
     /// </summary>
-    private static string Explain(HttpResponseMessage response, string path, string body) =>
+    private string Explain(HttpResponseMessage response, string path, string body) =>
         response.StatusCode switch
         {
-            HttpStatusCode.Unauthorized =>
-                "Not signed in. The session cookie in MUWBTA_COOKIE has expired or is wrong - "
-                + "sign in to the builder in a browser and copy the new value. Nothing this server "
-                + "does can renew it, so retrying will not help.",
+            HttpStatusCode.Unauthorized => options.Token is { Length: > 0 }
+                ? "The access token in MUWBTA_TOKEN was refused. It has expired, been revoked, or "
+                    + "the account's password changed since it was issued - a new one is minted at "
+                    + "Builder > Setup > Access tokens. The server's reason, if it gave one: "
+                    + Trim(body)
+                : "Not signed in. The session cookie in MUWBTA_COOKIE has expired or is wrong - "
+                    + "sign in to the builder in a browser and copy the new value. A personal access "
+                    + "token in MUWBTA_TOKEN does not have this problem. Retrying will not help.",
 
             HttpStatusCode.Forbidden =>
                 "Signed in, but that account does not hold the Builder role. An administrator "

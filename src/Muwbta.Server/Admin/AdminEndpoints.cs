@@ -44,6 +44,12 @@ public static class AdminEndpoints
         group.MapPost("/accounts/{username}/unlock", UnlockLoginAsync);
 
         group.MapDelete("/characters/{name}", DeleteCharacterAsync);
+
+        // Standing credentials for the builder API (docs/PAT-AND-MCP.md §7). Read-only, plus the
+        // ability to pull one - an admin cannot mint a token for somebody else, which would be a
+        // way to hold an account without ever touching its password.
+        group.MapGet("/accounts/{username}/tokens", ListTokensAsync);
+        group.MapDelete("/tokens/{id:guid}", RevokeTokenAsync);
     }
 
     private static async Task<IResult> SearchAsync(
@@ -195,6 +201,34 @@ public static class AdminEndpoints
 
         var result = await accounts.UnlockLoginAsync(actorId, username, ct);
         return await RespondAsync(result, username, accounts, ct);
+    }
+
+    private static async Task<IResult> ListTokensAsync(
+        string username,
+        AccountAdminService accounts,
+        CancellationToken ct) =>
+        await accounts.TokensForAsync(username, ct) is { } tokens
+            ? Results.Ok(tokens)
+            : Results.NotFound(new { error = $"There is no account named '{username}'." });
+
+    private static async Task<IResult> RevokeTokenAsync(
+        Guid id,
+        AccountAdminService accounts,
+        HttpContext http,
+        CancellationToken ct)
+    {
+        if (!http.TryGetAccountId(out var actorId))
+        {
+            return Results.Unauthorized();
+        }
+
+        var result = await accounts.RevokeTokenAsync(actorId, id, ct);
+
+        return result.Ok
+            ? Results.Ok(new { message = result.Message })
+            : result.Failure == ModerationFailure.NoSuchTarget
+                ? Results.NotFound(new { error = result.Message })
+                : Results.BadRequest(new { error = result.Message });
     }
 
     private static async Task<IResult> DeleteCharacterAsync(

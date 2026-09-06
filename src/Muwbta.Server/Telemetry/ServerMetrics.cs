@@ -35,6 +35,7 @@ public sealed class ServerMetrics : IDisposable
     private readonly Counter<long> _rateLimitRejections;
     private readonly Counter<long> _moderationActions;
     private readonly Counter<long> _saveFailures;
+    private readonly Counter<long> _tokenAuth;
 
     public ServerMetrics(IMeterFactory? factory = null)
     {
@@ -69,6 +70,15 @@ public sealed class ServerMetrics : IDisposable
         _saveFailures = _meter.CreateCounter<long>(
             "muwbta.saves.failed",
             description: "Character save batches that failed to reach the database.");
+
+        // A personal access token is a credential nobody is watching: no browser, no person to
+        // notice a refusal. A rise in `unknown` is somebody trying tokens at the door, and it is
+        // the only place that would show.
+        _tokenAuth = _meter.CreateCounter<long>(
+            "muwbta.token.auth",
+            description:
+                "Access token authentication attempts, by outcome: accepted, malformed, unknown, "
+                + "expired, revoked, banned, stale_password, scope_refused.");
     }
 
     public void SignIn(string outcome) =>
@@ -87,6 +97,9 @@ public sealed class ServerMetrics : IDisposable
 
     public void SaveFailed(int characters) => _saveFailures.Add(1);
 
+    public void TokenAuth(string outcome) =>
+        _tokenAuth.Add(1, new KeyValuePair<string, object?>("outcome", outcome));
+
     public void Dispose() => _meter.Dispose();
 }
 
@@ -98,4 +111,30 @@ public static class SignInOutcome
     public const string UnknownUser = "unknown_user";
     public const string Paused = "paused";
     public const string Banned = "banned";
+}
+
+/// <summary>
+/// The outcomes of presenting an access token, spelled once (docs/PAT-AND-MCP.md §8).
+/// </summary>
+public static class TokenAuthOutcome
+{
+    public const string Accepted = "accepted";
+
+    /// <summary>Not a token at all, and refused before any lookup.</summary>
+    public const string Malformed = "malformed";
+
+    /// <summary>Well-formed and matches no row, or the secret is wrong. The interesting one.</summary>
+    public const string Unknown = "unknown";
+
+    public const string Expired = "expired";
+    public const string Revoked = "revoked";
+
+    /// <summary>The account is gone or banned since the token was issued.</summary>
+    public const string Banned = "banned";
+
+    /// <summary>Issued against a password that has since changed.</summary>
+    public const string StalePassword = "stale_password";
+
+    /// <summary>A real token, pointed somewhere its scope does not reach.</summary>
+    public const string ScopeRefused = "scope_refused";
 }

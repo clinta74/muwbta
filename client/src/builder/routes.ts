@@ -28,10 +28,14 @@ export type BuilderTab =
   | 'accounts'
 
 /**
- * The two halves of server-wide setup (PLAN.md §4.16, §6). Neither belongs to a world, which is
- * why they are their own tab rather than a corner of the World one.
+ * The parts of setup that are not about one entity in a world (PLAN.md §4.16, §6), plus access
+ * tokens (docs/PAT-AND-MCP.md §9).
+ *
+ * Tokens are the odd one: the other two are server-wide and this one is personal. It sits here
+ * because Setup is already the builder-visible home for everything that is not a world, and the
+ * alternative was opening the Admin-only Accounts tab to builders to gate a single panel.
  */
-export const SETUP_SECTIONS = ['configurations', 'transfer'] as const
+export const SETUP_SECTIONS = ['configurations', 'transfer', 'tokens'] as const
 export type SetupSection = (typeof SETUP_SECTIONS)[number]
 
 /** The route params react-router extracts from the `world` branch, each a single slug. */

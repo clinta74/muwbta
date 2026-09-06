@@ -318,7 +318,22 @@ public static partial class AuthEndpoints
             Message = "Your password changed. Sign in again to continue.",
         });
 
-        return Results.NoContent();
+        // Every access token this account holds stopped working a moment ago, for the reason the
+        // cookies did: each one snapshotted PasswordChangedAt at issue, and AccessTokenHandler
+        // compares it on every request (docs/PAT-AND-MCP.md §7). No sweep runs and none is
+        // needed - but it is a surprise if nobody says so, because a token lives in a config file
+        // somewhere rather than in a browser that visibly signs out.
+        var tokens = await db.AccessTokens
+            .CountAsync(t => t.AccountId == account.Id && t.RevokedAt == null && t.ExpiresAt > clock.GetUtcNow(),
+                cancellationToken);
+
+        return tokens == 0
+            ? Results.NoContent()
+            : Results.Ok(new
+            {
+                message = $"Password changed. {tokens} access token{(tokens == 1 ? string.Empty : "s")} "
+                    + "stopped working and will need reissuing.",
+            });
     }
 
     /// <summary>

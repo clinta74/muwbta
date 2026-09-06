@@ -11,7 +11,12 @@ namespace Muwbta.Mcp;
 /// cookie out of shell history and out of the repository, which is the whole reason it is not a
 /// flag.
 /// </remarks>
-public sealed record BuilderOptions(Uri BaseAddress, string CookieName, string CookieValue, TimeSpan Timeout)
+public sealed record BuilderOptions(
+    Uri BaseAddress,
+    string CookieName,
+    string? CookieValue,
+    string? Token,
+    TimeSpan Timeout)
 {
     /// <summary>Matches <c>AuthOptions.CookieName</c>, whose default is the same string.</summary>
     public const string DefaultCookieName = "muwbta.session";
@@ -19,13 +24,15 @@ public sealed record BuilderOptions(Uri BaseAddress, string CookieName, string C
     public const string Usage = """
         Environment:
           MUWBTA_URL          Base address of the server. Default http://localhost:5050
-          MUWBTA_COOKIE       The value of the session cookie for a Builder account. Required.
-                              In the browser's dev tools, Application > Cookies > muwbta.session.
+          MUWBTA_TOKEN        A personal access token (muwbta_pat_...). The one to use.
+                              Builder > Setup > Access tokens mints one.
+          MUWBTA_COOKIE       A session cookie value, if there is no token yet. Expires.
           MUWBTA_COOKIE_NAME  Cookie name, if the deployment renamed it. Default muwbta.session.
           MUWBTA_TIMEOUT      Request timeout in seconds. Default 30.
 
-        The cookie expires the way any session does. When every call starts answering
-        "not signed in", sign in again in the browser and copy the new value.
+        One of MUWBTA_TOKEN or MUWBTA_COOKIE is required, and a token is better: it is meant to be
+        held by a program, it reaches the builder API and nothing else, and it does not expire
+        the moment somebody signs out of a browser.
         """;
 
     public static BuilderOptions FromEnvironment() =>
@@ -50,11 +57,12 @@ public sealed record BuilderOptions(Uri BaseAddress, string CookieName, string C
             throw new InvalidOperationException($"MUWBTA_URL is not a valid absolute URL: '{url}'.");
         }
 
+        var token = read("MUWBTA_TOKEN")?.Trim();
         var cookie = read("MUWBTA_COOKIE");
 
-        if (string.IsNullOrWhiteSpace(cookie))
+        if (string.IsNullOrWhiteSpace(token) && string.IsNullOrWhiteSpace(cookie))
         {
-            throw new InvalidOperationException("MUWBTA_COOKIE is required.");
+            throw new InvalidOperationException("MUWBTA_TOKEN or MUWBTA_COOKIE is required.");
         }
 
         // A pasted cookie often arrives as the whole header - "muwbta.session=abc" - because that
@@ -63,7 +71,7 @@ public sealed record BuilderOptions(Uri BaseAddress, string CookieName, string C
         var name = read("MUWBTA_COOKIE_NAME") ?? DefaultCookieName;
         var prefix = name + "=";
 
-        if (cookie.StartsWith(prefix, StringComparison.Ordinal))
+        if (cookie is not null && cookie.StartsWith(prefix, StringComparison.Ordinal))
         {
             cookie = cookie[prefix.Length..];
         }
@@ -81,6 +89,11 @@ public sealed record BuilderOptions(Uri BaseAddress, string CookieName, string C
             timeout = TimeSpan.FromSeconds(seconds);
         }
 
-        return new BuilderOptions(baseAddress, name, cookie.Trim(), timeout);
+        return new BuilderOptions(
+            baseAddress,
+            name,
+            string.IsNullOrWhiteSpace(cookie) ? null : cookie.Trim(),
+            string.IsNullOrWhiteSpace(token) ? null : token,
+            timeout);
     }
 }

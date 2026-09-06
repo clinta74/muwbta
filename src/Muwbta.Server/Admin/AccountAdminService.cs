@@ -149,6 +149,83 @@ public sealed class AccountAdminService(
     }
 
     /// <summary>
+    /// The access tokens an account holds, for an administrator (docs/PAT-AND-MCP.md §7).
+    /// </summary>
+    /// <remarks>
+    /// Names and dates, never a secret - there is no secret stored to leak, which is the point of
+    /// §3. "Who holds a standing credential for the builder API" is an administrative question of
+    /// the same kind as "who is a builder", and it is one nobody can answer from the account row.
+    /// </remarks>
+    public async Task<IReadOnlyList<AccessTokenSummary>?> TokensForAsync(
+        string username,
+        CancellationToken cancellationToken)
+    {
+        var account = await db.Accounts.AsNoTracking()
+            .FirstOrDefaultAsync(a => a.Username == username, cancellationToken);
+
+        if (account is null)
+        {
+            return null;
+        }
+
+        var now = clock.GetUtcNow();
+
+        var rows = await db.AccessTokens.AsNoTracking()
+            .Where(t => t.AccountId == account.Id && t.RevokedAt == null)
+            .OrderByDescending(t => t.CreatedAt)
+            .ToListAsync(cancellationToken);
+
+        return [.. rows.Select(t => AccessTokenEndpoints.Summarise(t, now))];
+    }
+
+    /// <summary>
+    /// Revokes somebody else's token.
+    /// </summary>
+    /// <remarks>
+    /// The audit row records the admin as actor and the token's owner as target, which is the
+    /// difference between this and the owner revoking their own - and the whole reason the two
+    /// paths do not share one method.
+    /// </remarks>
+    public async Task<ModerationResult> RevokeTokenAsync(
+        Guid actorAccountId,
+        Guid tokenId,
+        CancellationToken cancellationToken)
+    {
+        var row = await db.AccessTokens.FirstOrDefaultAsync(t => t.Id == tokenId, cancellationToken);
+
+        if (row is null)
+        {
+            return new ModerationResult(false, "There is no token with that id.")
+            {
+                Failure = ModerationFailure.NoSuchTarget,
+            };
+        }
+
+        if (row.RevokedAt is not null)
+        {
+            return ModerationResult.Refused("That token was already revoked.");
+        }
+
+        var now = clock.GetUtcNow();
+        row.RevokedAt = now;
+
+        Audit(new AdminAudit
+        {
+            ActorAccountId = actorAccountId,
+            TargetAccountId = row.AccountId,
+            Action = AdminAction.TokenRevoked,
+            Before = AccessTokenSecret.Describe(row.Name, row.Scope, row.ExpiresAt),
+            After = null,
+            Reason = null,
+            At = now,
+        });
+
+        await db.SaveChangesAsync(cancellationToken);
+
+        return new ModerationResult(true, $"Revoked '{row.Name}'.", row.AccountId);
+    }
+
+    /// <summary>
     /// Clears the sign-in backoff against an account (see <see cref="LoginThrottle"/>).
     /// </summary>
     /// <remarks>

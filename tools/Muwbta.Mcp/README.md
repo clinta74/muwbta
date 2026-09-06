@@ -20,9 +20,13 @@ Build it once:
 dotnet build tools/Muwbta.Mcp
 ```
 
-Sign in to the builder in a browser as an account with the Builder role, then copy the session
-cookie: dev tools → Application → Cookies → `muwbta.session`. Copy the **value**; pasting
-`muwbta.session=…` whole works too.
+Mint a token: sign in to the builder as an account with the Builder role, then **Setup → Access
+tokens**. `BuilderRead` is enough for everything here, since none of these tools write. Copy it
+when it is shown — it is not shown twice.
+
+(A session cookie in `MUWBTA_COOKIE` still works, and was how this ran before tokens existed. It
+expires when the browser session does, and it carries the whole account rather than the builder
+surface alone, so it is the fallback rather than the way.)
 
 Then register it with your agent. For Claude Code, `.mcp.json` in the repository root:
 
@@ -33,24 +37,24 @@ Then register it with your agent. For Claude Code, `.mcp.json` in the repository
       "command": "tools/Muwbta.Mcp/bin/Debug/net10.0/Muwbta.Mcp.exe",
       "env": {
         "MUWBTA_URL": "http://localhost:5050",
-        "MUWBTA_COOKIE": "paste-the-cookie-value-here"
+        "MUWBTA_TOKEN": "muwbta_pat_..."
       }
     }
   }
 }
 ```
 
-That file holds a live credential for a builder account, so `.mcp.json` is in `.gitignore`. Putting
-the server in your user-level MCP configuration instead works too, and is arguably where a personal
-cookie belongs.
+That file holds a live credential, so `.mcp.json` is in `.gitignore`. Putting the server in your
+user-level MCP configuration instead works too, and is arguably where a personal token belongs.
 
-The cookie expires the way any session does. When every call starts answering "Not signed in",
-sign in again and copy the new value — nothing here can renew it.
+A token expires — every one does, by design. When calls start being refused, mint another and
+revoke the old one from the same panel.
 
 | Variable | Default | |
 |---|---|---|
 | `MUWBTA_URL` | `http://localhost:5050` | Base address of the server. |
-| `MUWBTA_COOKIE` | — | **Required.** The session cookie's value. |
+| `MUWBTA_TOKEN` | — | A personal access token. This or `MUWBTA_COOKIE` is required. |
+| `MUWBTA_COOKIE` | — | A session cookie value, if there is no token. Expires with the session. |
 | `MUWBTA_COOKIE_NAME` | `muwbta.session` | If the deployment renamed it (`AuthOptions.CookieName`). |
 | `MUWBTA_TIMEOUT` | `30` | Seconds. Raise it for a whole-world export. |
 

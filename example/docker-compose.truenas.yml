@@ -87,6 +87,12 @@ services:
       Auth__LoginFailuresBeforeBackoff: '5'
       Auth__LoginBackoffSeconds: '30'
       Auth__LoginBackoffMaxSeconds: '900'
+      # Personal access tokens (docs/PAT-AND-MCP.md). The ceiling on how long one may be given -
+      # there is no 'never expires' - how many live ones an account may hold, and how stale the
+      # last-used stamp may get before a request writes it.
+      Auth__TokenMaxLifetimeDays: '90'
+      Auth__TokensPerAccount: '10'
+      Auth__TokenLastUsedIntervalMinutes: '60'
       # Which proxies' X-Forwarded-* headers to believe. The compose network is the nginx hop; the
       # TLS terminator in front of port 7180 - on another host - goes in KnownProxies, or the walk
       # stops at it and every visitor shares its address for rate limiting. Both empty means the

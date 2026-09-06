@@ -119,9 +119,14 @@ public sealed class ComposeConfigurationKeysTests
     [Fact]
     public void The_auth_section_holds_exactly_the_settings_the_deployments_declare()
     {
-        // Same pin, for the section whose keys were dead. Both computed properties -
-        // RevalidationInterval and SessionTimeout - are absent by construction: they have no
-        // setter, so the binder cannot reach them and neither can a compose file.
+        // Same pin, for the section whose keys were dead. The computed properties -
+        // RevalidationInterval, SessionTimeout, TokenLastUsedInterval - are absent by
+        // construction: they have no setter, so the binder cannot reach them and neither can a
+        // compose file.
+        //
+        // It earned its keep a second time when the access token settings arrived
+        // (docs/PAT-AND-MCP.md): three new keys, and this is what said the example deployments
+        // had not been told about them.
         Assert.Equal(
             [
                 nameof(AuthOptions.CookieName),
@@ -130,6 +135,9 @@ public sealed class ComposeConfigurationKeysTests
                 nameof(AuthOptions.LoginFailuresBeforeBackoff),
                 nameof(AuthOptions.RevalidationIntervalSeconds),
                 nameof(AuthOptions.SessionTimeoutMinutes),
+                nameof(AuthOptions.TokenLastUsedIntervalMinutes),
+                nameof(AuthOptions.TokenMaxLifetimeDays),
+                nameof(AuthOptions.TokensPerAccount),
             ],
             SettableNames(typeof(AuthOptions)));
     }

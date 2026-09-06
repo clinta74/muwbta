@@ -21,11 +21,35 @@ public class BuilderOptionsTests
     }
 
     [Fact]
-    public void Refuses_to_start_without_a_cookie() =>
+    public void Refuses_to_start_without_a_credential() =>
         Assert.Contains(
-            "MUWBTA_COOKIE",
+            "MUWBTA_TOKEN",
             Assert.Throws<InvalidOperationException>(() => BuilderOptions.From(Env())).Message,
             StringComparison.Ordinal);
+
+    [Fact]
+    public void A_token_alone_is_enough()
+    {
+        var options = BuilderOptions.From(Env(("MUWBTA_TOKEN", "muwbta_pat_abc_def")));
+
+        Assert.Equal("muwbta_pat_abc_def", options.Token);
+        Assert.Null(options.CookieValue);
+    }
+
+    /// <summary>
+    /// Both set is a machine mid-migration from the cookie it started with. The token wins,
+    /// because it is the credential meant for a program - and silently preferring the worse one
+    /// would be a puzzle to debug.
+    /// </summary>
+    [Fact]
+    public void A_token_wins_over_a_cookie()
+    {
+        var options = BuilderOptions.From(Env(
+            ("MUWBTA_TOKEN", "muwbta_pat_abc_def"),
+            ("MUWBTA_COOKIE", "stale")));
+
+        Assert.Equal("muwbta_pat_abc_def", options.Token);
+    }
 
     /// <summary>
     /// What the dev tools copy button actually puts on the clipboard. Pasting it whole used to be

@@ -82,4 +82,22 @@ public enum AdminAction
     /// as much as for a ban.
     /// </summary>
     LoginUnlocked = 6,
+
+    /// <summary>
+    /// A personal access token minted (docs/PAT-AND-MCP.md §8).
+    /// </summary>
+    /// <remarks>
+    /// Self-service, so actor and target are usually the same account - which is not a reason to
+    /// leave it out. "Who holds a standing credential for the builder API" is an administrative
+    /// question of the same kind as "who is a builder", and the answer has to survive the token
+    /// being revoked. <see cref="AdminAudit.After"/> carries the token's name and scope, and
+    /// never any part of the secret.
+    /// </remarks>
+    TokenIssued = 7,
+
+    /// <summary>
+    /// A token revoked, by its owner or by an administrator. <see cref="AdminAudit.ActorAccountId"/>
+    /// says which.
+    /// </summary>
+    TokenRevoked = 8,
 }
