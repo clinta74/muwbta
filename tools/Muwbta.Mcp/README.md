@@ -32,7 +32,7 @@ Then register it with your agent. For Claude Code, `.mcp.json` in the repository
     "muwbta": {
       "command": "tools/Muwbta.Mcp/bin/Debug/net10.0/Muwbta.Mcp.exe",
       "env": {
-        "MUWBTA_URL": "http://localhost:5000",
+        "MUWBTA_URL": "http://localhost:5050",
         "MUWBTA_COOKIE": "paste-the-cookie-value-here"
       }
     }
@@ -49,7 +49,7 @@ sign in again and copy the new value — nothing here can renew it.
 
 | Variable | Default | |
 |---|---|---|
-| `MUWBTA_URL` | `http://localhost:5000` | Base address of the server. |
+| `MUWBTA_URL` | `http://localhost:5050` | Base address of the server. |
 | `MUWBTA_COOKIE` | — | **Required.** The session cookie's value. |
 | `MUWBTA_COOKIE_NAME` | `muwbta.session` | If the deployment renamed it (`AuthOptions.CookieName`). |
 | `MUWBTA_TIMEOUT` | `30` | Seconds. Raise it for a whole-world export. |
@@ -64,8 +64,8 @@ question rather than fetch a row.
 |---|---|
 | `list_content` | Content of one kind: configuration, world, zone, room, mob, item, ability, quest, spawner. Rooms need a zone. |
 | `get_content` | One piece of content by key. |
-| `validate_zone` | What is wrong with a zone — computed warnings plus the hand-set unfinished flags. |
-| `zone_map` | The room grid and exits, plus the storyline graph. |
+| `validate_zone` | What is structurally wrong with a zone — computed warnings, the hand-set unfinished flags, and the quest graph's cycles, unreachable quests and missing prerequisites. |
+| `spawn_preview` | What a zone's spawns are worth once world and zone multipliers are applied. |
 | `check_quest` | Whether a quest can actually be finished. |
 | `where_used` | Which spawners carry a mob or item template, and where they sit. |
 | `export_bundle` | A world or zone as import-shaped bundle JSON, for diffing before anything changes. |
@@ -77,7 +77,7 @@ draft button cannot end up in different worlds.
 ## The thing to be clear about
 
 `validate_zone` is **structural only**. It catches dangling exits, unknown flags, missing
-descriptions, ragged grids, inherited PvP, and quests that cannot be completed. It catches nothing
+descriptions, ragged grids, inherited PvP, and quest chains that cycle or cannot be reached. It catches nothing
 about voice, tone, or canon — a zone can pass every check and still read like it belongs to a
 different game.
 
@@ -87,10 +87,12 @@ authoring, it does not remove the author.
 
 ## Known gaps
 
-- **No end-to-end test against a running server.** The tests cover the path table and option
-  parsing; everything past the HTTP call has only been exercised by hand.
+- **The end-to-end run is a script, not a test.** Every tool and the canon resource have been
+  driven against a live server on the seeded Aldenmoor world, but by hand: the checked-in tests
+  cover the path table and option parsing only. Nothing in CI would notice if a route moved.
 - **The kind-to-path table can drift from the routes it targets.** `BuilderEndpoints` could rename
   a route and nothing here would fail until an agent got a 404 and concluded the content did not
   exist. A test that enumerates the server's actual endpoints would close this and has not been
-  written.
+  written. This is the same gap as above from the other side, and the one worth closing first if
+  Phase A turns into Phase B.
 - **No write tools.** That is Phase C, and it waits on the personal access tokens in Phase B.

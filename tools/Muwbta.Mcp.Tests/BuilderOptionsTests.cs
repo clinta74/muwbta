@@ -15,7 +15,7 @@ public class BuilderOptionsTests
     {
         var options = BuilderOptions.From(Env(("MUWBTA_COOKIE", "abc")));
 
-        Assert.Equal(new Uri("http://localhost:5000"), options.BaseAddress);
+        Assert.Equal(new Uri("http://localhost:5050"), options.BaseAddress);
         Assert.Equal(BuilderOptions.DefaultCookieName, options.CookieName);
         Assert.Equal(TimeSpan.FromSeconds(30), options.Timeout);
     }

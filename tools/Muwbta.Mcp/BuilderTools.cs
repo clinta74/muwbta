@@ -85,9 +85,10 @@ public static class BuilderTools
 
     [McpServerTool(Name = "validate_zone")]
     [Description("""
-        Reports what is wrong with a zone: dangling exits, unknown flags, rooms with no
-        description, ragged grids, inherited PvP - plus the rooms still flagged unfinished. This is
-        a structural check only. It says nothing about whether the prose fits the world's canon,
+        Everything structurally wrong with a zone, in one answer: dangling exits, unknown flags,
+        rooms with no description, ragged grids, inherited PvP; the rooms still flagged unfinished;
+        and the quest graph, with any cycles, unreachable quests, and missing prerequisites. This
+        is a structural check only. It says nothing about whether the prose fits the world's canon,
         so it cannot tell you the writing is good, only that the wiring holds.
         """)]
     public static async Task<string> ValidateZoneAsync(
@@ -97,9 +98,11 @@ public static class BuilderTools
     {
         ArgumentNullException.ThrowIfNull(client);
 
-        // Merged because they are one question. A builder asking "what is wrong here" wants the
-        // hand-set unfinished flags alongside the computed warnings, and two tools would mean an
-        // agent that reliably calls one of them.
+        // Three endpoints, one question. A builder asking "what is wrong here" wants the hand-set
+        // unfinished flags and the quest graph's own findings alongside the computed warnings, and
+        // three tools would mean an agent that reliably calls one of them. The storyline belongs
+        // here rather than beside the spawn preview it used to sit with: cycles, unreachable and
+        // missingPrerequisites are the same kind of finding as a dangling exit, one layer up.
         var key = Uri.EscapeDataString(Require(zone, "zone"));
 
         var validation = await client
@@ -110,16 +113,21 @@ public static class BuilderTools
             .GetAsync($"/api/builder/zones/{key}/unfinished", cancellationToken)
             .ConfigureAwait(false);
 
-        return Combine(("validation", validation), ("unfinished", unfinished));
+        var storyline = await client
+            .GetAsync($"/api/builder/zones/{key}/storyline", cancellationToken)
+            .ConfigureAwait(false);
+
+        return Combine(("validation", validation), ("unfinished", unfinished), ("storyline", storyline));
     }
 
-    [McpServerTool(Name = "zone_map")]
+    [McpServerTool(Name = "spawn_preview")]
     [Description("""
-        The shape of a zone: its room grid and exits as the editor draws them, plus the storyline
-        graph of which quests lead to which. Use this before digging, so new rooms land beside
-        the right ones rather than on top of them.
+        What a zone's spawns will actually be worth once its world and zone multipliers are
+        applied: each template's base and resolved health, xp and gold, and the level it fights
+        at. This is the balance view, not a map - for the layout of a zone, list_content(kind:
+        'room', zone: ...) returns every room with its editor coordinates and exits.
         """)]
-    public static async Task<string> ZoneMapAsync(
+    public static async Task<string> SpawnPreviewAsync(
         BuilderClient client,
         [Description("Zone key.")] string zone,
         CancellationToken cancellationToken)
@@ -128,15 +136,9 @@ public static class BuilderTools
 
         var key = Uri.EscapeDataString(Require(zone, "zone"));
 
-        var preview = await client
+        return await client
             .GetAsync($"/api/builder/zones/{key}/preview", cancellationToken)
             .ConfigureAwait(false);
-
-        var storyline = await client
-            .GetAsync($"/api/builder/zones/{key}/storyline", cancellationToken)
-            .ConfigureAwait(false);
-
-        return Combine(("preview", preview), ("storyline", storyline));
     }
 
     [McpServerTool(Name = "check_quest")]

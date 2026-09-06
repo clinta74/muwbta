@@ -18,7 +18,7 @@ public sealed record BuilderOptions(Uri BaseAddress, string CookieName, string C
 
     public const string Usage = """
         Environment:
-          MUWBTA_URL          Base address of the server. Default http://localhost:5000
+          MUWBTA_URL          Base address of the server. Default http://localhost:5050
           MUWBTA_COOKIE       The value of the session cookie for a Builder account. Required.
                               In the browser's dev tools, Application > Cookies > muwbta.session.
           MUWBTA_COOKIE_NAME  Cookie name, if the deployment renamed it. Default muwbta.session.
@@ -43,7 +43,7 @@ public sealed record BuilderOptions(Uri BaseAddress, string CookieName, string C
     {
         ArgumentNullException.ThrowIfNull(read);
 
-        var url = read("MUWBTA_URL") ?? "http://localhost:5000";
+        var url = read("MUWBTA_URL") ?? "http://localhost:5050";
 
         if (!Uri.TryCreate(url, UriKind.Absolute, out var baseAddress))
         {

@@ -263,13 +263,20 @@ grows, and the REST surface is shaped for a React client that already knows the 
 | `delete_content` | the `DELETE` endpoints |
 | `dig_room` | `POST /rooms/{key}/dig` — layout is the operation agents do most, and the one with real semantics |
 | `set_exit` | `PUT`/`DELETE /rooms/{key}/exits/{direction}` |
-| `validate_zone` | `/zones/{key}/validate` + `/unfinished`, merged — the agent wants "what is wrong here", not two calls |
-| `zone_map` | `/zones/{key}/preview` + `/zones/{key}/storyline` |
+| `validate_zone` | `/zones/{key}/validate` + `/unfinished` + `/storyline`, merged — the agent wants "what is wrong here", not three calls |
+| `spawn_preview` | `/zones/{key}/preview` |
 | `check_quest` | `/quests/{key}/reachability` |
 | `export_bundle` | `/export`, for a diff before anything is activated |
 
 `validate_zone` is the important one. Everything else is typing; that tool is what turns a
 generator into an author.
+
+The storyline sits under it rather than beside the spawn preview, which is where Phase A first put
+it: `cycles`, `unreachable` and `missingPrerequisites` are the same kind of finding as a dangling
+exit, one layer up, while `/preview` turns out to be a balance view - resolved health, xp and gold
+after multipliers - and not a map at all. Layout comes from the room list, which carries editor
+coordinates and exits already. Worth recording because the endpoint's name suggests otherwise, and
+a tool description that repeats the wrong guess sends an agent to the wrong call.
 
 ## 12. Canon as resources, not prompt text
 
