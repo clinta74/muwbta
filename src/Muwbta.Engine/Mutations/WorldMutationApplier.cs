@@ -510,7 +510,7 @@ public sealed class WorldMutationApplier(
         WorldChange change,
         string startingRoomKey,
         string welcomeMessage,
-        string blockedWords,
+        string? blockedWords,
         string? canon)
     {
         if (!RoomKey.TryParse(startingRoomKey, out var starting))
@@ -523,9 +523,15 @@ public sealed class WorldMutationApplier(
         options.StartingRoom = starting;
         options.WelcomeMessage = welcomeMessage;
 
-        // Recompiled on the loop thread, once per change, which is the only place it should be:
-        // the filter is read on every line of speech and written about once a month.
-        options.BlockedWords = blockedWords;
+        // Null is "leave it", like the canon below: an import carries no list at all now, and the
+        // one thing worse than a server with no filter is a server whose filter changed because
+        // somebody imported a realm. Recompiled on the loop thread, once per change, which is the
+        // only place it should be - the filter is read on every line of speech and written about
+        // once a month.
+        if (blockedWords is not null)
+        {
+            options.BlockedWords = blockedWords;
+        }
 
         // Null is "leave it": a scoped bundle carries no canon and must not blank the live one.
         if (canon is not null)

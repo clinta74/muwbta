@@ -119,6 +119,15 @@ public sealed record WorldBundle(
     /// same world with different fields, and a version number is what stops somebody diffing the
     /// two and concluding content was lost (BUGS.md #17).
     ///
+    /// <b>18 because a server's blocked-words list stopped travelling.</b> A v17 bundle carries
+    /// <c>blockedWords</c> on every configuration; a v18 one does not, and importing a v17 file
+    /// here would silently apply somebody else's moderation policy to this server - or, exporting,
+    /// hand yours to whoever you sent a realm to. What a server refuses to hear belongs to whoever
+    /// runs it and to the people playing there, not to whoever authored the world, so it is
+    /// shipped with the engine and seeded once (<see cref="Moderation.DefaultBlockedWords"/>) and
+    /// the database is the authority after that. This is the strong kind of bump: both directions
+    /// change a policy nobody would see change.
+    ///
     /// <b>17 because a world carries the map of itself.</b> A v16 bundle has no <c>maps</c>, so
     /// read as v17 every world in it arrives with no sheet - which is the weak direction and
     /// harmless on its own. The bump is about the writing, and about what the sheets replaced: the
@@ -185,7 +194,7 @@ public sealed record WorldBundle(
     /// spawner in it would quietly change behaviour - which is the silent partial apply this
     /// number exists to refuse, arriving through a rename rather than through a new field.
     /// </remarks>
-    public const int CurrentFormatVersion = 17;
+    public const int CurrentFormatVersion = 18;
 }
 
 /// <summary>
@@ -202,25 +211,18 @@ public sealed record WorldBundle(
 /// Carried whole rather than scoped, like abilities: a configuration belongs to a server, not to a
 /// zone, so a zone-scoped export carries all of them or none.
 /// </remarks>
-/// <param name="BlockedWords">
-/// Optional, and the format version is deliberately not bumped for it: a bundle written before
-/// the field existed reads as "no list", which is exactly what those deployments had. The rule for
-/// bumping (see <see cref="WorldBundle.CurrentFormatVersion"/>) is a missing key changing
-/// meaning; here it keeps it.
-/// </param>
 public sealed record BundleGameConfiguration(
     string Key,
     string Name,
     string Description,
     string StartingRoomKey,
     string WelcomeMessage,
-    string? BlockedWords = null,
     /// <summary>
     /// The assist's canon as the exporting server actually reads it - the row's own text, or the
     /// one compiled into that server when the row is empty. Carried by a full export and by a
     /// configuration's own; null in a realm's scoped bundle, and null on import means "leave the
     /// stored one alone", so a realm's file cannot blank what a builder wrote in the panel.
-    /// Optional for the same reason <paramref name="BlockedWords"/> is.
+    /// Optional, and a missing key means "leave the stored one alone" rather than "blank it".
     /// </summary>
     string? Canon = null,
     /// <summary>

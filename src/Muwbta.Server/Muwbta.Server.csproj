@@ -21,6 +21,23 @@
     </PackageReference>
   </ItemGroup>
 
+  <!--
+    The default blocked-words list, embedded because the container publishes /app/publish and there
+    is no shipped/ beside the server in the image.
+
+    Embedded where the realm maps deliberately are not, and the difference is what each one can
+    disagree with. A map is drawn from authored rooms, so a build that carries its own can describe
+    a world the database no longer holds - which is why those travel as content now. This list is
+    derived from nothing: it is the engine's own floor, like the four abilities in AbilityCatalogue,
+    and it is only ever a starting value. Once a configuration has one, the database is the
+    authority and this is not consulted again.
+  -->
+  <ItemGroup>
+    <EmbeddedResource Include="..\..\shipped\blocked-words.txt">
+      <LogicalName>Muwbta.Server.BlockedWords.txt</LogicalName>
+    </EmbeddedResource>
+  </ItemGroup>
+
   <!-- WebApplicationFactory in the integration tests needs to see the entry point. -->
   <ItemGroup>
     <InternalsVisibleTo Include="Muwbta.Server.Tests" />

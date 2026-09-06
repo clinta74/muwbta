@@ -71,6 +71,12 @@ internal static partial class ServerLog
     public static partial void StreamClosed(ILogger logger, string character);
 
     [LoggerMessage(
+        EventId = 1036,
+        Level = LogLevel.Information,
+        Message = "Seeded the shipped blocked-words list into {Count} configuration(s)")]
+    public static partial void BlockedWordsSeeded(ILogger logger, int count);
+
+    [LoggerMessage(
         EventId = 1034,
         Level = LogLevel.Information,
         Message = "Loaded {Count} realm map sheet(s)")]

@@ -351,7 +351,7 @@ public sealed class WorldExporter(MuwbtaDbContext db, TimeProvider clock)
         var configurations = await query.OrderBy(c => c.Key).ToListAsync(cancellationToken);
 
         return [.. configurations.Select(c => new BundleGameConfiguration(
-            c.Key, c.Name, c.Description, c.StartingRoomKey, c.WelcomeMessage, c.BlockedWords,
+            c.Key, c.Name, c.Description, c.StartingRoomKey, c.WelcomeMessage,
             carriesCanon ? Assist.Canon.Resolve(c.Canon) : null,
             new List<string>(c.WorldKeys)))];
     }

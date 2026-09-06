@@ -479,7 +479,8 @@ public sealed record DeleteQuest(string Key) : WorldChange
 /// scoped bundle deliberately does not carry it, and an import that merged a realm must not wipe
 /// the canon a builder wrote in the panel. The API always sends a string; empty means "use the
 /// built-in one". <c>WorldKeys</c> follows the same rule: null leaves the stored list alone, and
-/// an empty list clears it.
+/// an empty list clears it. <c>BlockedWords</c> too, since it stopped travelling in bundles: an
+/// import must not touch what a server refuses to hear, so only the panel ever sends a value.
 /// </remarks>
 public sealed record UpsertGameConfiguration(
     string Key,
@@ -487,7 +488,7 @@ public sealed record UpsertGameConfiguration(
     string Description,
     string StartingRoomKey,
     string WelcomeMessage,
-    string BlockedWords,
+    string? BlockedWords,
     string? Canon,
     List<string>? WorldKeys,
     bool Live) : WorldChange

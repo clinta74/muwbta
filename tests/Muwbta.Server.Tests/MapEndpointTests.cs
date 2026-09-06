@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using Muwbta.Server.Building;
 using Muwbta.Server.Game;
 using Muwbta.Server.Tests.Infrastructure;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -37,7 +38,9 @@ public sealed class MapEndpointTests(PostgresFixture postgres)
             "/api/builder/import",
             new
             {
-                formatVersion = 17,
+                // The constant, never a literal: a hardcoded version here would fail every one of
+                // these the next time the format moves, and say nothing about why.
+                formatVersion = BundleFormat.CurrentVersion,
                 exportedAt = DateTimeOffset.UtcNow,
                 scope = new { kind = "all", key = (string?)null },
                 worlds = Array.Empty<object>(),

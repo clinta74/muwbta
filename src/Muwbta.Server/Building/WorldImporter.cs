@@ -418,7 +418,7 @@ public sealed class WorldImporter(MuwbtaDbContext db, WorldEditor editor)
         GameConfiguration.IsValidKey(c.Key)
             ? new UpsertGameConfiguration(
                 c.Key, c.Name, c.Description ?? string.Empty,
-                c.StartingRoomKey, c.WelcomeMessage ?? string.Empty, c.BlockedWords ?? string.Empty,
+                c.StartingRoomKey, c.WelcomeMessage ?? string.Empty, BlockedWords: null,
                 c.Canon, c.WorldKeys, Live: false)
             : null;
 

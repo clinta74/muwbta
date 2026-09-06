@@ -1,0 +1,54 @@
+# Words nobody may say in the game, and that no character may be named.
+#
+# This is the default the engine ships. It is seeded into a configuration that has none, and a
+# builder edits it from the panel afterwards - so changing this file changes what a *new* server
+# starts with, not what a running one enforces. The database is the authority once it has a value.
+#
+# One word per line. Lines starting with # are comments and are stripped on the way in; the stored
+# list is words only. WordFilter matches whole words, case-insensitively, and deliberately does not
+# match inside longer words - so "classic" and "Scunthorpe" are safe, and a filter that broke them
+# would be worse than no filter at all.
+#
+# This list is deliberately short and general. It is a floor, not a policy: what a given server
+# wants blocked depends on who plays there, and the panel is where that decision belongs.
+
+# Slurs. These are here first because they are what the filter is actually for.
+nigger
+nigga
+faggot
+fag
+tranny
+retard
+retarded
+spic
+chink
+kike
+wetback
+gook
+dyke
+paki
+
+# Sexual and violent language.
+rape
+rapist
+molest
+pedo
+pedophile
+
+# General profanity.
+fuck
+fucker
+fucking
+motherfucker
+shit
+bullshit
+cunt
+bitch
+whore
+slut
+bastard
+asshole
+dickhead
+twat
+wank
+wanker

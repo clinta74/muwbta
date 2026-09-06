@@ -17,6 +17,7 @@ using Muwbta.Server.Building;
 using Muwbta.Server.Characters;
 using Muwbta.Server.Game;
 using Muwbta.Server.Infrastructure;
+using Muwbta.Server.Moderation;
 using Muwbta.Server.Infrastructure.Repositories;
 using Muwbta.Server.Telemetry;
 using Microsoft.AspNetCore.Authentication;
@@ -433,6 +434,15 @@ else
         }
     }
 
+    // Every environment, like the abilities above and unlike starter content: a server that has
+    // never been told what to refuse should not be the one that finds out the hard way. Only fills
+    // a configuration that has none, so an operator who cleared the list keeps it cleared.
+    var filtered = await SeedBlockedWordsAsync(db);
+    if (filtered > 0)
+    {
+        ServerLog.BlockedWordsSeeded(logger, filtered);
+    }
+
     // After any seeding, for the same reason as the configuration below: a first boot should serve
     // the sheets the world it just planted came with. Failing to read them is not fatal - a server
     // that will not start because a drawing is unreadable has traded a map for a world.
@@ -456,6 +466,40 @@ else
 /// is a starting room that at least exists in code, where refusing to boot would take the whole
 /// server down over one editable text field.
 /// </remarks>
+/// <summary>
+/// Writes the shipped blocked-words list into any configuration that has none, and returns how
+/// many it filled.
+/// </summary>
+/// <remarks>
+/// Add-only, exactly like the ability reconcile: a configuration with a list keeps it, whatever it
+/// says, because the only way to tell an operator's deliberate empty list from an untouched one
+/// would be another column, and the cost of guessing wrong is a server that re-imposes a filter
+/// somebody removed on purpose.
+/// </remarks>
+static async Task<int> SeedBlockedWordsAsync(MuwbtaDbContext db)
+{
+    if (DefaultBlockedWords.List.Length == 0)
+    {
+        return 0;
+    }
+
+    var untouched = await db.GameConfigurations
+        .Where(c => c.BlockedWords == string.Empty)
+        .ToListAsync();
+
+    foreach (var configuration in untouched)
+    {
+        configuration.BlockedWords = DefaultBlockedWords.List;
+    }
+
+    if (untouched.Count > 0)
+    {
+        await db.SaveChangesAsync();
+    }
+
+    return untouched.Count;
+}
+
 /// <summary>
 /// Hands the map service every sheet in the database. Called at startup and again after an import,
 /// which is the only thing that can change them.

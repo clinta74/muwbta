@@ -630,7 +630,11 @@ public sealed class WorldWriter(MuwbtaDbContext db, TimeProvider clock)
                 entity.Description = c.Description;
                 entity.StartingRoomKey = c.StartingRoomKey;
                 entity.WelcomeMessage = c.WelcomeMessage;
-                entity.BlockedWords = c.BlockedWords;
+                // Null leaves the stored list alone - see UpsertGameConfiguration.BlockedWords.
+                if (c.BlockedWords is not null)
+                {
+                    entity.BlockedWords = c.BlockedWords;
+                }
                 entity.UpdatedAt = clock.GetUtcNow();
 
                 // Null leaves the stored canon alone - see UpsertGameConfiguration.Canon.

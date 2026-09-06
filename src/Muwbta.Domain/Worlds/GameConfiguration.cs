@@ -91,6 +91,12 @@ public sealed class GameConfiguration
     /// On the configuration rather than in appsettings so a builder can change it from the panel
     /// and have it take effect without a restart, the way the welcome message does. Whole words,
     /// case-insensitive; the same list refuses a character name that is exactly a listed word.
+    /// <para>
+    /// <b>It does not travel in a bundle</b> (format 18). What a server refuses to hear belongs to
+    /// whoever runs it and to the people playing there, not to whoever authored the world - so an
+    /// import leaves this alone and an export does not carry it. The engine ships a default that is
+    /// seeded once into a configuration with none; after that this column is the authority.
+    /// </para>
     /// </remarks>
     public string BlockedWords { get; set; } = string.Empty;
 
