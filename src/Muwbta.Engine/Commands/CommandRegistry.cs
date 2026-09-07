@@ -1345,7 +1345,7 @@ public sealed class CommandRegistry
             return;
         }
 
-        var targetPlayer = ctx.World.FindPlayerByName(targetName);
+        var targetPlayer = PlayerHere(ctx, targetName);
         if (targetPlayer is null)
         {
             // A mob standing right here is not "no one". Only players and quest turn-ins can be
@@ -1362,7 +1362,7 @@ public sealed class CommandRegistry
                 return;
             }
 
-            ctx.Reply($"There is no one named {targetName} here.", "bad");
+            ctx.Reply(NobodyHere(ctx, targetName), "bad");
             return;
         }
 
@@ -1471,8 +1471,7 @@ public sealed class CommandRegistry
     /// Moves coin from the actor's purse to whoever is standing here.
     /// </summary>
     /// <remarks>
-    /// Present, unlike the item path beside it, which resolves a recipient with
-    /// <c>FindPlayerByName</c> and so reaches anybody online anywhere. Coin is the one thing worth
+    /// Present, which <see cref="PlayerHere"/> is what enforces. Coin is the one thing worth
     /// carrying that has no weight, no owner and no trace, so a transfer at a distance is a
     /// different feature from a transfer - it would make every market in the world one market.
     ///
@@ -1491,20 +1490,11 @@ public sealed class CommandRegistry
             return;
         }
 
-        if (ctx.World.FindPlayerByName(targetName) is { } player)
+        if (PlayerHere(ctx, targetName) is { } player)
         {
             if (player.CharacterId == ctx.Actor.CharacterId)
             {
                 ctx.Reply("You can't give gold to yourself.", "bad");
-                return;
-            }
-
-            // Named rather than "no one named Steve here": they exist, they are simply somewhere
-            // else, and telling a player they mistyped a name they got right sends them looking
-            // for a spelling instead of a room.
-            if (player.RoomKey != ctx.Actor.RoomKey)
-            {
-                ctx.Reply($"{player.Name} is not here.", "bad");
                 return;
             }
 
@@ -1540,8 +1530,47 @@ public sealed class CommandRegistry
             return;
         }
 
-        ctx.Reply($"There is no one named {targetName} here.", "bad");
+        ctx.Reply(NobodyHere(ctx, targetName), "bad");
     }
+
+    /// <summary>
+    /// The player of this name standing in the actor's room, or null - including when somebody of
+    /// that name is online somewhere else entirely.
+    /// </summary>
+    /// <remarks>
+    /// <b>Every hand-over goes through this.</b> <c>give</c> used to resolve its recipient with
+    /// <see cref="World.WorldState.FindPlayerByName"/>, which searches everyone online, and then
+    /// never asked where they were: <c>give blade Mira</c> handed the blade over with Mira in
+    /// another room, another zone, or another world. Nothing about the exchange is local except
+    /// the fiction of it, and a market that reaches every player at once is a different economy
+    /// from the one the rooms describe.
+    ///
+    /// Exact, not prefixed, which is how players are addressed everywhere else in the game - a
+    /// tell, an ignore, an invite. Mobs are the things that answer to a word out of their name,
+    /// because a mob's name is scenery and a player's name is an identity.
+    /// </remarks>
+    private static World.PlayerActor? PlayerHere(CommandContext ctx, string name) =>
+        ctx.World.FindPlayerByName(name) is { } player && player.RoomKey == ctx.Actor.RoomKey
+            ? player
+            : null;
+
+    /// <summary>
+    /// What to say when nothing in the room answered to the name: that they are elsewhere, if
+    /// they are, and otherwise that nobody here is called that.
+    /// </summary>
+    /// <remarks>
+    /// The distinction is the whole point of the sentence. "There is no one named Mira here" to
+    /// somebody who can see Mira in the who-list reads as "you typed it wrong", and sends them
+    /// checking a spelling that was right; naming her sends them looking for the room, which is
+    /// the thing that is actually missing.
+    ///
+    /// Asked last, after the mob in the room has had its turn, so a mob standing in front of you
+    /// still beats a player of the same name three zones away.
+    /// </remarks>
+    private static string NobodyHere(CommandContext ctx, string name) =>
+        ctx.World.FindPlayerByName(name) is { } elsewhere
+            ? $"{elsewhere.Name} is not here."
+            : $"There is no one named {name} here.";
 
     /// <summary>
     /// Third-person prose, shown to the room and to the person who wrote it.
@@ -1869,7 +1898,7 @@ public sealed class CommandRegistry
     /// to ask the question without answering it.
     /// </remarks>
     private static bool RecipientExists(CommandContext ctx, string name) =>
-        ctx.World.FindPlayerByName(name) is not null
+        PlayerHere(ctx, name) is not null
         || NameMatch.Best(
             ctx.World.MobsIn(ctx.Actor.RoomKey), name, m => m.TemplateName, m => m.TemplateKey)
             is not null;

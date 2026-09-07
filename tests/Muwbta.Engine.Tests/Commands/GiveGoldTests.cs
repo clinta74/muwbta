@@ -14,13 +14,13 @@ namespace Muwbta.Engine.Tests.Commands;
 /// to anyone in it - no lending, no splitting a find, no paying somebody to come along.
 ///
 /// The assertions worth reading are the ones where the two purses still sum to what they started
-/// with. Everything else here is parsing.
+/// with. Everything else here is parsing - how far the verb reaches is
+/// <see cref="GiveReachTests"/>, which covers coin and goods together because the rule belongs to
+/// <c>give</c> rather than to either form of it.
 /// </remarks>
 public sealed class GiveGoldTests
 {
     private static readonly RoomKey Room = RoomKey.Parse("test.zone.west");
-
-    private static readonly RoomKey Elsewhere = RoomKey.Parse("test.zone.east");
 
     private static WorldHarness Loaded()
     {
@@ -33,10 +33,9 @@ public sealed class GiveGoldTests
         WorldHarness harness,
         string name,
         long gold,
-        RoomKey? at = null,
         AccountRole role = AccountRole.Player)
     {
-        var actor = harness.AddPlayer(name, at ?? Room, role);
+        var actor = harness.AddPlayer(name, Room, role);
         actor.Character.Gold = gold;
         return actor;
     }
@@ -184,26 +183,6 @@ public sealed class GiveGoldTests
 
         Assert.Equal(100, kael.Character.Gold);
         Assert.Contains("to whom?", harness.DrainText(kael), StringComparison.Ordinal);
-    }
-
-    /// <summary>
-    /// Coin does not travel. A transfer at a distance would make every market in the world one
-    /// market, and the answer names them rather than claiming nobody answers to the name - they
-    /// are there, and the player did not mistype.
-    /// </summary>
-    [Fact]
-    public void Somebody_in_another_room_is_out_of_reach()
-    {
-        var harness = Loaded();
-        var kael = Carrying(harness, "Kael", 100);
-        var mira = Carrying(harness, "Mira", 0, Elsewhere);
-        harness.Drain(kael);
-
-        harness.Execute(kael, "give 50 gold Mira");
-
-        Assert.Equal(100, kael.Character.Gold);
-        Assert.Equal(0, mira.Character.Gold);
-        Assert.Contains("Mira is not here.", harness.DrainText(kael), StringComparison.Ordinal);
     }
 
     [Fact]
