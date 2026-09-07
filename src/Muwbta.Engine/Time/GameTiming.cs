@@ -19,6 +19,14 @@ public static class GameTiming
     public const int NeedsPulses = 120;          // 30 s
     public const int AutosavePulses = 1200;      // 5 min
 
+    /// <summary>
+    /// Every 15 s. Finer than it needs to be for the weather, which wanders over game hours, and
+    /// exactly as fine as it needs to be for the turns of the day: at five real minutes to the
+    /// game hour, dawn is ten real minutes long, and an announcement a minute late lands after
+    /// the player has already noticed the room description disagreeing with it.
+    /// </summary>
+    public const int WeatherPulses = 60;         // 15 s
+
     /// <summary>True when a system with the given cadence should run on this pulse.</summary>
     public static bool RunsOn(long pulse, int everyPulses)
     {

@@ -51,6 +51,7 @@ public sealed class GameLoop(
     SpawnerSystem? spawnerSystem,
     MobAiSystem? mobAiSystem,
     CombatSystem? combatSystem,
+    WeatherSystem? weatherSystem,
     AbilitySystem? abilitySystem,
     ShutdownSchedule? shutdown,
     EngineMetrics? metrics,
@@ -204,6 +205,13 @@ public sealed class GameLoop(
             // so checking sixty times as often would be sixty times the work to find the same
             // answer. Regen already runs on the minute and already walks every player.
             DreamSystem.Tick(world, pulse);
+        }
+
+        // The sky. Reads the wall clock through the oracle and narrates only what changed, so a
+        // world with nobody outdoors in it costs one function call and a dictionary compare.
+        if (weatherSystem != null && GameTiming.RunsOn(pulse, GameTiming.WeatherPulses))
+        {
+            weatherSystem.Tick(world);
         }
 
         // Twice a minute, on its own cadence rather than the regen one. Hunger and thirst grow at
@@ -591,6 +599,7 @@ public sealed class GameLoop(
             Quests = questCache,
             QuestSaveQueue = questSaveQueue,
             Abilities = abilityCache,
+            Weather = weatherSystem,
             Verb = verb,
             Argument = argument,
         };

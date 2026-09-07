@@ -58,7 +58,11 @@ public static class EngineServiceCollectionExtensions
         // every dark room dark whatever anybody was carrying.
         services.AddSingleton<PlayerView>(sp => new PlayerView(
             sp.GetRequiredService<RoomLayoutService>(),
-            sp.GetService<ItemTemplateCache>()));
+            sp.GetService<ItemTemplateCache>(),
+            sp.GetService<WeatherSystem>()));
+        // The sky. Takes only the clock, because the weather is arithmetic on it - what the
+        // system owns is which line has already been said, not what the weather is.
+        services.AddSingleton<WeatherSystem>();
         services.AddSingleton<WorldMutationApplier>();
         services.AddSingleton<LoopWorldEditor>();
         services.AddSingleton<GameGateway>();

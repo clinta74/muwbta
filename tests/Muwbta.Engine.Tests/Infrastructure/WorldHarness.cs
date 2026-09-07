@@ -10,6 +10,7 @@ using Muwbta.Engine.Commands;
 using Muwbta.Engine.Inhabitants;
 using Muwbta.Engine.Mutations;
 using Muwbta.Domain.Randomness;
+using Muwbta.Domain.Weather;
 using Muwbta.Engine.Presentation;
 using Muwbta.Engine.Protocol;
 using Muwbta.Engine.Quests;
@@ -135,8 +136,11 @@ internal sealed class WorldHarness
         // the world directly. Populated from the catalogue by DefineAbility.
         Commands = new CommandRegistry(abilityCache: AbilityCache, clock: Clock);
         // With the item cache, because the view reads it to decide whether a dark room can be
-        // seen. Built without it, every dark room stays dark whatever anybody is carrying.
-        View = new PlayerView(new RoomLayoutService(), ItemTemplates);
+        // seen. Built without it, every dark room stays dark whatever anybody is carrying. With
+        // the weather too, so a `look` outdoors carries the sky the way it does in the game -
+        // built without it, the standing line would be missing from every test that reads a room.
+        Weather = new WeatherSystem(Clock);
+        View = new PlayerView(new RoomLayoutService(), ItemTemplates, Weather);
         Options = new EngineOptions { StartingRoom = RoomKey.Parse("test.zone.west") };
         // With the caches and the item queue the host wires up, because an edit that has to reach
         // them is one this harness must be able to see. Built bare, it applied a rename that
@@ -185,7 +189,34 @@ internal sealed class WorldHarness
     public WorldState World { get; }
 
     /// <summary>Time under the test's control, so per-attack timing is exact rather than raced.</summary>
-    public ManualGameClock Clock { get; } = new();
+    /// <remarks>
+    /// Started at the weather epoch rather than at the Unix epoch, so the world sits at the first
+    /// morning of the first Spring rather than fifty-six years before its own calendar begins.
+    /// Everything that reads this clock reads intervals off it, so where it starts costs nothing -
+    /// except to the one thing that reads it as a date.
+    /// </remarks>
+    public ManualGameClock Clock { get; } = new(GameInstant.Epoch);
+
+    /// <summary>The sky, on the test's clock. Advance the clock and tick it to change the weather.</summary>
+    public WeatherSystem Weather { get; }
+
+    /// <summary>
+    /// Takes the first reading, so later ones have something to be a change from.
+    /// </summary>
+    /// <remarks>
+    /// The system narrates changes and nothing else, so a single tick from a standing start says
+    /// nothing at all - which is right in the game, where a player who logs in during a downpour
+    /// should read about it in their `look` rather than be told it has just started, and useless
+    /// in a test that wants to watch the weather turn.
+    /// </remarks>
+    public void PrimeSky() => Weather.Tick(World);
+
+    /// <summary>Moves the sky forward and narrates whatever changed on the way.</summary>
+    public void AdvanceSky(double gameHours)
+    {
+        Clock.Advance(TimeSpan.FromSeconds(gameHours * GameInstant.RealSecondsPerGameHour));
+        Weather.Tick(World);
+    }
 
     /// <summary>Records that the world was asked to close, instead of closing the test run.</summary>
     internal sealed class RecordingShutdownSignal : IShutdownSignal
@@ -458,6 +489,7 @@ internal sealed class WorldHarness
             Options = Options,
             Shutdown = Shutdown,
             Clock = Clock,
+            Weather = Weather,
             Quests = Quests,
             QuestSaveQueue = QuestSaves,
             Verb = verb,

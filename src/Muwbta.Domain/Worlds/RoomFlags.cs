@@ -58,7 +58,9 @@ public static class RoomFlags
         "dark", "Description withheld without a light source.", "Phase 5");
 
     public static readonly RoomFlag Indoors = Register(
-        "indoors", "Sheltered from weather, once weather exists.", "later");
+        "indoors",
+        "Sheltered: no weather, and no notice of the day turning.",
+        "Weather");
 
     public static readonly RoomFlag Unfinished = Register(
         "unfinished", "Still a stub. Appears in the zone build to-do list.", "Phase 2");

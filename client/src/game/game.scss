@@ -252,6 +252,18 @@
   white-space: pre-line;
 }
 
+/*
+ * The sky, in a look and in the line that arrives when it changes.
+ *
+ * Dimmed on purpose. It is the one line in a room that nobody authored and that will be there
+ * again next time - it should read as the weather in the background rather than compete with the
+ * description somebody wrote.
+ */
+.weather {
+  color: var(--dim);
+  font-style: italic;
+}
+
 .exits {
   margin: 0 0 var(--space-4);
   color: var(--movement);

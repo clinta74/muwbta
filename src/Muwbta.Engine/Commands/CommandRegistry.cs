@@ -113,6 +113,7 @@ public sealed class CommandRegistry
 
         CombatCommands.Register(_commands);
         RestCommands.Register(_commands);
+        SkyCommands.Register(_commands);
         NutritionCommands.Register(_commands);
         AbilityCommands.Register(_commands, abilityCache, clock, effects);
         QuestCommands.Register(_commands);

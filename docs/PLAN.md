@@ -1642,7 +1642,7 @@ The starting registry:
 | `noMob` | false | mob AI | Wandering mobs will not path in | Phase 3 |
 | `noRecall` | false | `Travel.Refuse` | `recall` and any future teleport out are refused | Phase 5.3 |
 | `dark` | false | room rendering | Nothing is drawn without a light source (§4.18) | Phase 5 |
-| `indoors` | false | presentation | Shelters from weather when weather exists | later |
+| `indoors` | false | weather narration | No weather line, and no notice of the day turning | Weather |
 | `unfinished` | false | builder | The build to-do list (§7.6) | Phase 2 |
 
 **`peaceful` beats `pvp`.** A room carrying both is peaceful. Conflicts must resolve toward the

@@ -55,6 +55,12 @@ public sealed class CommandContext
     public EngineOptions? Options { get; init; }
 
     /// <summary>
+    /// The sky and the calendar, for <c>sky</c>. Null where the engine runs without it, which is
+    /// why the handler checks: a missing optional dependency must cost a verb, not a pulse.
+    /// </summary>
+    public Systems.WeatherSystem? Weather { get; init; }
+
+    /// <summary>
     /// The pending-shutdown countdown, for the admin verb that sets it. Null where the world
     /// cannot be closed from inside itself, which is why the handler checks rather than assumes.
     /// </summary>

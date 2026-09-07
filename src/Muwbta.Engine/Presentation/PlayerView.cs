@@ -15,7 +15,10 @@ namespace Muwbta.Engine.Presentation;
 /// Turns world state into the events a client renders. Sits between the command handlers and
 /// <see cref="RoomLayoutService"/> so handlers never touch coordinates themselves.
 /// </summary>
-public sealed class PlayerView(RoomLayoutService layout, ItemTemplateCache? items = null)
+public sealed class PlayerView(
+    RoomLayoutService layout,
+    ItemTemplateCache? items = null,
+    WeatherSystem? weather = null)
 {
     /// <summary>
     /// What a room says instead of its name when nobody in it has a light.
@@ -93,7 +96,7 @@ public sealed class PlayerView(RoomLayoutService layout, ItemTemplateCache? item
             EventTypes.Contents,
             BuildContents(occupants, mobs, roomItems, legend)));
 
-        SendProse(actor, room, occupants, mobs, roomItems, exits, verbose, dark);
+        SendProse(world, actor, room, occupants, mobs, roomItems, exits, verbose, dark);
     }
 
     /// <summary>
@@ -510,7 +513,8 @@ public sealed class PlayerView(RoomLayoutService layout, ItemTemplateCache? item
             c.Gold);
     }
 
-    private static void SendProse(
+    private void SendProse(
+        WorldState world,
         PlayerActor actor,
         Room room,
         IReadOnlyList<PlayerActor> occupants,
@@ -537,6 +541,17 @@ public sealed class PlayerView(RoomLayoutService layout, ItemTemplateCache? item
             // client re-flows it and a hard-wrapped paragraph fills the window instead of
             // the editor it was typed in.
             spans.Add(new TextSpan("\n" + room.Description, "room-description"));
+        }
+
+        // After the description and before the exits, because it is the last thing said about
+        // the place itself and everything below is a list of what is in it or leads out of it.
+        //
+        // Never in the dark. A player who cannot see the room cannot see the sky over it either,
+        // and a line about the weather under DarkProse would be the game describing the clouds to
+        // somebody feeling for the wall.
+        if (!dark && weather?.StandingLineFor(world, room.Key) is { } sky)
+        {
+            spans.Add(new TextSpan("\n" + sky, "weather"));
         }
 
         spans.Add(new TextSpan(
