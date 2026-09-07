@@ -90,7 +90,9 @@ public sealed class CommandRegistry
             "remove", 2, "remove <item> (re) - unequip an item", Remove));
 
         _commands.Add(new CommandDefinition(
-            "give", 1, "give <item> <character> - give an item to someone", Give));
+            "give", 1,
+            "give <item> <character> / give <amount> gold <character> - hand something over",
+            Give));
 
         _commands.Add(new CommandDefinition(
             "emote", 1, "emote <message> - express an emotion or action", Emote));
@@ -1318,6 +1320,14 @@ public sealed class CommandRegistry
             return;
         }
 
+        // Coin before goods. Nothing carried answers to a bare number, so "50 gold" cannot be
+        // an item name being shadowed - and if it somehow is not the coin form, this declines
+        // and the item path below gets the input untouched.
+        if (TryGiveGold(ctx, parts))
+        {
+            return;
+        }
+
         var inventory = ctx.World.InventoryOf(ctx.Actor.CharacterId);
         var (itemName, targetName) = SplitGive(ctx, parts, inventory);
 
@@ -1398,6 +1408,139 @@ public sealed class CommandRegistry
         targetPlayer.SendText($"{ctx.Actor.Name} gives you {NarrationHelper.WithDefiniteArticle(targetItem.DisplayName)}.", "good");
         ctx.BroadcastSight($"{ctx.Actor.Name} gives {NarrationHelper.WithDefiniteArticle(targetItem.DisplayName)} to {targetPlayer.Name}.", "movement");
         ctx.MarkRoomForRefresh(ctx.Actor.RoomKey);
+    }
+
+    /// <summary>
+    /// The coin form of <c>give</c> - <c>give 50 gold Steve</c> - or false when the input is not
+    /// that shape at all, in which case the item path gets it.
+    /// </summary>
+    /// <remarks>
+    /// The amount leads because that is the order it is said out loud, and because it is what
+    /// makes the form recognisable without a separate verb: a number followed by "gold" is not a
+    /// sentence any item name can produce.
+    ///
+    /// A sign is read and then refused, rather than left unparsed: "-50" has to be turned down,
+    /// because a negative gift is a theft that would read as a gift on both screens, and turning
+    /// it down here says "Give how much?" instead of dropping through to the item path to answer
+    /// "You don't have -50 gold." Thousands separators and exponents stay unparsed on purpose -
+    /// "1,000" and "1e3" both mean something other than what the person typing them meant.
+    ///
+    /// Handing coin to a mob is allowed and is not a trick: the amount joins what that mob is
+    /// carrying, so it is exactly the gold its killer will split (§5.3). Paying a shopkeeper for
+    /// nothing, or a guard for passage a builder scripted, both work without any new machinery -
+    /// and a player who changes their mind about a hostile can take it back the usual way.
+    /// </remarks>
+    private static bool TryGiveGold(CommandContext ctx, string[] parts)
+    {
+        if (!string.Equals(parts[1], "gold", StringComparison.OrdinalIgnoreCase)
+            || !long.TryParse(
+                parts[0],
+                NumberStyles.AllowLeadingSign,
+                CultureInfo.InvariantCulture,
+                out var amount))
+        {
+            return false;
+        }
+
+        // Past this point the input is unambiguously about coin, so every exit below answers
+        // about coin. Falling through to the item path here would answer "You don't have 50."
+        if (amount <= 0)
+        {
+            ctx.Reply("Give how much?", "bad");
+            return true;
+        }
+
+        // "give 50 gold to Steve" reads better than the game's own syntax, so it is accepted.
+        var rest = parts[2..];
+        if (rest.Length > 1 && string.Equals(rest[0], "to", StringComparison.OrdinalIgnoreCase))
+        {
+            rest = rest[1..];
+        }
+
+        if (rest.Length == 0)
+        {
+            ctx.Reply($"Give {amount} gold to whom?", "bad");
+            return true;
+        }
+
+        GiveGold(ctx, amount, string.Join(' ', rest));
+        return true;
+    }
+
+    /// <summary>
+    /// Moves coin from the actor's purse to whoever is standing here.
+    /// </summary>
+    /// <remarks>
+    /// Present, unlike the item path beside it, which resolves a recipient with
+    /// <c>FindPlayerByName</c> and so reaches anybody online anywhere. Coin is the one thing worth
+    /// carrying that has no weight, no owner and no trace, so a transfer at a distance is a
+    /// different feature from a transfer - it would make every market in the world one market.
+    ///
+    /// No save is queued. Gold rides the character autosave exactly as a purchase does
+    /// (<see cref="ShopCommands"/>), and enqueuing one half of a transfer would be worse than
+    /// enqueuing neither: the pair is only ever consistent when both are written from the same
+    /// pass.
+    /// </remarks>
+    private static void GiveGold(CommandContext ctx, long amount, string targetName)
+    {
+        var character = ctx.Actor.Character;
+
+        if (character.Gold < amount)
+        {
+            ctx.Reply($"You don't have {amount} gold. You have {character.Gold}.", "bad");
+            return;
+        }
+
+        if (ctx.World.FindPlayerByName(targetName) is { } player)
+        {
+            if (player.CharacterId == ctx.Actor.CharacterId)
+            {
+                ctx.Reply("You can't give gold to yourself.", "bad");
+                return;
+            }
+
+            // Named rather than "no one named Steve here": they exist, they are simply somewhere
+            // else, and telling a player they mistyped a name they got right sends them looking
+            // for a spelling instead of a room.
+            if (player.RoomKey != ctx.Actor.RoomKey)
+            {
+                ctx.Reply($"{player.Name} is not here.", "bad");
+                return;
+            }
+
+            character.Gold -= amount;
+            player.Character.Gold += amount;
+
+            ctx.Reply($"You give {amount} gold to {player.Name}.", "good");
+            player.SendText($"{ctx.Actor.Name} gives you {amount} gold.", "good");
+
+            // The room is told that coin changed hands, not how much. Both parties know the
+            // figure and neither chose to announce it, and a room that reads out every purse in
+            // it makes standing in one a hazard.
+            ctx.BroadcastSight($"{ctx.Actor.Name} hands {player.Name} some coins.", "movement");
+            return;
+        }
+
+        if (NameMatch.Best(
+                ctx.World.MobsIn(ctx.Actor.RoomKey),
+                targetName,
+                m => m.TemplateName,
+                m => m.TemplateKey) is { } mob)
+        {
+            var who = NarrationHelper.WithDefiniteArticle(mob.DisplayName);
+
+            character.Gold -= amount;
+
+            // Saturating, because ResolvedGold is an int and a purse is a long. Nobody should be
+            // able to make a mob's loot negative by being generous to it.
+            mob.ResolvedGold = (int)Math.Min(int.MaxValue, mob.ResolvedGold + amount);
+
+            ctx.Reply($"You give {amount} gold to {who}. It carries what it is given.", "good");
+            ctx.BroadcastSight($"{ctx.Actor.Name} hands {who} some coins.", "movement");
+            return;
+        }
+
+        ctx.Reply($"There is no one named {targetName} here.", "bad");
     }
 
     /// <summary>

@@ -1,3 +1,4 @@
+using System.Globalization;
 using Muwbta.Domain.Accounts;
 using Muwbta.Domain.Entities;
 using Muwbta.Domain.Inhabitants;
@@ -68,7 +69,8 @@ internal static class BuilderCommands
             "goto", 4, "goto <room-key> - jump anywhere, no exits required (builder)", Goto, Requires: AccountRole.Builder));
 
         commands.Add(new CommandDefinition(
-            "spawn", 5, "spawn <item|mob> <template-key> - create an item or mob here (builder)",
+            "spawn", 5,
+            "spawn <item|mob> <template-key> / spawn gold <amount> - create something here (builder)",
             ctx => Spawn(ctx, tools), Requires: AccountRole.Builder));
 
         commands.Add(new CommandDefinition(
@@ -357,7 +359,7 @@ internal static class BuilderCommands
         var parts = ctx.Argument.Split(' ', StringSplitOptions.RemoveEmptyEntries);
         if (parts.Length < 2)
         {
-            ctx.Reply("Usage: spawn <item|mob> <template-key>", "bad");
+            ctx.Reply("Usage: spawn <item|mob> <template-key>, or spawn gold <amount>", "bad");
             return;
         }
 
@@ -372,10 +374,47 @@ internal static class BuilderCommands
         {
             SpawnMob(ctx, tools, templateKey);
         }
+        else if (type == "gold")
+        {
+            SpawnGold(ctx, templateKey);
+        }
         else
         {
-            ctx.Reply("Spawn what? Use 'item' or 'mob'.", "bad");
+            ctx.Reply("Spawn what? Use 'item', 'mob', or 'gold'.", "bad");
         }
+    }
+
+    /// <summary>
+    /// Puts coin in the builder's own purse - <c>spawn gold 100</c>.
+    /// </summary>
+    /// <remarks>
+    /// Into a purse rather than onto the floor, because gold is not an item in this game: it is a
+    /// number on a character and a number on a mob, and there is no pile to walk over and pick up.
+    /// The builder's own purse rather than a named target's, because <c>give 100 gold Steve</c>
+    /// already exists and does the second half - which keeps this verb to the thing only a builder
+    /// can do, and keeps the handing-over on the same path a player uses, testing that too.
+    ///
+    /// Nothing is queued for saving. Gold rides the character autosave, the same as a sale.
+    /// </remarks>
+    private static void SpawnGold(CommandContext ctx, string amountText)
+    {
+        if (!long.TryParse(amountText, NumberStyles.None, CultureInfo.InvariantCulture, out var amount)
+            || amount <= 0)
+        {
+            ctx.Reply("Usage: spawn gold <amount>", "bad");
+            return;
+        }
+
+        var character = ctx.Actor.Character;
+
+        // Saturating, not wrapping: a builder who leans on the zero key gets an absurd purse
+        // rather than a negative one, and a negative purse is a bug report from a player.
+        character.Gold = amount > long.MaxValue - character.Gold
+            ? long.MaxValue
+            : character.Gold + amount;
+
+        ctx.Reply($"Spawned: {amount} gold. You now have {character.Gold}.");
+        ctx.BroadcastSight($"{ctx.Actor.Name} conjures a handful of coins!", "arrival");
     }
 
     private static void SpawnItem(CommandContext ctx, SpawnTools tools, string templateKey)
