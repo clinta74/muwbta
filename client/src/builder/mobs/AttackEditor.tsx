@@ -76,17 +76,17 @@ export function AttackEditor({ attacks, onChange }: Props) {
             </div>
 
             <div className="field-row">
-              <Field label="Message" hint="Base form: bite, claw, gore.">
+              <Field label="Message" width="md" hint="Base form: bite, claw, gore.">
                 <input value={attack.verb} onChange={(e) => edit(index, { verb: e.target.value })} />
               </Field>
-              <Field label="Delay (seconds)" hint="Minimum 1.">
+              <Field label="Delay" width="xs" hint="Seconds. Minimum 1.">
                 <SecondsInput
                   minPulses={4}
                   pulses={attack.delayPulses}
                   onChange={(v) => edit(index, { delayPulses: v })}
                 />
               </Field>
-              <Field label="Damage ×" hint="Blank = the mob’s own damage.">
+              <Field label="Damage ×" width="xs" hint="Blank = the mob’s own damage.">
                 {/* Same bug the weapon delay had: fully controlled off the parsed number, so
                     typing "1." rendered back as "1" and the point was erased. A multiplier that
                     cannot take a decimal is not a multiplier. */}

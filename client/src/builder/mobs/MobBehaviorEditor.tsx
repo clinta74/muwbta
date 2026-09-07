@@ -75,21 +75,21 @@ export function MobBehaviorEditor({ draft, itemTemplates, onChange }: Props) {
 
         {draft.emotes.map((emote, index) => (
           <div className="field-row" key={index}>
-            <Field label="Says">
+            <Field label="Says" width="lg">
               <input
                 value={emote.text}
                 placeholder="scratches at the floor"
                 onChange={(e) => editEmote(index, { text: e.target.value })}
               />
             </Field>
-            <Field label="Every (seconds)" hint="at least">
+            <Field label="Every" width="xs" hint="Seconds, at least">
               <NumberInput
                 min={1}
                 value={emote.minSeconds}
                 onChange={(v) => editEmote(index, { minSeconds: v })}
               />
             </Field>
-            <Field label="to (seconds)" hint="at most">
+            <Field label="to" width="xs" hint="Seconds, at most">
               <NumberInput
                 min={1}
                 value={emote.maxSeconds}
@@ -97,7 +97,6 @@ export function MobBehaviorEditor({ draft, itemTemplates, onChange }: Props) {
               />
             </Field>
             <Button
-             
               variant="danger"
               onClick={() => set({ emotes: draft.emotes.filter((_, i) => i !== index) })}
             >
@@ -185,28 +184,28 @@ export function MobBehaviorEditor({ draft, itemTemplates, onChange }: Props) {
             })
           return (
             <div className="field-row" key={index}>
-              <Field label="Keyword">
+              <Field label="Keyword" width="md">
                 <input
                   value={topic.keyword}
                   placeholder="stone"
                   onChange={(e) => update({ keyword: e.target.value })}
                 />
               </Field>
-              <Field label="Answer">
+              <Field label="Answer" width="lg">
                 <input
                   value={topic.text}
                   placeholder="'Somebody clears the turf round it. Not me.'"
                   onChange={(e) => update({ text: e.target.value })}
                 />
               </Field>
-              <Field label="Needs flag">
+              <Field label="Needs flag" width="md">
                 <input
                   value={topic.requiresFlag}
                   placeholder="attuned.grask"
                   onChange={(e) => update({ requiresFlag: e.target.value })}
                 />
               </Field>
-              <Field label="Needs quest done">
+              <Field label="Needs quest done" width="md">
                 <input
                   value={topic.requiresQuest}
                   placeholder="a1-1-the-road-out"
@@ -334,7 +333,6 @@ export function MobBehaviorEditor({ draft, itemTemplates, onChange }: Props) {
                   )}
                 </span>
                 <Button
-                 
                   variant="danger"
                   onClick={() => set({ sells: draft.sells.filter((_, i) => i !== index) })}
                 >

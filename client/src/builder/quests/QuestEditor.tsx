@@ -286,27 +286,33 @@ export function QuestEditor({ questKey, onChanged, onDeleted }: Props) {
           nobody.
         </p>
 
-        <Field label="Giver" hint="Talk to this mob to be offered the quest.">
-          <TemplatePicker
-            value={giverMobKey}
-            options={mobOptions}
-            onChange={(key) => {
-              setGiverMobKey(key)
-              touch()
-            }}
-          />
-        </Field>
+        <div className="field-row">
+          <Field label="Giver" width="lg" hint="Talk to this mob to be offered the quest.">
+            <TemplatePicker
+              value={giverMobKey}
+              options={mobOptions}
+              onChange={(key) => {
+                setGiverMobKey(key)
+                touch()
+              }}
+            />
+          </Field>
 
-        <Field label="Turn-in" hint="Give the item to this mob. Often the same as the giver.">
-          <TemplatePicker
-            value={turninMobKey}
-            options={mobOptions}
-            onChange={(key) => {
-              setTurninMobKey(key)
-              touch()
-            }}
-          />
-        </Field>
+          <Field
+            label="Turn-in"
+            width="lg"
+            hint="Give the item to this mob. Often the same as the giver."
+          >
+            <TemplatePicker
+              value={turninMobKey}
+              options={mobOptions}
+              onChange={(key) => {
+                setTurninMobKey(key)
+                touch()
+              }}
+            />
+          </Field>
+        </div>
       </fieldset>
 
       <fieldset className="subpanel">
@@ -317,7 +323,7 @@ export function QuestEditor({ questKey, onChanged, onDeleted }: Props) {
         </p>
 
         <div className="field-row">
-          <Field label="Required item">
+          <Field label="Required item" width="lg">
             <TemplatePicker
               value={requiredItemKey}
               options={itemOptions}
@@ -328,7 +334,7 @@ export function QuestEditor({ questKey, onChanged, onDeleted }: Props) {
             />
           </Field>
 
-          <Field label="Count">
+          <Field label="Count" width="xs">
             <NumberInput
               min={1}
               value={requiredCount}
@@ -349,7 +355,7 @@ export function QuestEditor({ questKey, onChanged, onDeleted }: Props) {
         </p>
 
         <div className="field-row">
-          <Field label="XP">
+          <Field label="XP" width="xs">
             <NumberInput
               min={0}
               value={rewardXp}
@@ -360,7 +366,7 @@ export function QuestEditor({ questKey, onChanged, onDeleted }: Props) {
             />
           </Field>
 
-          <Field label="Gold">
+          <Field label="Gold" width="xs">
             <NumberInput
               min={0}
               value={rewardGold}
@@ -370,10 +376,8 @@ export function QuestEditor({ questKey, onChanged, onDeleted }: Props) {
               }}
             />
           </Field>
-        </div>
 
-        <div className="field-row">
-          <Field label="Reward item">
+          <Field label="Reward item" width="lg">
             <TemplatePicker
               value={rewardItemKey}
               options={itemOptions}
@@ -384,7 +388,7 @@ export function QuestEditor({ questKey, onChanged, onDeleted }: Props) {
             />
           </Field>
 
-          <Field label="Count">
+          <Field label="Count" width="xs">
             <NumberInput
               min={1}
               value={rewardItemCount}
@@ -504,7 +508,7 @@ export function QuestEditor({ questKey, onChanged, onDeleted }: Props) {
             : 'Once only. Finishing the rest of the chain does not reopen it.'}
         </p>
 
-        <Field label="Sort order" hint="Lower sorts first in the journal.">
+        <Field label="Sort order" width="xs" hint="Lower sorts first in the journal.">
           <NumberInput
             min={0}
             value={sortOrder}

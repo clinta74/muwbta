@@ -56,6 +56,12 @@
   min-width: 0;
 }
 
+/* A Remove sitting at the end of a row of fields is not a field. Without this it takes the
+   default basis and the grow with it, so the button ends up wider than the value it removes. */
+.field-row > button {
+  flex: 0 0 auto;
+}
+
 /*
  * The sizes, as a scale rather than a number per call site.
  *

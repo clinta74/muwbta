@@ -176,15 +176,31 @@ export function ItemTemplateEditor({ templateKey, onChanged, onDeleted }: Props)
 
       {error && <p className="bad">{error}</p>}
 
-      <Field label="Name">
-        <input
-          value={name}
-          onChange={(e) => {
-            setName(e.target.value)
-            touch()
-          }}
-        />
-      </Field>
+      {/* The icon holds one character. It was alone on a `.field-row` that had no rule behind it,
+          so it rendered as a block and the global `input { width: 100% }` gave a single glyph the
+          full width of the rail — with the name it belongs beside stacked above it. */}
+      <div className="field-row">
+        <Field label="Icon" width="char">
+          <input
+            value={icon}
+            maxLength={1}
+            onChange={(e) => {
+              setIcon(e.target.value.slice(0, 1) || 'i')
+              touch()
+            }}
+          />
+        </Field>
+
+        <Field label="Name" width="lg">
+          <input
+            value={name}
+            onChange={(e) => {
+              setName(e.target.value)
+              touch()
+            }}
+          />
+        </Field>
+      </div>
 
       <Field label="Description">
         <Textarea
@@ -211,20 +227,6 @@ export function ItemTemplateEditor({ templateKey, onChanged, onDeleted }: Props)
           touch()
         }}
       />
-
-      <div className="field-row">
-        <Field label="Icon">
-          <input
-            value={icon}
-            maxLength={1}
-            onChange={(e) => {
-              setIcon(e.target.value.slice(0, 1) || 'i')
-              touch()
-            }}
-          />
-        </Field>
-
-      </div>
 
       <fieldset className="subpanel">
         <legend>Slots</legend>
@@ -288,7 +290,7 @@ export function ItemTemplateEditor({ templateKey, onChanged, onDeleted }: Props)
       </fieldset>
 
       <div className="field-row">
-        <Field label="Weight (grams)">
+        <Field label="Weight" width="xs" hint="Grams.">
           <NumberInput
             min={0}
             value={weight}
@@ -299,7 +301,7 @@ export function ItemTemplateEditor({ templateKey, onChanged, onDeleted }: Props)
           />
         </Field>
 
-        <Field label="Base value">
+        <Field label="Base value" width="xs">
           <NumberInput
             min={0}
             value={baseValue}
@@ -322,7 +324,7 @@ export function ItemTemplateEditor({ templateKey, onChanged, onDeleted }: Props)
               here - it means the weapon declares no speed of its own - and because the hand-rolled
               version could not accept a decimal at all: it round-tripped every keystroke through
               toPulses, so the point in "1." was erased as it was typed and 1.5 was unreachable. */}
-          <Field label="Attack delay (seconds)" hint="Blank uses the default. Minimum 1, in quarter seconds.">
+          <Field label="Attack delay" width="sm" hint="Seconds. Blank uses the default; minimum 1, in quarter steps.">
             <OptionalSecondsInput
               pulses={attackDelayPulses}
               minPulses={4}
@@ -333,7 +335,7 @@ export function ItemTemplateEditor({ templateKey, onChanged, onDeleted }: Props)
               }}
             />
           </Field>
-          <Field label="Attack verb" hint="Base form: slash, crush, stab.">
+          <Field label="Attack verb" width="md" hint="Base form: slash, crush, stab.">
             <input
               value={attackVerb}
               maxLength={24}

@@ -144,9 +144,23 @@ export function MobTemplateEditor({ templateKey, onChanged, onDeleted }: Props) 
 
       {error && <p className="bad">{error}</p>}
 
-      <Field label="Name">
-        <input value={name} onChange={(e) => change(setName)(e.target.value)} />
-      </Field>
+      {/* Who it is, on one line. The icon is one character and the level is two digits, and both
+          used to be full-rail boxes on rows of their own — three lines to say what fits on one. */}
+      <div className="field-row">
+        <Field label="Icon" width="char">
+          <input
+            value={icon}
+            maxLength={1}
+            onChange={(e) => change(setIcon)(e.target.value.slice(0, 1) || 'm')}
+          />
+        </Field>
+        <Field label="Name" width="lg">
+          <input value={name} onChange={(e) => change(setName)(e.target.value)} />
+        </Field>
+        <Field label="Level" width="xs">
+          <NumberInput min={1} value={level} onChange={change(setLevel)} />
+        </Field>
+      </div>
 
       <Field label="Description">
         <Textarea rows={3} value={description} onChange={change(setDescription)} />
@@ -161,31 +175,19 @@ export function MobTemplateEditor({ templateKey, onChanged, onDeleted }: Props) 
         onDescription={change(setDescription)}
       />
 
+      {/* What killing it is worth, and how restless it is while alive. Three numbers, one line. */}
       <div className="field-row">
-        <Field label="Icon">
-          <input
-            value={icon}
-            maxLength={1}
-            onChange={(e) => change(setIcon)(e.target.value.slice(0, 1) || 'm')}
-          />
-        </Field>
-        <Field label="Level">
-          <NumberInput min={1} value={level} onChange={change(setLevel)} />
-        </Field>
-        <Field label="Wanders every (seconds)" hint="Lower is more restless.">
+        <Field label="Wanders every" width="sm" hint="Seconds. Lower is more restless.">
           <SecondsInput
             minPulses={4}
             pulses={wanderIntervalPulses}
             onChange={change(setWanderIntervalPulses)}
           />
         </Field>
-      </div>
-
-      <div className="field-row">
-        <Field label="Base XP">
+        <Field label="Base XP" width="xs">
           <NumberInput min={0} value={baseXp} onChange={change(setBaseXp)} />
         </Field>
-        <Field label="Base gold">
+        <Field label="Base gold" width="xs">
           <NumberInput min={0} value={baseGold} onChange={change(setBaseGold)} />
         </Field>
       </div>

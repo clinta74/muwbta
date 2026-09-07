@@ -139,18 +139,19 @@ export function AbilityEditor({ abilityKey, roster, onChanged, onDeleted }: Prop
       )}
 
       <div className="field-row">
-        <Field label="Name">
+        <Field label="Name" width="lg">
           <input value={draft.name} onChange={(e) => set({ name: e.target.value })} />
         </Field>
         <Field
           label="Path"
+          width="sm"
           hint="Changing this needs the key to match — rename the ability instead."
         >
           <Select value={draft.path} onChange={() => undefined} disabled>
             <option value={draft.path}>{draft.path}</option>
           </Select>
         </Field>
-        <Field label="Unlocks at" hint="Character level.">
+        <Field label="Unlocks at" width="xs" hint="Character level.">
           <NumberInput
             min={1}
             max={50}
@@ -171,6 +172,7 @@ export function AbilityEditor({ abilityKey, roster, onChanged, onDeleted }: Prop
       <div className="field-row">
         <Field
           label="Costs"
+          width="sm"
           hint="Focus for spells, Stamina for skills — the cost type is what makes it one or the other (§4.7)."
         >
           <Select value={draft.costType} onChange={(v) => set({ costType: v as CostType })}>
@@ -181,10 +183,10 @@ export function AbilityEditor({ abilityKey, roster, onChanged, onDeleted }: Prop
             ))}
           </Select>
         </Field>
-        <Field label="Amount">
+        <Field label="Amount" width="xs">
           <NumberInput min={1} value={draft.costValue} onChange={(v) => set({ costValue: v })} />
         </Field>
-        <Field label="Targets">
+        <Field label="Targets" width="md">
           <Select
             value={draft.targetingType}
             onChange={(v) => set({ targetingType: v as TargetingType })}
@@ -200,11 +202,12 @@ export function AbilityEditor({ abilityKey, roster, onChanged, onDeleted }: Prop
 
       <div className="field-row">
         <Field
-          label="Cooldown (seconds)"
+          label="Cooldown"
+          width="sm"
           hint={
             onBeat
-              ? `${beats} swing${beats === 1 ? '' : 's'} of the 2s combat beat.`
-              : 'Not a whole number of 2s swings, so it drifts against the fight.'
+              ? `Seconds — ${beats} swing${beats === 1 ? '' : 's'} of the 2s combat beat.`
+              : 'Seconds. Not a whole number of 2s swings, so it drifts against the fight.'
           }
         >
           <SecondsInput
@@ -212,7 +215,7 @@ export function AbilityEditor({ abilityKey, roster, onChanged, onDeleted }: Prop
             onChange={(v) => set({ cooldownPulses: v })}
           />
         </Field>
-        <Field label="Cast time (seconds)" hint="Zero is instant. A cast can be interrupted.">
+        <Field label="Cast time" width="sm" hint="Seconds. Zero is instant, and a cast can be interrupted.">
           <SecondsInput
             pulses={draft.castTimePulses ?? 0}
             onChange={(v) => set({ castTimePulses: v === 0 ? null : v })}
@@ -220,6 +223,7 @@ export function AbilityEditor({ abilityKey, roster, onChanged, onDeleted }: Prop
         </Field>
         <Field
           label="Shared timer"
+          width="xs"
           hint={`Blank shares nothing. Numbered per Path, so ${draft.path} 1 and another Path's 1 are different timers.`}
         >
           <OptionalNumberInput

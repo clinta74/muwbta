@@ -278,12 +278,18 @@
 
 /* --- Item stat fields ---------------------------------------------- */
 
-/* Two or three across depending on the rail, so a group of four reads as a block rather than a
-   column that pushes the save button off the screen. */
+/* Several across depending on the rail, so a group of four reads as a block rather than a column
+   that pushes the save button off the screen.
+
+   `auto-fill` rather than `auto-fit`: `auto-fit` collapses the tracks it did not use and shares
+   the width among the ones it did, so a group of two stats came out as two half-rail boxes for
+   two-digit numbers. `auto-fill` keeps the empty tracks, and the columns stay the width the
+   content wants whether the group holds two of them or eight. The 10rem floor came down with it —
+   these hold armour values and hit dice, not sentences. */
 .stat-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
-  gap: var(--space-2);
+  grid-template-columns: repeat(auto-fill, minmax(7.5rem, 1fr));
+  gap: var(--space-2) var(--space-3);
 }
 
 /* --- Difficulty multipliers ---------------------------------------- */

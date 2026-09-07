@@ -44,6 +44,7 @@ export function LootEditor({ rows, itemTemplates, onChange }: Props) {
           <div className="field-row" key={index}>
             <Field
               label="Item"
+              width="lg"
               /* A key that matches no template is allowed - content is routinely wired before
                  the thing it points at exists (§7.4) - but it is worth saying out loud, because
                  the other reason for it is a typo. */
@@ -56,7 +57,7 @@ export function LootEditor({ rows, itemTemplates, onChange }: Props) {
               />
             </Field>
 
-            <Field label="Chance" hint="0.25 = a quarter of kills.">
+            <Field label="Chance" width="xs" hint="0.25 = a quarter of kills.">
               <NumberField
                 value={row.chance}
                 onChange={(next) => edit(index, { chance: clampChance(next ?? 0) })}
@@ -64,7 +65,6 @@ export function LootEditor({ rows, itemTemplates, onChange }: Props) {
             </Field>
 
             <Button
-             
               variant="danger"
               onClick={() => onChange(rows.filter((_, i) => i !== index))}
             >

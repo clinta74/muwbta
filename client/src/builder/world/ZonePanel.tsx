@@ -139,10 +139,10 @@ export function ZonePanel({ zoneKey }: ZonePanelProps) {
           </Field>
 
           <div className="field-row">
-            <Field label="Min level">
+            <Field label="Min level" width="xs">
               <NumberInput min={1} value={minLevel} onChange={change(setMinLevel)} />
             </Field>
-            <Field label="Max level" hint="Advisory — nothing enforces it yet.">
+            <Field label="Max level" width="xs" hint="Advisory — nothing enforces it yet.">
               <NumberInput min={1} value={maxLevel} onChange={change(setMaxLevel)} />
             </Field>
           </div>
