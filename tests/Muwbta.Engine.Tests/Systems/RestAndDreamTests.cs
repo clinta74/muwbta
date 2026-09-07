@@ -1,6 +1,7 @@
 using Muwbta.Domain.Characters;
 using Muwbta.Domain.Combat;
 using Muwbta.Domain.Worlds;
+using Muwbta.Engine.Mutations;
 using Muwbta.Engine.Systems;
 using Muwbta.Engine.Tests.Infrastructure;
 
@@ -12,6 +13,127 @@ namespace Muwbta.Engine.Tests.Systems;
 public sealed class RestAndDreamTests
 {
     private static readonly RoomKey West = RoomKey.Parse("test.zone.west");
+    private static readonly RoomKey Middle = RoomKey.Parse("test.zone.middle");
+
+    /// <summary>The test world with its west room made peaceful, which is where sleep is allowed.</summary>
+    /// <remarks>
+    /// Every test below that types <c>sleep</c> starts here, because the verb reads the
+    /// <c>peaceful</c> flag (PLAN.md §4.10) and the test world declares nothing. Fights are staged
+    /// in <see cref="Middle"/> instead: the room you may sleep in is by definition a room nothing
+    /// can open a fight in, so the two cannot be the same room.
+    /// </remarks>
+    private static WorldHarness Bedroom()
+    {
+        var harness = new WorldHarness();
+        harness.LoadTestWorld();
+        harness.MakePeaceful(West);
+        return harness;
+    }
+
+    // -----------------------------------------------------------------------
+    // Where you may lie down at all
+    // -----------------------------------------------------------------------
+
+    [Fact]
+    public void Sleep_is_refused_in_a_room_that_is_not_peaceful()
+    {
+        // Absence is the safe value (§4.10): a room nobody has thought about is not a bedroom.
+        var harness = new WorldHarness();
+        harness.LoadTestWorld();
+        var player = harness.AddPlayer("Kael", West);
+
+        harness.Execute(player, "sleep");
+
+        Assert.Equal(CharacterRestState.Stand, player.Character.RestState);
+        Assert.Contains("not safe to sleep", harness.DrainText(player), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void The_refusal_names_rest_as_the_thing_to_do_instead()
+    {
+        // The shape every other gate uses: say the state, then name the way out of it. "You cannot
+        // sleep here" on its own leaves a player standing in a corridor with no move to make.
+        var harness = new WorldHarness();
+        harness.LoadTestWorld();
+        var player = harness.AddPlayer("Kael", West);
+
+        harness.Execute(player, "sleep");
+
+        Assert.Contains("rest", harness.DrainText(player), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Resting_is_allowed_where_sleeping_is_not()
+    {
+        // The point of the gate: recovery is never taken away, only its best rate is. That is what
+        // stops `sleep` being the correct thing to type in every room in the world.
+        var harness = new WorldHarness();
+        harness.LoadTestWorld();
+        var player = harness.AddPlayer("Kael", West);
+
+        harness.Execute(player, "rest");
+
+        Assert.Equal(CharacterRestState.Rest, player.Character.RestState);
+    }
+
+    [Fact]
+    public void A_peaceful_room_takes_sleepers()
+    {
+        var harness = Bedroom();
+        var player = harness.AddPlayer("Kael", West);
+
+        harness.Execute(player, "sleep");
+
+        Assert.Equal(CharacterRestState.Sleep, player.Character.RestState);
+    }
+
+    [Fact]
+    public void The_flag_one_scope_up_is_enough()
+    {
+        // Flags resolve nearest-level-wins (§4.10), which is the granularity that matters here: a
+        // settlement zone declares itself peaceful once and every inn inside it takes sleepers.
+        var harness = new WorldHarness();
+        harness.LoadTestWorld();
+        harness.Mutate(new SetZoneFlag("test.zone", RoomFlags.Peaceful.Key, true));
+        var player = harness.AddPlayer("Kael", West);
+
+        harness.Execute(player, "sleep");
+
+        Assert.Equal(CharacterRestState.Sleep, player.Character.RestState);
+    }
+
+    [Fact]
+    public void So_is_the_flag_on_the_world()
+    {
+        // The whole-realm case, for a world that wants sleeping to work anywhere inside it.
+        var harness = new WorldHarness();
+        harness.LoadTestWorld();
+        harness.Mutate(new SetWorldFlag("test", RoomFlags.Peaceful.Key, true));
+        var player = harness.AddPlayer("Kael", West);
+
+        harness.Execute(player, "sleep");
+
+        Assert.Equal(CharacterRestState.Sleep, player.Character.RestState);
+    }
+
+    [Fact]
+    public void A_room_that_stops_being_peaceful_under_a_sleeper_leaves_them_asleep()
+    {
+        // Nothing wakes them, and asking again says what they are rather than telling them off. A
+        // builder unticking a checkbox is not an event to narrate into somebody's sleep, and no
+        // other rule in the engine changes a posture on a player's behalf either.
+        var harness = Bedroom();
+        var player = harness.AddPlayer("Kael", West);
+
+        harness.Execute(player, "sleep");
+        harness.Mutate(new SetRoomFlag(West, RoomFlags.Peaceful.Key, false));
+        harness.Drain(player);
+
+        harness.Execute(player, "sleep");
+
+        Assert.Equal(CharacterRestState.Sleep, player.Character.RestState);
+        Assert.Contains("already asleep", harness.DrainText(player), StringComparison.Ordinal);
+    }
 
     // -----------------------------------------------------------------------
     // Standing up first
@@ -25,8 +147,7 @@ public sealed class RestAndDreamTests
         // The defect this suite was written for. Movement refused a resting character and `attack`
         // did not, so a fight could be started and held to the end without ever standing - while
         // drawing the resting regen rate the whole time.
-        var harness = new WorldHarness();
-        harness.LoadTestWorld();
+        var harness = Bedroom();
 
         var player = harness.AddPlayer("Kael", West, level: 10);
         harness.AddMob("rat", West, health: 200);
@@ -45,8 +166,7 @@ public sealed class RestAndDreamTests
     [InlineData("rest")]
     public void You_cannot_cast_from_the_floor(string posture)
     {
-        var harness = new WorldHarness();
-        harness.LoadTestWorld();
+        var harness = Bedroom();
 
         var player = harness.AddPlayer("Kael", West, level: 10);
         harness.AddMob("rat", West, health: 200);
@@ -69,8 +189,7 @@ public sealed class RestAndDreamTests
     [InlineData("rest")]
     public void You_cannot_walk_out_from_the_floor(string posture)
     {
-        var harness = new WorldHarness();
-        harness.LoadTestWorld();
+        var harness = Bedroom();
         var player = harness.AddPlayer("Kael", West);
 
         harness.Execute(player, posture);
@@ -85,18 +204,22 @@ public sealed class RestAndDreamTests
     [Fact]
     public void Standing_up_puts_all_three_back()
     {
-        var harness = new WorldHarness();
-        harness.LoadTestWorld();
+        var harness = Bedroom();
 
         var player = harness.AddPlayer("Kael", West, level: 10);
-        harness.AddMob("rat", West, health: 200);
+
+        // Next door, because the room that took the sleeper cannot also hold the fight - and
+        // walking there is itself the third of the three a sleeper cannot do.
+        harness.AddMob("rat", Middle, health: 200);
 
         harness.Execute(player, "sleep");
         harness.Execute(player, "stand");
         harness.Drain(player);
 
+        harness.Execute(player, "east");
         harness.Execute(player, "attack rat");
 
+        Assert.Equal(Middle, player.Character.RoomKey);
         Assert.Equal(CombatState.Fighting, player.Character.CombatState);
     }
 
@@ -125,8 +248,7 @@ public sealed class RestAndDreamTests
     [Fact]
     public void A_sleeping_player_is_not_shown_another_players_emote()
     {
-        var harness = new WorldHarness();
-        harness.LoadTestWorld();
+        var harness = Bedroom();
 
         var sleeper = harness.AddPlayer("Kael", West);
         var awake = harness.AddPlayer("Ilse", West);
@@ -145,8 +267,7 @@ public sealed class RestAndDreamTests
     {
         // The filter is per-player, not per-room. One person dozing must not silence the room for
         // everybody else in it.
-        var harness = new WorldHarness();
-        harness.LoadTestWorld();
+        var harness = Bedroom();
 
         var sleeper = harness.AddPlayer("Kael", West);
         var awake = harness.AddPlayer("Ilse", West);
@@ -165,8 +286,7 @@ public sealed class RestAndDreamTests
     {
         // Deliberate. An emote is something you do where people can see it; being shouted at is
         // how somebody wakes you, and filtering it would leave no way to reach a sleeping player.
-        var harness = new WorldHarness();
-        harness.LoadTestWorld();
+        var harness = Bedroom();
 
         var sleeper = harness.AddPlayer("Kael", West);
         var awake = harness.AddPlayer("Ilse", West);
@@ -187,8 +307,7 @@ public sealed class RestAndDreamTests
     public void Falling_asleep_does_not_dream_immediately()
     {
         // Dropping off and dreaming on the same tick reads as a bug rather than as sleep.
-        var harness = new WorldHarness();
-        harness.LoadTestWorld();
+        var harness = Bedroom();
         var player = harness.AddPlayer("Kael", West);
 
         harness.Execute(player, "sleep");
@@ -202,8 +321,7 @@ public sealed class RestAndDreamTests
     [Fact]
     public void A_sleeper_dreams_once_every_five_minutes()
     {
-        var harness = new WorldHarness();
-        harness.LoadTestWorld();
+        var harness = Bedroom();
         var player = harness.AddPlayer("Kael", West);
 
         harness.Execute(player, "sleep");
@@ -230,8 +348,7 @@ public sealed class RestAndDreamTests
     [Fact]
     public void Somebody_awake_never_dreams()
     {
-        var harness = new WorldHarness();
-        harness.LoadTestWorld();
+        var harness = Bedroom();
         var player = harness.AddPlayer("Kael", West);
         harness.Drain(player);
 
@@ -248,8 +365,7 @@ public sealed class RestAndDreamTests
     {
         // The timer is cleared on waking. Without that, somebody who slept an hour ago and lies
         // down again dreams on the very next tick from a stale due-time.
-        var harness = new WorldHarness();
-        harness.LoadTestWorld();
+        var harness = Bedroom();
         var player = harness.AddPlayer("Kael", West);
 
         harness.Execute(player, "sleep");
@@ -277,8 +393,7 @@ public sealed class RestAndDreamTests
         // function itself: with ten lines and two arbitrary ids they collide about one time in
         // ten, so comparing what two random characters were sent is sampling rather than testing.
         // This test failed roughly that often until it stopped claiming otherwise.
-        var harness = new WorldHarness();
-        harness.LoadTestWorld();
+        var harness = Bedroom();
 
         var one = harness.AddPlayer("Kael", West);
         var two = harness.AddPlayer("Ilse", West);

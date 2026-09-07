@@ -298,6 +298,17 @@ internal sealed class WorldHarness
     public MutationResult Mutate(WorldChange change) => Applier.Apply(change);
 
     /// <summary>
+    /// Marks a room peaceful, which is what <c>sleep</c> asks for (PLAN.md §4.10).
+    /// </summary>
+    /// <remarks>
+    /// Named for the flag rather than for the verb, because it is the flag: a peaceful room also
+    /// refuses every hostile action in it, so a test that wants a sleeper <em>and</em> a fight has
+    /// to say which room each happens in rather than reach for this on both.
+    /// </remarks>
+    public void MakePeaceful(RoomKey room) =>
+        Mutate(new SetRoomFlag(room, RoomFlags.Peaceful.Key, true));
+
+    /// <summary>
     /// Three rooms west-to-east, plus a fourth exit off the east room that points at a room
     /// which does not exist - the dangling-exit case live editing makes routine.
     /// </summary>

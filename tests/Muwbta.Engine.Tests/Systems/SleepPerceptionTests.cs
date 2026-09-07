@@ -33,6 +33,9 @@ public sealed class SleepPerceptionTests
         var harness = new WorldHarness();
         harness.LoadTestWorld();
 
+        // A bedroom is a peaceful room, since that is the only kind `sleep` accepts (§4.10).
+        harness.MakePeaceful(West);
+
         var sleeper = harness.AddPlayer("Wen", West, path: CharacterPath.Hallow, level: 10);
         var awake = harness.AddPlayer("Kaeda", West, path: CharacterPath.Temper, level: 10);
 

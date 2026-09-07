@@ -41,7 +41,9 @@ public static class RoomFlags
         "pvp", "Players may attack one another here.", "Phase 4");
 
     public static readonly RoomFlag Peaceful = Register(
-        "peaceful", "No combat at all, mobs included. Overrides pvp.", "Phase 4");
+        "peaceful",
+        "No combat at all, mobs included. Overrides pvp. The only rooms sleep is allowed in.",
+        "Phase 4");
 
     public static readonly RoomFlag Respawn = Register(
         "respawn", "A valid bind point: characters may set their respawn here.", "Phase 4");

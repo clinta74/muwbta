@@ -134,6 +134,7 @@ public sealed class AutoFollowTests
     public void A_sleeping_follower_stops_following()
     {
         var (harness, kael, ilse) = Following();
+        harness.MakePeaceful(West);
         harness.Execute(ilse, "sleep");
         harness.Drain(ilse);
 

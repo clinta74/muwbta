@@ -574,6 +574,11 @@ health and stamina are the same number for everyone, so this is a caster's resou
 resource rather than a blanket buff. `RegenCalculator` takes the Path rather than defaulting it,
 because getting it wrong is silent.
 
+**Sleep is only allowed in a `peaceful` room** (§4.10). It pays the best recovery in the game and
+costs nothing but the verbs it suspends, which made lying down anywhere at all the correct play;
+tying it to the flag that already means "nothing can open a fight here" makes the best rate a thing
+geography grants rather than a thing every room does. `rest` stays available everywhere.
+
 **A sleeper does not see the room.** Sleep pays the best recovery in the game and costs only the
 verbs `RestGate` refuses, so a sleeping player used to be the best-informed person present —
 watching every arrival, departure and pickup scroll past with their eyes shut. `WorldState.AwakeIn`
@@ -1632,7 +1637,7 @@ The starting registry:
 | Flag | Default | Read by | Meaning | Enforced in |
 |---|---|---|---|---|
 | `pvp` | false | combat targeting | Players may attack one another here (§4.11) | Phase 4 |
-| `peaceful` | false | combat targeting | No combat at all, mobs included | Phase 4 |
+| `peaceful` | false | combat targeting, `sleep` | No combat at all, mobs included; the only rooms `sleep` is allowed in | Phase 4 |
 | `respawn` | false | death, `bind` | A valid bind point (§4.12) | Phase 4 |
 | `noMob` | false | mob AI | Wandering mobs will not path in | Phase 3 |
 | `noRecall` | false | `Travel.Refuse` | `recall` and any future teleport out are refused | Phase 5.3 |
@@ -1642,6 +1647,16 @@ The starting registry:
 
 **`peaceful` beats `pvp`.** A room carrying both is peaceful. Conflicts must resolve toward the
 safe value for the same reason absence does.
+
+**`peaceful` is also where you may sleep, and nowhere else is.** Deep sleep pays the best recovery
+in the game (§4.7) and costs only the verbs it suspends, which made lying down anywhere at all the
+correct play — a wandering mob cannot reach a sleeper faster than the regen tick can. Rather than a
+second flag meaning "safe" beside one that already means it, `sleep` asks this one: a room nothing
+can open a fight in is exactly a room where sleeping through the next ten minutes is a decision
+rather than a gamble. `rest` stays available everywhere at roughly half the rate, so the two verbs
+now differ in more than a number. Being a flag, it inherits — a settlement zone declares it once and
+every inn inside it takes sleepers — and a world that has marked nothing peaceful has nowhere to
+sleep, which is the flag working rather than the gate misfiring.
 
 ### 4.11 Player-versus-player
 

@@ -30,6 +30,10 @@ public sealed class NeedsReportingTests
         var harness = new WorldHarness();
         harness.LoadTestWorld();
 
+        // Peaceful because half these tests type `sleep`, which asks for it (§4.10). Nothing here
+        // fights, so there is no reason to be selective about which room gets the flag.
+        harness.MakePeaceful(Room);
+
         var actor = harness.AddPlayer("Kael", Room);
         actor.Character.Vitals.Hunger = hunger;
         actor.Character.Vitals.Thirst = thirst;
