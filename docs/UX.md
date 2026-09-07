@@ -249,3 +249,131 @@ Worth recording so a later pass does not "fix" it:
    field names, rows or bundles changed.
 7. ~~**Findings 3 and 4, adoption**~~ Done in the same pass: 214 spacing declarations moved onto
    the scale.
+
+---
+
+# Round two
+
+Written 2026-09-06, against the client the round above left behind. Findings 1–8 were about
+decisions the stylesheet had made badly. These are about decisions it never made at all.
+
+**The finding under all of them: the markup had been written against a design vocabulary the
+stylesheet never learned.** Twelve class names were used and matched no rule anywhere, and the
+worst of them, `.field-row`, was in the markup nineteen times. That is not a stylesheet drifting
+from its components; it is components asking for a system that was never finished, and getting the
+browser's defaults instead — silently, because a class that matches nothing produces no error.
+
+Round one's finding 1 was the same shape at a smaller scale: four buttons asked for `.danger` and
+no such rule existed. What that found in four buttons, this found in four editors and a tab.
+
+---
+
+## 9. `.field-row` had no `display` — FIXED
+
+**Severity: defect.** Nineteen call sites, no rule.
+
+`.field-row` is what puts two or three fields on one line in the item, mob, quest and ability
+editors. The only rules that ever named it were `.attack-list .field-row` and
+`.behavior-editor .field-row`, and both set nothing but `align-items: flex-end`.
+
+So outside those two containers it was a plain block. Its children stacked, and the global
+`input { width: 100% }` gave each one the full rail. An item's icon holds **one character** and was
+as wide as its description; a mob's level holds two digits and had a row to itself.
+
+**Fixed** by making it a wrapping flex row and giving `Field` a typed `width` —
+`char`/`xs`/`sm`/`md`/`lg`/`full`, a union rather than a class name, for the reason `Button` takes a
+`variant`. The *field* carries the size and the control keeps `width: 100%` and fills it, so a size
+is declared once and nothing reaches past the field to the input. The small sizes do not take slack
+when a row has some; `md` and `lg` do, which is what makes `[icon, name, level]` come out as three
+sensible widths rather than three equal thirds.
+
+---
+
+## 10. Four of the twelve orphan classes were in one panel — FIXED
+
+**Severity: defect.** `TokensPanel` asked for `.form-grid`, `.grid`, `.callout` and `.ghost`, and
+got four unstyled elements.
+
+The `.grid` one is worth naming precisely, because it was reported as *"the padding between scope
+and name is not matched and too small"*: there was no padding rule. The table was rendering at the
+user agent's default, so the gap was whatever the browser chose, and it was not chosen against
+anything else on the screen.
+
+`.ghost` was on two buttons, one of them **Revoke** — the only irreversible control on the panel,
+rendering as an ordinary button. Same defect as round one's finding 1, in a panel written after it
+was closed.
+
+**Fixed** by adding the three that are real primitives — `.callout`, and `.data-table` in place of
+`.grid` — and *deleting* `.ghost` rather than defining it. A quiet button is the bare `<button>`
+and a destructive one is `Button variant="danger"`; adding a third spelling is how the dead
+`.danger` survived the first time.
+
+The revoke `confirm()` became a `ConfirmDialog` in the same pass, and the file picker in
+`TransferPanel` — the last control in the builder still rendering in the operating system's own
+chrome — became `.file-field`, styled through `::file-selector-button` so the element keeps its own
+semantics rather than being hidden behind a button that has to rebuild them.
+
+---
+
+## 11. One rule, three names — FIXED
+
+`.multiplier-set`, `.attack-list` and `.behavior-editor` were byte-identical declarations sharing a
+legend rule. Which one an editor reached for was down to which was written first: the item editor
+groups its stats in a `.multiplier-set`, the quest editor groups its rewards in a
+`.behavior-editor`, and neither has anything to do with multipliers or behaviour.
+
+**Fixed:** one `.subpanel`. Round one found two names for one variant and called that the cause;
+this is the same thing with three.
+
+Two smaller ones went with it. `.preview-table` was the only good table in the product and was
+scoped to one panel — it is `.data-table.dense` now. And `.stat-grid` used `auto-fit`, which
+collapses the tracks it did not use and shares the width among the rest, so a group of *two* stats
+rendered as two half-rail boxes for two-digit numbers; `auto-fill` keeps the columns the width the
+content wants however many there are.
+
+---
+
+## 12. `h3` and `h4` had no rules — FIXED
+
+`h1` and `h2` did. So every panel title and every sub-heading in the builder rendered at the
+browser's default — bold, 1.17em, a full em of margin — beside headings that had been given a
+deliberate size. Two levels are what the panels actually use: `h3` names the panel, `h4` names a
+block inside it, and `h4` takes the uppercase-dim treatment the field labels, the legends and
+`.tree-head h3` already shared.
+
+---
+
+## 13. App.css was three stylesheets — FIXED
+
+2,053 lines holding the design tokens, the whole game client, and a second builder stylesheet —
+the latter under a comment in the file itself saying those rules belonged in `builder.css`. A
+change to a spacing token and a change to the transcript were edits to the same file.
+
+**Fixed** by moving to SCSS and splitting: `styles/` is tokens, base element rules, and one partial
+per component; `builder/builder.scss` and `game/game.scss` carry what is theirs and nothing another
+feature could want. `main.tsx` imports the system before anything else, because CSS lands in the
+bundle in module-evaluation order and a feature sheet must not get ahead of the base rules it sits
+on.
+
+The move is rule-block for rule-block. A selector-set diff over the four old files and the sixteen
+new ones reports only the renames in findings 10 and 11 — worth re-running if this is ever done
+again, because it is the only thing that makes a 2,000-line move reviewable.
+
+`src/components/` went at the same time. It held the game screen, the sign-in screen, ten loose
+logic modules and two shared hooks, under a name that says only "not the builder" — and it was
+where `game.scss` would have had to live, beside the components it styles and under a folder named
+after none of them.
+
+---
+
+## 14. Tests sat wherever the component they rendered first happened to live — FIXED
+
+31 of the 45 test files named the module beside them, which is the convention that works. The other
+14 did not: six `*.smoke.test.tsx` files drove several tabs each from inside one tab's folder,
+`changeFeed.test.tsx` sat in `builder/` next to no `changeFeed`, and `railWidths.test.ts` and
+`heartbeat.test.ts` were named after subjects that do not exist as files.
+
+**Fixed** in two tiers. A test about one module stays beside it. A test about several components
+together moves to `client/tests/`, mirroring the feature — with a `@/` alias so a moved test does
+not open with a run of `../../src/`. The two misnamed unit tests were renamed rather than moved,
+because the pairing is the point: `useRailWidths.test.ts` and `stream.heartbeat.test.ts`.
