@@ -103,7 +103,7 @@ public sealed class CommandRegistry
         // sheet by its obvious abbreviation was told the verb did not exist (RequireAdmin answers
         // as though it were unknown, deliberately, so admin verbs cannot be found by fishing).
         _commands.Add(new CommandDefinition(
-            "stats", 4, "stats - show your damage, armor, and combat stats", Stats));
+            "stats", 4, "stats - show your condition, damage, armor, and combat stats", Stats));
 
         // Full word required: quitting by fumbling a key would be a bad surprise.
         _commands.Add(new CommandDefinition(
@@ -1495,11 +1495,24 @@ public sealed class CommandRegistry
             MinDamage: 1,
             MaxDamage: 1);
 
+        // Hunger and thirst are said out loud once, on the tick that crosses a threshold, and
+        // never again (`NeedsSystem`) - so a player who was looking elsewhere, or who logged in
+        // already hungry, had nowhere to ask. The only other thing the needs do is slow recovery,
+        // and that is a multiplier nothing in the game prints. This is the screen you look
+        // yourself up on, so it answers in both directions: "fed and watered" is an answer, and
+        // silence is not.
+        var vitals = character.Vitals;
+        var condition = Needs.Describe(vitals.Hunger, vitals.Thirst);
+        var regenShare = Needs.RegenShare(vitals.Hunger, vitals.Thirst);
+
         var spans = new List<TextSpan>
         {
             new($"Combat Stats", "heading"),
             new($"\nLevel: {character.Level}"),
             new($"\nGold: {character.Gold:N0}"),
+            new(
+                $"\nCondition: {condition ?? "fed and watered"}",
+                condition is null ? "good" : "bad"),
             new($"\nDamage Range: {minDamage}-{maxDamage}", "good"),
             new($"\n  Dice: {attack.MinDamage}-{attack.MaxDamage}, Might bonus: {attack.BaseDamage:+#;-#;+0}"),
             new($"\n  Speed: one swing every {mainDelay * 0.25:0.##}s"),
@@ -1513,6 +1526,13 @@ public sealed class CommandRegistry
             new($"\n  Evaded by {1 - DamageCalculator.HitChance(peerAttack, defense):P0} of an even match's swings"),
             new($"\n  Armour: {defense.Armor} rating, absorbs {ArmorCurve.Mitigation(defense.Armor, character.Level):P0} of an even match's blows"),
         };
+
+        // Only when it costs something. At worst recovery is two fifths of normal, and a line
+        // reading "100%" on every healthy sheet would be one more number to read past.
+        if (regenShare < 1.0)
+        {
+            spans.Add(new TextSpan($"\n  Recovering at {regenShare:P0} of your normal rate", "dim"));
+        }
 
         AppendOffHand(ctx, spans, character, equipped);
 

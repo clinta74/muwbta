@@ -75,6 +75,24 @@ public static class Needs
     /// <summary>The word for how thirsty this is, or null when there is nothing to say.</summary>
     public static string? DescribeThirst(int thirst) => Describe(thirst, "thirsty", "very thirsty", "parched");
 
+    /// <summary>Both needs in one phrase, or null when neither is worth saying.</summary>
+    /// <remarks>
+    /// <b>Joined rather than listed, and both named when both apply.</b> A character can be
+    /// starving and merely thirsty at once, and the two words are not interchangeable — "hungry
+    /// and parched" is the sentence, and picking the worse of the two would drop the half the
+    /// player still has to answer separately. That the worse one alone decides recovery
+    /// (<see cref="RegenShare"/>) is a rule about arithmetic, not about what to say.
+    /// </remarks>
+    public static string? Describe(int hunger, int thirst)
+    {
+        var belly = DescribeHunger(hunger);
+        var throat = DescribeThirst(thirst);
+
+        return belly is null ? throat
+            : throat is null ? belly
+            : $"{belly} and {throat}";
+    }
+
     private static string? Describe(int value, string mild, string bad, string worst) =>
         value >= Thresholds[2] ? worst
         : value >= Thresholds[1] ? bad
