@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { BuilderColumns } from '../BuilderColumns'
 import { useNavigate, useOutletContext, useParams } from 'react-router'
-import { useCompactBuilder } from '../../components/pointer'
+import { useCompactBuilder } from '../../ui/pointer'
 import { useBuilderData } from '../BuilderData'
 import { useNavGuard } from '../NavGuard'
 import { keysFromParams, toWorldPath, type Section } from '../routes'

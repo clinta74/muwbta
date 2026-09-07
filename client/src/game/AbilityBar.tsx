@@ -43,7 +43,7 @@ function hiddenEdges(row: HTMLElement): string {
  * <b>The row stays when it is empty.</b> It used to unmount, and every time the last cooldown ran
  * out the transcript grew a row and the input jumped under the cursor - in the middle of a fight,
  * which is the one time the bar is busy. The row keeps its one-chip height (see the `:empty` rule
- * in App.css) so nothing below it moves.
+ * in game.scss) so nothing below it moves.
  *
  * <b>One line, scrolled, never wrapped.</b> A second line is the same jump from the other side.
  * The native scrollbar is hidden and a fade at whichever edge has more past it says so instead;

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, render, waitFor } from '@testing-library/react'
-import { BuilderDataProvider } from './BuilderData'
+import { BuilderDataProvider } from '@/builder/BuilderData'
 
 /**
  * The builder change feed coalesces.
@@ -19,7 +19,7 @@ import { BuilderDataProvider } from './BuilderData'
 
 const counts = vi.hoisted(() => ({ quests: 0, mobs: 0, items: 0 }))
 
-vi.mock('../net/builderApi', () => ({
+vi.mock('@/net/builderApi', () => ({
   builderApi: {
     roomFlags: () => Promise.resolve([]),
     worlds: () => Promise.resolve([]),

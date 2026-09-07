@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router'
-import type { AdminAccount } from '../../net/adminApi'
+import type { AdminAccount } from '@/net/adminApi'
 
 const account = vi.hoisted(
   (): AdminAccount => ({
@@ -30,8 +30,8 @@ const calls = vi.hoisted(() => ({
   deleted: null as string | null,
 }))
 
-vi.mock('../../net/adminApi', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../net/adminApi')>()
+vi.mock('@/net/adminApi', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/net/adminApi')>()
   return {
     ...actual,
     adminApi: {
@@ -61,8 +61,8 @@ vi.mock('../../net/adminApi', async (importOriginal) => {
   }
 })
 
-import { ToastProvider } from '../../ui/Toast'
-import { AccountsTab } from './AccountsTab'
+import { ToastProvider } from '@/ui/Toast'
+import { AccountsTab } from '@/builder/accounts/AccountsTab'
 
 beforeEach(() => {
   calls.password = null

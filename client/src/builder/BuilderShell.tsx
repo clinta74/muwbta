@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Outlet, useLocation, useNavigate } from 'react-router'
-import { useCompactBuilder } from '../components/pointer'
+import { useCompactBuilder } from '../ui/pointer'
 import { BuilderDataProvider } from './BuilderData'
 import { NavGuardProvider, useNavGuard } from './NavGuard'
 import { ToastProvider } from '../ui/Toast'

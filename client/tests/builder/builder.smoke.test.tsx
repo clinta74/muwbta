@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter, Navigate, Route, Routes } from 'react-router'
-import type { RoomDetail } from '../net/builderApi'
+import type { RoomDetail } from '@/net/builderApi'
 
 // A tiny in-memory builder API so the shell can load without a network. Only the reads the
 // world tab performs on mount are needed.
@@ -30,7 +30,7 @@ const rooms: RoomDetail[] = [
 
 const room = (key: string) => rooms.find((r) => r.key === key)!
 
-vi.mock('../net/builderApi', () => ({
+vi.mock('@/net/builderApi', () => ({
   DIRECTIONS: ['north', 'east', 'south', 'west', 'up', 'down'],
   OPPOSITE: { north: 'south', south: 'north', east: 'west', west: 'east', up: 'down', down: 'up' },
   MULTIPLIER_KEYS: [
@@ -75,10 +75,10 @@ vi.mock('../net/builderApi', () => ({
   },
 }))
 
-import { BuilderShell } from './BuilderShell'
-import { WorldTab } from './world/WorldTab'
-import { MobsTab } from './mobs/MobsTab'
-import { ItemsTab } from './items/ItemsTab'
+import { BuilderShell } from '@/builder/BuilderShell'
+import { WorldTab } from '@/builder/world/WorldTab'
+import { MobsTab } from '@/builder/mobs/MobsTab'
+import { ItemsTab } from '@/builder/items/ItemsTab'
 
 class FakeEventSource {
   close() {}

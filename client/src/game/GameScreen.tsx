@@ -12,7 +12,7 @@ import type {
   VitalsPayload,
 } from '../net/protocol'
 import { shouldRedirectToInput } from './typeAnywhere'
-import { useCoarsePointer, usePhoneLayout } from './pointer'
+import { useCoarsePointer, usePhoneLayout } from '../ui/pointer'
 import { exitPad, recentCommands, verbsFor } from './touchVerbs'
 import { applyCompletion, completionsFor, type Completions } from './completion'
 import { loadHistory, remember, saveHistory } from './commandHistory'

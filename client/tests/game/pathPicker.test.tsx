@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from 'vitest'
 import { cleanup, render, screen } from '@testing-library/react'
-import { CharacterScreen } from './AuthScreen'
+import { CharacterScreen } from '@/game/AuthScreen'
 
-vi.mock('../net/api', () => ({
+vi.mock('@/net/api', () => ({
   api: {
     characters: () => Promise.resolve([]),
     sessions: () => Promise.resolve([]),

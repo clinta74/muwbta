@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router'
-import type { Ability } from '../../net/builderApi'
+import type { Ability } from '@/net/builderApi'
 
 const kick = vi.hoisted(
   (): Ability => ({
@@ -84,8 +84,8 @@ const broken = vi.hoisted(
 
 const calls = vi.hoisted(() => ({ list: 0, updated: null as unknown, fail: false }))
 
-vi.mock('../../net/builderApi', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../net/builderApi')>()
+vi.mock('@/net/builderApi', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/net/builderApi')>()
   return {
     ...actual,
     builderApi: {
@@ -104,8 +104,8 @@ vi.mock('../../net/builderApi', async (importOriginal) => {
   }
 })
 
-import { ToastProvider } from '../../ui/Toast'
-import { AbilitiesTab } from './AbilitiesTab'
+import { ToastProvider } from '@/ui/Toast'
+import { AbilitiesTab } from '@/builder/abilities/AbilitiesTab'
 
 beforeEach(() => {
   calls.list = 0

@@ -1,13 +1,13 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
-import { GameScreen } from './GameScreen'
-import type { GameEvent } from '../net/protocol'
+import { GameScreen } from '@/game/GameScreen'
+import type { GameEvent } from '@/net/protocol'
 
 const sent: string[] = []
 const entered: string[] = []
 
-vi.mock('../net/api', () => ({
+vi.mock('@/net/api', () => ({
   api: {
     command: (_id: string, input: string) => {
       sent.push(input)
@@ -26,7 +26,7 @@ const stream = vi.hoisted(() => ({
   open: null as (() => void) | null,
 }))
 
-vi.mock('../net/stream', () => ({
+vi.mock('@/net/stream', () => ({
   connectStream: (
     _id: string,
     handlers: {

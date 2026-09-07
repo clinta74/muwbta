@@ -7,7 +7,7 @@
     <!--
       Installable (MOBILE.md M5). Standalone display is worth more than a home-screen shortcut
       sounds: it removes the browser chrome, which is the thing that makes viewport height awkward
-      in the first place, and it is why the dvh work in App.css has less to fight against here.
+      in the first place, and it is why the dvh work in game.scss has less to fight against here.
 
       No service worker. One is only needed for Android's install prompt, and there is no offline
       story to tell — the game is a live connection to a world running somewhere else.
@@ -34,7 +34,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <!--
       viewport-fit=cover lets the page paint under the notch and the home bar; the bars that would
-      otherwise sit beneath them take env(safe-area-inset-*) padding instead (App.css).
+      otherwise sit beneath them take env(safe-area-inset-*) padding instead (game.scss).
 
       interactive-widget=resizes-content is the one that matters most: without it the on-screen
       keyboard overlays the viewport rather than shrinking it, so the command input — the whole

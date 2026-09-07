@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router'
-import type { GameConfiguration, ImportReport } from '../../net/builderApi'
+import type { GameConfiguration, ImportReport } from '@/net/builderApi'
 
 /**
  * What the mocked server accepts. Matches the fixture bundles below, so the tests about importing
@@ -63,8 +63,8 @@ const report = vi.hoisted(
   }),
 )
 
-vi.mock('../../net/builderApi', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../net/builderApi')>()
+vi.mock('@/net/builderApi', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/net/builderApi')>()
   return {
     ...actual,
     builderApi: {
@@ -105,8 +105,8 @@ vi.mock('../../net/builderApi', async (importOriginal) => {
   }
 })
 
-import { ToastProvider } from '../../ui/Toast'
-import { SetupTab } from './SetupTab'
+import { ToastProvider } from '@/ui/Toast'
+import { SetupTab } from '@/builder/setup/SetupTab'
 
 beforeEach(() => {
   calls.activated = null

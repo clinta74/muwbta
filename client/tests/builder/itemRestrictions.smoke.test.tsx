@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import type { ItemTemplate } from '../../net/builderApi'
+import type { ItemTemplate } from '@/net/builderApi'
 
 /**
  * The three item restrictions, in the editor.
@@ -36,8 +36,8 @@ const oathmaul = vi.hoisted(
 
 const saved = vi.hoisted(() => ({ body: null as Partial<ItemTemplate> | null }))
 
-vi.mock('../../net/builderApi', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../net/builderApi')>()
+vi.mock('@/net/builderApi', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/net/builderApi')>()
   return {
     ...actual,
     builderApi: {
@@ -50,8 +50,8 @@ vi.mock('../../net/builderApi', async (importOriginal) => {
   }
 })
 
-const { ItemTemplateEditor } = await import('./ItemTemplateEditor')
-const { ToastProvider } = await import('../../ui/Toast')
+const { ItemTemplateEditor } = await import('@/builder/items/ItemTemplateEditor')
+const { ToastProvider } = await import('@/ui/Toast')
 
 afterEach(() => {
   cleanup()

@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router'
-import type { Quest } from '../../net/builderApi'
+import type { Quest } from '@/net/builderApi'
 
 const quest = vi.hoisted(
   (): Quest => ({
@@ -34,8 +34,8 @@ const quest = vi.hoisted(
 
 const calls = vi.hoisted(() => ({ reachability: 0, storyline: 0, updated: null as unknown }))
 
-vi.mock('../../net/builderApi', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../net/builderApi')>()
+vi.mock('@/net/builderApi', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/net/builderApi')>()
   return {
     ...actual,
     builderApi: {
@@ -80,9 +80,9 @@ vi.mock('../../net/builderApi', async (importOriginal) => {
   }
 })
 
-import { BuilderDataProvider } from '../BuilderData'
-import { ToastProvider } from '../../ui/Toast'
-import { QuestsTab } from './QuestsTab'
+import { BuilderDataProvider } from '@/builder/BuilderData'
+import { ToastProvider } from '@/ui/Toast'
+import { QuestsTab } from '@/builder/quests/QuestsTab'
 
 class FakeEventSource {
   close() {}

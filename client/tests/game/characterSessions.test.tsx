@@ -1,12 +1,12 @@
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from 'vitest'
 import { cleanup, render, screen } from '@testing-library/react'
-import { CharacterScreen } from './AuthScreen'
+import { CharacterScreen } from '@/game/AuthScreen'
 
 const ODA = '11111111-1111-1111-1111-111111111111'
 const KEHT = '22222222-2222-2222-2222-222222222222'
 
-vi.mock('../net/api', () => ({
+vi.mock('@/net/api', () => ({
   api: {
     characters: () =>
       Promise.resolve([

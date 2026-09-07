@@ -70,7 +70,7 @@
 }
 
 /* Themed checkboxes wherever the builder uses them. Dialogs portal to <body>, so these
-   class-scoped rules still reach them once builder.css is loaded. */
+   class-scoped rules still reach them once builder.scss is loaded. */
 .checkbox-row input[type='checkbox'] {
   appearance: none;
   width: 1rem;
@@ -247,6 +247,7 @@
   justify-content: space-between;
   gap: var(--space-2);
 }
+
 /* The emote list is a plain div rather than a .subpanel fieldset, so it keeps its own rule. */
 .emote-list > button {
   align-self: flex-start;
@@ -860,7 +861,7 @@
 }
 
 /* The builder shell layout (.builder, .builder-topbar, .builder-columns, .builder-col) now
-   lives in builder/builder.css. The old grid rules here conflicted with it - the topbar was
+   lives in builder/builder.scss. The old grid rules here conflicted with it - the topbar was
    being crammed into a 15rem column - so they were removed. The .tree*, .editor-section,
    .flag-*, .room-editor, .exit-list and .follow-toggle rules below are still used by the new
    components and stay. */
@@ -922,7 +923,7 @@
   overflow-y: auto;
 }
 
-/* .follow-toggle now lives in the builder topbar - see builder/builder.css. */
+/* .follow-toggle now lives in the builder topbar - see builder/builder.scss. */
 
 /* --- Zone canvas ------------------------------------------------- */
 
@@ -1521,7 +1522,7 @@ code.dim {
 }
 
 @media (max-width: 768px) {
-  /* One pane. The tree becomes a drawer over it — see .builder[data-nav] in builder.css. */
+  /* One pane. The tree becomes a drawer over it — see .builder[data-nav] in builder.scss. */
   .builder-columns,
   .builder-columns-2 {
     grid-template-columns: 1fr;
