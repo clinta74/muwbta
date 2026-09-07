@@ -7,6 +7,11 @@ import {
   type AccessTokenList,
   type TokenScope,
 } from '../../net/tokenApi'
+import { Button } from '../../ui/Button'
+import { ConfirmDialog } from '../../ui/ConfirmDialog'
+import { Field } from '../../ui/Field'
+import { Select } from '../../ui/Select'
+import { Textarea } from '../../ui/Textarea'
 
 /** Offered lives, filtered against whatever ceiling the server reports. */
 const LIVES = [7, 30, 90]
@@ -24,6 +29,14 @@ function when(iso: string | null): string {
  * so showing that tab to builders would have meant exposing the account-administration chrome to
  * gate a single panel. Setup is already the builder-visible home for the things that are not a
  * world, and this is one more of them.
+ *
+ * <b>This panel was written against four classes that did not exist.</b> `.form-grid`, `.grid`,
+ * `.callout` and `.ghost` matched no rule in any of the stylesheets, so the form was an unstyled
+ * stack, the table was browser-default — which is why the gap between a token's name and its
+ * scope looked wrong; there was no gap, only whatever the user agent chose — the one block whose
+ * job is "you will not see this secret again" had no frame, and Revoke rendered as an ordinary
+ * button. Three of the four now exist as shared primitives; `.ghost` does not, because the quiet
+ * button it wanted is the bare `<button>` and the destructive one is `Button variant="danger"`.
  */
 export function TokensPanel() {
   const [list, setList] = useState<AccessTokenList | null>(null)
@@ -33,6 +46,9 @@ export function TokensPanel() {
   const [scope, setScope] = useState<TokenScope>('BuilderWrite')
   const [days, setDays] = useState(30)
   const [busy, setBusy] = useState(false)
+
+  /** The token a confirmation is open for, or null. Revoking cannot be undone. */
+  const [revoking, setRevoking] = useState<AccessToken | null>(null)
 
   // Held only until the page is left. The server cannot show it again, so nothing here may
   // quietly drop it - which is also why it is not put in localStorage: a secret that outlives the
@@ -73,19 +89,18 @@ export function TokensPanel() {
 
   const revoke = useCallback(
     (token: AccessToken) => {
-      if (!window.confirm(`Revoke '${token.name}'? Anything using it stops working at once.`)) {
-        return
-      }
-
+      setBusy(true)
       void tokenApi
         .revoke(token.id)
         .then(() => {
           setError(null)
+          setRevoking(null)
           reload()
         })
         .catch((e: unknown) => {
           setError(e instanceof Error ? e.message : 'Could not revoke the token.')
         })
+        .finally(() => setBusy(false))
     },
     [reload],
   )
@@ -110,72 +125,62 @@ export function TokensPanel() {
 
       {minted && (
         <div className="callout">
-          <h3>Copy “{minted.name}” now</h3>
+          <h4>Copy “{minted.name}” now</h4>
           <p>This is the only time it is shown. There is no way to see it again.</p>
-          <textarea readOnly rows={3} value={minted.secret} onFocus={(e) => e.target.select()} />
+          <Textarea readOnly value={minted.secret} rows={3} onChange={() => {}} />
           <div className="row">
-            <button
-              type="button"
+            <Button
+              variant="primary"
               onClick={() => void navigator.clipboard?.writeText(minted.secret)}
             >
               Copy
-            </button>
-            <button type="button" className="ghost" onClick={() => setMinted(null)}>
-              I have it
-            </button>
+            </Button>
+            <Button onClick={() => setMinted(null)}>I have it</Button>
           </div>
         </div>
       )}
 
-      <div className="form-grid">
-        <label htmlFor="token-name">Name</label>
-        <input
-          id="token-name"
-          value={name}
-          maxLength={64}
-          placeholder="the laptop's MCP server"
-          onChange={(e) => setName(e.target.value)}
-        />
+      {/* One line at a full rail, wrapping to two when it narrows: a name is most of the width,
+          and a scope and a life are both a phrase. They used to be three stacked rows of
+          full-width control, which made minting a token look like filling in a form when it is
+          really answering one question three ways. */}
+      <div className="field-row">
+        <Field label="Name" width="lg">
+          <input
+            value={name}
+            maxLength={64}
+            placeholder="the laptop's MCP server"
+            onChange={(e) => setName(e.target.value)}
+          />
+        </Field>
 
-        <label htmlFor="token-scope">Scope</label>
-        <div>
-          <select
-            id="token-scope"
-            value={scope}
-            onChange={(e) => setScope(e.target.value as TokenScope)}
-          >
+        <Field label="Scope" width="md" hint={SCOPE_BLURBS[scope]}>
+          <Select value={scope} onChange={(value) => setScope(value as TokenScope)}>
             {TOKEN_SCOPES.map((value) => (
               <option key={value} value={value}>
                 {value}
               </option>
             ))}
-          </select>
-          <p className="dim">{SCOPE_BLURBS[scope]}</p>
-        </div>
+          </Select>
+        </Field>
 
-        <label htmlFor="token-days">Expires</label>
-        <div>
-          <select
-            id="token-days"
-            value={days}
-            onChange={(e) => setDays(Number(e.target.value))}
-          >
+        {/* There is no "never" and the absence is deliberate, so it is worth saying rather
+            than leaving somebody hunting for the option. */}
+        <Field label="Expires" width="sm" hint="Every token expires. Renew it by making a new one.">
+          <Select value={String(days)} onChange={(value) => setDays(Number(value))}>
             {lives.map((d) => (
               <option key={d} value={d}>
                 in {d} days
               </option>
             ))}
-          </select>
-          {/* There is no "never" and the absence is deliberate, so it is worth saying rather
-              than leaving somebody hunting for the option. */}
-          <p className="dim">Every token expires. Renew it by making a new one.</p>
-        </div>
+          </Select>
+        </Field>
       </div>
 
       <div className="row">
-        <button type="button" disabled={!name.trim() || busy || atCap} onClick={create}>
+        <Button variant="primary" disabled={!name.trim() || busy || atCap} onClick={create}>
           {busy ? 'Creating…' : 'Create token'}
-        </button>
+        </Button>
         {atCap && (
           <span className="dim">
             {list?.maxTokens} live tokens is the limit. Revoke one to make another.
@@ -183,42 +188,63 @@ export function TokensPanel() {
         )}
       </div>
 
-      <h3>This account&rsquo;s tokens</h3>
+      <h4>This account&rsquo;s tokens</h4>
 
       {list === null ? (
         <p className="dim">Loading…</p>
       ) : list.tokens.length === 0 ? (
         <p className="dim">None yet.</p>
       ) : (
-        <table className="grid">
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Scope</th>
-              <th>Created</th>
-              <th>Expires</th>
-              <th>Last used</th>
-              <th />
-            </tr>
-          </thead>
-          <tbody>
-            {list.tokens.map((token) => (
-              <tr key={token.id} className={token.isExpired ? 'dim' : undefined}>
-                <td>{token.name}</td>
-                <td>{token.scope}</td>
-                <td>{when(token.createdAt)}</td>
-                <td>{token.isExpired ? `expired ${when(token.expiresAt)}` : when(token.expiresAt)}</td>
-                <td>{when(token.lastUsedAt)}</td>
-                <td>
-                  <button type="button" className="ghost" onClick={() => revoke(token)}>
-                    Revoke
-                  </button>
-                </td>
+        <div className="table-wrap">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Scope</th>
+                <th>Created</th>
+                <th>Expires</th>
+                <th>Last used</th>
+                <th />
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {list.tokens.map((token) => (
+                <tr key={token.id} className={token.isExpired ? 'dim' : undefined}>
+                  <td>{token.name}</td>
+                  <td>{token.scope}</td>
+                  <td>{when(token.createdAt)}</td>
+                  <td>
+                    {token.isExpired ? `expired ${when(token.expiresAt)}` : when(token.expiresAt)}
+                  </td>
+                  <td>{when(token.lastUsedAt)}</td>
+                  <td>
+                    <Button variant="danger" onClick={() => setRevoking(token)}>
+                      Revoke
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
+
+      {/* Was a native `confirm()`, which every other destructive action in the builder stopped
+          using when ConfirmDialog was written. */}
+      <ConfirmDialog
+        open={revoking !== null}
+        onOpenChange={(open) => {
+          if (!open) setRevoking(null)
+        }}
+        title={revoking ? `Revoke “${revoking.name}”?` : 'Revoke this token?'}
+        description="Anything using it stops working at once. A revoked token cannot be restored — mint a new one and paste it wherever this one was."
+        confirmLabel="Revoke"
+        destructive
+        busy={busy}
+        onConfirm={() => {
+          if (revoking) revoke(revoking)
+        }}
+      />
     </section>
   )
 }

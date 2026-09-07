@@ -62,6 +62,15 @@
   margin-top: 0;
 }
 
+/* The Select primitive puts a wrapper around its `<select>` for the chevron, so the rule above
+   reaches the control but not the box that decides its width. Without this a themed select in a
+   row takes the whole line and pushes the buttons beside it onto the next one — which is the sort
+   of thing that keeps a raw `<select>` in the markup long after a component exists for it. */
+.row .select-wrap {
+  width: auto;
+  flex: 1 1 12rem;
+}
+
 /* Something the panel needs you to read before you scroll past it — a secret shown once, a
  * consequence that cannot be undone. The accent edge is the only chrome: a full accent border
  * would compete with the panel it sits inside, and a background fill would read as disabled.

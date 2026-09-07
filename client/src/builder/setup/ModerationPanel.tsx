@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { builderApi } from '../../net/builderApi'
+import { Button } from '../../ui/Button'
 import { Field } from '../../ui/Field'
 import { Textarea } from '../../ui/Textarea'
 
@@ -82,9 +83,9 @@ export function ModerationPanel() {
       </Field>
 
       <div className="row">
-        <button type="button" onClick={() => void save()} disabled={busy || !dirty}>
+        <Button variant="primary" onClick={() => void save()} disabled={busy || !dirty}>
           {busy ? 'Saving…' : 'Save list'}
-        </button>
+        </Button>
         {saved && !dirty && <span className="dim">Saved. Live now.</span>}
       </div>
     </section>

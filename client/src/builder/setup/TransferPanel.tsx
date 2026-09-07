@@ -3,6 +3,7 @@ import { builderApi, type ImportReport } from '../../net/builderApi'
 import { Button } from '../../ui/Button'
 import { ConfirmDialog } from '../../ui/ConfirmDialog'
 import { Field } from '../../ui/Field'
+import { FileInput } from '../../ui/FileInput'
 import { useToast } from '../../ui/Toast'
 
 interface Loaded {
@@ -186,221 +187,231 @@ export function TransferPanel({ onImported }: Props) {
   }
 
   return (
-    <section className="panel setup-panel">
-      <div className="setup-head">
-        <h3>Export</h3>
-      </div>
-
-      <p className="dim">
-        The authored world as one JSON document. Leave both boxes empty for everything; a zone
-        bundle carries the world and zone above it, plus every template its content needs.
-      </p>
-
-      <Field label="World" hint="Optional. One world and all its zones.">
-        <input
-          value={scope.world}
-          spellCheck={false}
-          placeholder="ossara"
-          onChange={(e) => setScope({ world: e.target.value, zone: '' })}
-        />
-      </Field>
-
-      <Field label="Zone" hint="Optional, and wins over World when both are given.">
-        <input
-          value={scope.zone}
-          spellCheck={false}
-          placeholder="ossara.gatetown"
-          onChange={(e) => setScope({ ...scope, zone: e.target.value })}
-        />
-      </Field>
-
-      <div className="spawner-actions">
-        {/* A real link, so the browser honours the attachment filename the server sends. */}
-        <a
-          className="setup-download"
-          href={builderApi.exportUrl({
-            world: scope.world.trim() || undefined,
-            zone: scope.zone.trim() || undefined,
-          })}
-        >
-          Download bundle
-        </a>
-
-        {/* Its own button rather than a third box, because it answers a different question. The
-            boxes narrow a bundle to a place; an ability has no place, so there is nothing above it
-            to name. */}
-        <a
-          className="setup-download"
-          href={builderApi.exportUrl({ only: 'abilities' })}
-        >
-          Download abilities only
-        </a>
-      </div>
-
-      <p className="dim">
-        <strong>Abilities only</strong> ignores both boxes and is the file to save over{' '}
-        <code>content/abilities.json</code>. A retune made in the editor lives in this
-        server&rsquo;s database and nowhere else until it does — the next fresh install seeds from
-        the file, not from here.
-      </p>
-
-      <div className="setup-head">
-        <h3>Import</h3>
-      </div>
-
-      <p className="dim">
-        An import is a <strong>merge</strong>: keys in the file are written, and anything this
-        server has that the file does not is left alone. Removing something from a file does not
-        remove it from the world.
-      </p>
-
-      {/* Shown whether or not a file is loaded, because "which version does this server take" is a
-          question worth being able to answer while looking at a deployment rather than only while
-          holding a bundle. */}
-      <p className="dim">
-        {serverVersion === null
-          ? 'This server has not said which bundle format it reads.'
-          : `This server reads bundle format ${serverVersion}.`}
-      </p>
-
-      <Field label="Bundle file">
-        <input
-          ref={fileInput}
-          type="file"
-          accept="application/json,.json"
-          onChange={(e) => {
-            const file = e.target.files?.[0]
-            if (file) void onFile(file)
-          }}
-        />
-      </Field>
-
-      {loaded && (
-        <div className="section-body">
-          <p>
-            <strong>{loaded.filename}</strong>
-            <span className="dim"> · format {loaded.formatVersion} · {loaded.summary}</span>
-          </p>
-
-          {/* Said here rather than discovered by uploading. The server refuses this anyway, so this
-              is not the check — it is the check arriving early enough to be useful. */}
-          {mismatch && <p className="bad">{mismatch}</p>}
-          {error && <p className="bad">{error}</p>}
-
-          {applied ? (
-            <>
-              {/* The panel used to come back to exactly the state it was in before, with Apply
-                  still lit - the only thing that changed was one word in a heading further down.
-                  It read as though nothing had happened, which for a write to the live world is
-                  the wrong thing for a screen to say. */}
-              <p className="good">
-                <strong>{loaded.filename}</strong> has been applied to this server.
-              </p>
-
-              <div className="spawner-actions">
-                <Button variant="primary" onClick={reset}>
-                  Import another file
-                </Button>
-              </div>
-
-              <p className="dim">
-                Applying it again would write every entity in it a second time. Load the file afresh
-                and dry run it if that is what you mean to do.
-              </p>
-            </>
-          ) : (
-            <>
-              <div className="spawner-actions">
-                <Button variant="primary" disabled={busy || mismatch !== null} onClick={() => void run(true)}>
-                  {busy ? 'Checking…' : 'Dry run'}
-                </Button>
-
-                {/* Only after a rehearsal, and only if it came back clean enough to read. Applying
-                    first and reading the report afterwards is the order that leaves a half-applied
-                    world behind.
-
-                    Gated on the report being a *dry run*, not merely on there being one. An apply
-                    produces a report too, so `report === null` was satisfied by the apply itself
-                    and the button came straight back - one click from writing the whole
-                    non-atomic bundle a second time. */}
-                <Button
-                  disabled={busy || report === null || !report.dryRun || mismatch !== null}
-                  onClick={() => setConfirming(true)}
-                >
-                  Apply
-                </Button>
-
-                <Button onClick={reset}>Clear</Button>
-              </div>
-
-              {report === null && mismatch === null && (
-                <p className="dim">Dry run first — it reports what would happen and changes nothing.</p>
-              )}
-            </>
-          )}
+    <>
+      {/* Two panels, not one card with two headings in it. Export and Import are separate jobs
+          that happen to share a tab: one hands you a file and the other takes one, and neither
+          needs anything the other is holding. They were a single .panel with two .setup-heads,
+          which reads as one long procedure you are meant to work down. */}
+      <section className="panel setup-panel">
+        <div className="setup-head">
+          <h3>Export</h3>
         </div>
-      )}
 
-      {report && (
-        <div className="section-body">
-          <h4>{report.dryRun ? 'Dry run' : 'Applied'}</h4>
+        <p className="dim">
+          The authored world as one JSON document. Leave both boxes empty for everything; a zone
+          bundle carries the world and zone above it, plus every template its content needs.
+        </p>
 
-          <ul className="setup-list">
-            {report.counts
-              .filter((c) => c.created > 0 || c.updated > 0 || c.removed > 0)
-              .map((c) => (
-                <li key={c.kind}>
-                  <code>{c.kind}</code>
-                  <span className="dim">
-                    {' '}
-                    · {c.created} new, {c.updated} updated
-                  </span>
-                  {/* Only when there are any, and not dimmed: a deletion is the one number here
-                      that cannot be undone by importing again, so it does not get to look like
-                      the other two. Each one is named in the warnings below. */}
-                  {c.removed > 0 && (
-                    <span className="bad">
+        {/* Side by side: they are two halves of one answer to "how much of it?", and stacked they
+            read as two unrelated questions. */}
+        <div className="field-row">
+          <Field label="World" width="lg" hint="Optional. One world and all its zones.">
+            <input
+              value={scope.world}
+              spellCheck={false}
+              placeholder="ossara"
+              onChange={(e) => setScope({ world: e.target.value, zone: '' })}
+            />
+          </Field>
+
+          <Field label="Zone" width="lg" hint="Optional, and wins over World when both are given.">
+            <input
+              value={scope.zone}
+              spellCheck={false}
+              placeholder="ossara.gatetown"
+              onChange={(e) => setScope({ ...scope, zone: e.target.value })}
+            />
+          </Field>
+        </div>
+
+        <div className="spawner-actions">
+          {/* A real link, so the browser honours the attachment filename the server sends. */}
+          <a
+            className="setup-download"
+            href={builderApi.exportUrl({
+              world: scope.world.trim() || undefined,
+              zone: scope.zone.trim() || undefined,
+            })}
+          >
+            Download bundle
+          </a>
+
+          {/* Its own button rather than a third box, because it answers a different question. The
+              boxes narrow a bundle to a place; an ability has no place, so there is nothing above it
+              to name. */}
+          <a
+            className="setup-download"
+            href={builderApi.exportUrl({ only: 'abilities' })}
+          >
+            Download abilities only
+          </a>
+        </div>
+
+        <p className="dim">
+          <strong>Abilities only</strong> ignores both boxes and is the file to save over{' '}
+          <code>content/abilities.json</code>. A retune made in the editor lives in this
+          server&rsquo;s database and nowhere else until it does — the next fresh install seeds from
+          the file, not from here.
+        </p>
+      </section>
+
+      <section className="panel setup-panel">
+        <div className="setup-head">
+          <h3>Import</h3>
+        </div>
+
+        <p className="dim">
+          An import is a <strong>merge</strong>: keys in the file are written, and anything this
+          server has that the file does not is left alone. Removing something from a file does not
+          remove it from the world.
+        </p>
+
+        {/* Shown whether or not a file is loaded, because "which version does this server take" is a
+            question worth being able to answer while looking at a deployment rather than only while
+            holding a bundle. */}
+        <p className="dim">
+          {serverVersion === null
+            ? 'This server has not said which bundle format it reads.'
+            : `This server reads bundle format ${serverVersion}.`}
+        </p>
+
+        {/* The one control on this tab that was still rendering in the operating system's own
+            chrome, in a column of themed fields. */}
+        <Field label="Bundle file">
+          <FileInput
+            ref={fileInput}
+            accept="application/json,.json"
+            onFile={(file) => void onFile(file)}
+          />
+        </Field>
+
+        {loaded && (
+          <div className="section-body">
+            <p>
+              <strong>{loaded.filename}</strong>
+              <span className="dim"> · format {loaded.formatVersion} · {loaded.summary}</span>
+            </p>
+
+            {/* Said here rather than discovered by uploading. The server refuses this anyway, so this
+                is not the check — it is the check arriving early enough to be useful. */}
+            {mismatch && <p className="bad">{mismatch}</p>}
+            {error && <p className="bad">{error}</p>}
+
+            {applied ? (
+              <>
+                {/* The panel used to come back to exactly the state it was in before, with Apply
+                    still lit - the only thing that changed was one word in a heading further down.
+                    It read as though nothing had happened, which for a write to the live world is
+                    the wrong thing for a screen to say. */}
+                <p className="good">
+                  <strong>{loaded.filename}</strong> has been applied to this server.
+                </p>
+
+                <div className="spawner-actions">
+                  <Button variant="primary" onClick={reset}>
+                    Import another file
+                  </Button>
+                </div>
+
+                <p className="dim">
+                  Applying it again would write every entity in it a second time. Load the file afresh
+                  and dry run it if that is what you mean to do.
+                </p>
+              </>
+            ) : (
+              <>
+                <div className="spawner-actions">
+                  <Button variant="primary" disabled={busy || mismatch !== null} onClick={() => void run(true)}>
+                    {busy ? 'Checking…' : 'Dry run'}
+                  </Button>
+
+                  {/* Only after a rehearsal, and only if it came back clean enough to read. Applying
+                      first and reading the report afterwards is the order that leaves a half-applied
+                      world behind.
+
+                      Gated on the report being a *dry run*, not merely on there being one. An apply
+                      produces a report too, so `report === null` was satisfied by the apply itself
+                      and the button came straight back - one click from writing the whole
+                      non-atomic bundle a second time. */}
+                  <Button
+                    disabled={busy || report === null || !report.dryRun || mismatch !== null}
+                    onClick={() => setConfirming(true)}
+                  >
+                    Apply
+                  </Button>
+
+                  <Button onClick={reset}>Clear</Button>
+                </div>
+
+                {report === null && mismatch === null && (
+                  <p className="dim">Dry run first — it reports what would happen and changes nothing.</p>
+                )}
+              </>
+            )}
+          </div>
+        )}
+
+        {report && (
+          <div className="section-body">
+            <h4>{report.dryRun ? 'Dry run' : 'Applied'}</h4>
+
+            <ul className="setup-list">
+              {report.counts
+                .filter((c) => c.created > 0 || c.updated > 0 || c.removed > 0)
+                .map((c) => (
+                  <li key={c.kind}>
+                    <code>{c.kind}</code>
+                    <span className="dim">
                       {' '}
-                      · {c.removed} removed
+                      · {c.created} new, {c.updated} updated
                     </span>
-                  )}
-                </li>
-              ))}
-          </ul>
-
-          {report.counts.every((c) => c.created === 0 && c.updated === 0 && c.removed === 0) && (
-            <p className="dim">Nothing to write — this server already matches the file.</p>
-          )}
-
-          {report.warnings.length > 0 && (
-            <>
-              <h4>Warnings</h4>
-              {/* Advisory by design (§7.4): a zone imported ahead of the zone it links to is a
-                  state the world tolerates, so these never block. */}
-              <ul className="setup-list">
-                {report.warnings.map((w, i) => (
-                  <li key={`${w.kind}-${w.entityKey}-${i}`} className="dim">
-                    <code>{w.entityKey}</code> — {w.message}
+                    {/* Only when there are any, and not dimmed: a deletion is the one number here
+                        that cannot be undone by importing again, so it does not get to look like
+                        the other two. Each one is named in the warnings below. */}
+                    {c.removed > 0 && (
+                      <span className="bad">
+                        {' '}
+                        · {c.removed} removed
+                      </span>
+                    )}
                   </li>
                 ))}
-              </ul>
-            </>
-          )}
+            </ul>
 
-          {report.failures.length > 0 && (
-            <>
-              <h4 className="bad">Failures</h4>
-              <ul className="setup-list">
-                {report.failures.map((f, i) => (
-                  <li key={`${f.kind}-${f.key}-${i}`} className="bad">
-                    <code>{f.key}</code> — {f.message}
-                  </li>
-                ))}
-              </ul>
-            </>
-          )}
-        </div>
-      )}
+            {report.counts.every((c) => c.created === 0 && c.updated === 0 && c.removed === 0) && (
+              <p className="dim">Nothing to write — this server already matches the file.</p>
+            )}
+
+            {report.warnings.length > 0 && (
+              <>
+                <h4>Warnings</h4>
+                {/* Advisory by design (§7.4): a zone imported ahead of the zone it links to is a
+                    state the world tolerates, so these never block. */}
+                <ul className="setup-list">
+                  {report.warnings.map((w, i) => (
+                    <li key={`${w.kind}-${w.entityKey}-${i}`} className="dim">
+                      <code>{w.entityKey}</code> — {w.message}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+
+            {report.failures.length > 0 && (
+              <>
+                <h4 className="bad">Failures</h4>
+                <ul className="setup-list">
+                  {report.failures.map((f, i) => (
+                    <li key={`${f.kind}-${f.key}-${i}`} className="bad">
+                      <code>{f.key}</code> — {f.message}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+          </div>
+        )}
+      </section>
 
       <ConfirmDialog
         open={confirming}
@@ -426,6 +437,6 @@ export function TransferPanel({ onImported }: Props) {
         busy={busy}
         onConfirm={() => void run(false)}
       />
-    </section>
+    </>
   )
 }

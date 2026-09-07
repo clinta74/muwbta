@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { builderApi, type RoomDetail, type TerrainKindInfo } from '../../net/builderApi'
 import { Button } from '../../ui/Button'
+import { Select } from '../../ui/Select'
 import { GridPainter } from '../GridPainter'
 
 interface Props {
@@ -57,17 +58,13 @@ export function RoomTerrainTab({ room, onChanged }: Props) {
 
       {kinds.length > 0 && (
         <div className="row">
-          <select
-            value={kind}
-            onChange={(e) => setKind(e.target.value)}
-            aria-label="Terrain kind"
-          >
+          <Select value={kind} onChange={setKind} aria-label="Terrain kind">
             {kinds.map((k) => (
               <option key={k.key} value={k.key}>
                 {k.key} — {k.summary}
               </option>
             ))}
-          </select>
+          </Select>
 
           <Button disabled={drawing || !kind} onClick={generate}>
             {drawing ? 'Drawing…' : 'Generate'}

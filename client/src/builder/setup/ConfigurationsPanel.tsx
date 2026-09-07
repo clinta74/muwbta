@@ -286,27 +286,36 @@ export function ConfigurationsPanel({ list, onChanged }: Props) {
       </ul>
 
       {draft && (
-        <div className="section-body">
-          <h4>{draft.existing ? `Edit ${draft.name}` : 'New configuration'}</h4>
+        /* A card, so the form for one configuration is visibly not part of the list of them all.
+           It was a bare stack directly under the list and read as another row of it. */
+        <fieldset className="subpanel">
+          <legend>{draft.existing ? `Edit ${draft.name}` : 'New configuration'}</legend>
 
-          {!draft.existing && (
-            <Field label="Key" error={keyError} hint="Permanent. Used in exports and in the API.">
+          <div className="field-row">
+            {!draft.existing && (
+              <Field
+                label="Key"
+                width="md"
+                error={keyError}
+                hint="Permanent. Used in exports and in the API."
+              >
+                <input
+                  value={draft.key}
+                  spellCheck={false}
+                  placeholder="the-reaches"
+                  onChange={(e) => setDraft({ ...draft, key: e.target.value })}
+                />
+              </Field>
+            )}
+
+            <Field label="Name" width="lg">
               <input
-                value={draft.key}
-                spellCheck={false}
-                placeholder="the-reaches"
-                onChange={(e) => setDraft({ ...draft, key: e.target.value })}
+                value={draft.name}
+                placeholder="The Reaches"
+                onChange={(e) => setDraft({ ...draft, name: e.target.value })}
               />
             </Field>
-          )}
-
-          <Field label="Name">
-            <input
-              value={draft.name}
-              placeholder="The Reaches"
-              onChange={(e) => setDraft({ ...draft, name: e.target.value })}
-            />
-          </Field>
+          </div>
 
           <Field label="Description" hint="What this configuration is for, in a sentence.">
             <Textarea
@@ -403,7 +412,7 @@ export function ConfigurationsPanel({ list, onChanged }: Props) {
               Saving changes what this configuration means. It does not make it live.
             </p>
           )}
-        </div>
+        </fieldset>
       )}
 
       <ConfirmDialog

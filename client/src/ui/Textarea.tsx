@@ -16,6 +16,11 @@ interface TextareaProps {
   placeholder?: string
   disabled?: boolean
   spellCheck?: boolean
+  /**
+   * Shown, not edited. Selects its whole content on focus, because the only reason to render a
+   * value nobody may change in a field at all is so it can be copied out of one.
+   */
+  readOnly?: boolean
 }
 
 /**
@@ -30,6 +35,7 @@ export function Textarea({
   placeholder,
   disabled,
   spellCheck,
+  readOnly,
 }: TextareaProps) {
   const ref = useRef<HTMLTextAreaElement>(null)
 
@@ -71,6 +77,8 @@ export function Textarea({
       placeholder={placeholder}
       disabled={disabled}
       spellCheck={spellCheck}
+      readOnly={readOnly}
+      onFocus={readOnly ? (e) => e.target.select() : undefined}
       onChange={(e) => onChange(e.target.value)}
     />
   )
