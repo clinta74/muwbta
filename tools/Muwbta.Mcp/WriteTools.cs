@@ -9,9 +9,17 @@ namespace Muwbta.Mcp;
 /// The write half of the tool surface (docs/PAT-AND-MCP.md §11, Phase C).
 /// </summary>
 /// <remarks>
-/// Four tools. <c>set_exit</c> is separate because an exit is stated whole rather than patched -
+/// Five tools. <c>set_exit</c> is separate because an exit is stated whole rather than patched -
 /// a lock left out of the call is a lock removed - which is not what <c>upsert_content</c> means
 /// by a field.
+///
+/// <c>set_flag</c> is separate for the opposite reason, and it is the one here that prevents a
+/// defect rather than saving a call. A flag map sent through <c>upsert_content</c> <em>replaces</em>
+/// the whole set (<c>SaveRoomRequest.Flags</c>), so setting <c>indoors</c> on a room that already
+/// declares <c>dark</c> silently drops the dark. The builder's own editor never had that problem
+/// because it has only ever used the single-flag route; this exposes the same route, and carries
+/// the third state - <c>null</c> to remove the key so the level above decides - which a whole-map
+/// write cannot express at all.
 ///
 /// There was a fourth, <c>dig_room</c>, wrapping the walk-and-build endpoint. It went after the
 /// first zone was drafted through these tools, which is the only evidence worth having: it failed
@@ -195,6 +203,52 @@ public static class WriteTools
             HttpMethod.Put,
             path,
             JsonSerializer.Serialize(new { to }),
+            cancellationToken).ConfigureAwait(false);
+    }
+
+    [McpServerTool(Name = "set_flag")]
+    [Description("""
+        Sets one room, zone or world flag, and touches nothing else. Three states: true and false
+        are decisions made at this level, and null removes the key so the level above decides -
+        which is not the same as false. Prefer this over upsert_content for flags: a flag map sent
+        that way replaces the entire set, so setting one flag on something that already declares
+        another silently drops it. Flag keys come from the registry (pvp, peaceful, respawn, noMob,
+        noRecall, dark, indoors, unfinished).
+        """)]
+    public static async Task<string> SetFlagAsync(
+        BuilderClient client,
+        WorldGuard guard,
+        [Description("One of: room, zone, world.")] string kind,
+        [Description("The room, zone or world key.")] string key,
+        [Description("The flag key, e.g. 'indoors'.")] string flag,
+        [Description("true, false, or null to inherit from the level above.")] bool? value = null,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(client);
+        ArgumentNullException.ThrowIfNull(guard);
+
+        var target = Require(key, "key");
+        var name = Require(flag, "flag");
+
+        // Named for the three scopes that carry flags rather than taken from ContentKinds, because
+        // the other kinds have none: telling an agent "'mob' is not a kind" would be false, and
+        // "a mob has no flags" is the answer to what it actually asked.
+        var group = kind?.ToLowerInvariant() switch
+        {
+            "room" => "rooms",
+            "zone" => "zones",
+            "world" => "worlds",
+            _ => throw new McpException(
+                $"'{kind}' has no flags. Flags live on rooms, zones and worlds, and resolve in "
+                + "that order (PLAN.md 4.10)."),
+        };
+
+        await guard.EnsureWritableAsync(kind!, [target], cancellationToken).ConfigureAwait(false);
+
+        return await client.SendAsync(
+            HttpMethod.Put,
+            $"/api/builder/{group}/{Uri.EscapeDataString(target)}/flags/{Uri.EscapeDataString(name)}",
+            JsonSerializer.Serialize(new { value }),
             cancellationToken).ConfigureAwait(false);
     }
 

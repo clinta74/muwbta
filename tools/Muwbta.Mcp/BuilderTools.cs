@@ -9,7 +9,7 @@ namespace Muwbta.Mcp;
 /// The read half of the tool surface in docs/PAT-AND-MCP.md §11.
 /// </summary>
 /// <remarks>
-/// Seven tools over roughly thirty read endpoints, on the argument in that section: an agent's
+/// Eight tools over roughly thirty read endpoints, on the argument in that section: an agent's
 /// accuracy falls off as the tool list grows, and the REST surface is shaped for a React client
 /// that already knows the domain. The kind-tagged pair (<c>list_content</c>, <c>get_content</c>)
 /// carries most of it; the rest exist because they answer a question rather than fetch a row.
@@ -21,7 +21,9 @@ public static class BuilderTools
     [Description("""
         Lists content of one kind. Kinds: configuration, world, zone, room, mob, item, ability,
         quest, spawner. 'room' requires zone. 'zone' may be narrowed by world, 'spawner' by zone;
-        the other kinds ignore both. Returns the builder API's JSON unchanged.
+        the other kinds ignore both. Returns the builder API's JSON unchanged, unless 'fields'
+        names the properties to keep - a room carries its grid, its legend and every resolved flag,
+        which is most of the payload and none of the answer when you are sweeping a zone.
         """)]
     public static async Task<string> ListContentAsync(
         BuilderClient client,
@@ -31,6 +33,8 @@ public static class BuilderTools
         string? zone = null,
         [Description("World key. Narrows kind 'zone'.")]
         string? world = null,
+        [Description("Comma-separated properties to keep, e.g. 'key,title,flags'. Omit for everything.")]
+        string? fields = null,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(client);
@@ -46,7 +50,199 @@ public static class BuilderTools
         var path = ContentKinds.ListPath(kind, world, zone)
             ?? throw new McpException($"'{kind}' is not a kind. Known kinds: {ContentKinds.Known}.");
 
-        return await client.GetAsync(path, cancellationToken).ConfigureAwait(false);
+        var json = await client.GetAsync(path, cancellationToken).ConfigureAwait(false);
+
+        return string.IsNullOrWhiteSpace(fields) ? json : Project(json, fields);
+    }
+
+    /// <summary>
+    /// Keeps only the named properties of each object in a JSON array.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Done here rather than asked of the server, deliberately. A projection parameter on the REST
+    /// endpoints would be a second contract for the React client to know about and a second shape
+    /// for the tests to cover, to save bytes on a wire that is loopback for the browser and only
+    /// expensive for this one caller. The cost of reading it lands where the benefit does.
+    /// </para>
+    /// <para>
+    /// Unknown names are ignored rather than refused: they cost the caller a property they did not
+    /// get, and refusing would mean this file holding an opinion about the shape of a room -
+    /// which is the thing <see cref="Combine"/> says it must not do.
+    /// </para>
+    /// <para>
+    /// Anything that is not an array of objects comes back untouched. A projection is a request
+    /// about a list, and quietly returning an empty object for a single row would be worse than
+    /// ignoring the argument.
+    /// </para>
+    /// </remarks>
+    internal static string Project(string json, string fields)
+    {
+        var keep = fields
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        if (keep.Count == 0)
+        {
+            return json;
+        }
+
+        using var document = JsonDocument.Parse(json);
+
+        if (document.RootElement.ValueKind != JsonValueKind.Array)
+        {
+            return json;
+        }
+
+        using var buffer = new MemoryStream();
+
+        using (var writer = new Utf8JsonWriter(buffer, new JsonWriterOptions { Indented = true }))
+        {
+            writer.WriteStartArray();
+
+            foreach (var row in document.RootElement.EnumerateArray())
+            {
+                if (row.ValueKind != JsonValueKind.Object)
+                {
+                    row.WriteTo(writer);
+                    continue;
+                }
+
+                writer.WriteStartObject();
+
+                foreach (var property in row.EnumerateObject().Where(x => keep.Contains(x.Name)))
+                {
+                    property.WriteTo(writer);
+                }
+
+                writer.WriteEndObject();
+            }
+
+            writer.WriteEndArray();
+        }
+
+        return System.Text.Encoding.UTF8.GetString(buffer.ToArray());
+    }
+
+    [McpServerTool(Name = "find_rooms")]
+    [Description("""
+        Every room in a zone or a whole world, with how one flag resolves for it and where that
+        value comes from - the room, its zone, its world, or the registry default. This is the
+        question a content sweep asks: which rooms are not marked indoors, which are peaceful
+        because their zone says so, which declare dark themselves. Give 'value' to keep only the
+        rooms that resolve that way. A world is many calls to the server, so name a zone when you
+        can.
+        """)]
+    public static async Task<string> FindRoomsAsync(
+        BuilderClient client,
+        [Description("The flag key, e.g. 'indoors'.")] string flag,
+        [Description("Zone key. Either this or world.")] string? zone = null,
+        [Description("World key. Sweeps every zone in it.")] string? world = null,
+        [Description("Keep only rooms resolving this way. Omit for all of them.")] bool? value = null,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(client);
+
+        var name = Require(flag, "flag");
+
+        if (string.IsNullOrWhiteSpace(zone) == string.IsNullOrWhiteSpace(world))
+        {
+            throw new McpException("Give exactly one of 'zone' or 'world'.");
+        }
+
+        var zones = string.IsNullOrWhiteSpace(zone)
+            ? await ZoneKeysOfAsync(client, world!, cancellationToken).ConfigureAwait(false)
+            : [zone!];
+
+        using var buffer = new MemoryStream();
+
+        using (var writer = new Utf8JsonWriter(buffer, new JsonWriterOptions { Indented = true }))
+        {
+            writer.WriteStartArray();
+
+            foreach (var key in zones)
+            {
+                var json = await client
+                    .GetAsync($"/api/builder/zones/{Uri.EscapeDataString(key)}/rooms", cancellationToken)
+                    .ConfigureAwait(false);
+
+                using var rooms = JsonDocument.Parse(json);
+
+                foreach (var room in rooms.RootElement.EnumerateArray())
+                {
+                    WriteRoomFlag(writer, room, name, value);
+                }
+            }
+
+            writer.WriteEndArray();
+        }
+
+        return System.Text.Encoding.UTF8.GetString(buffer.ToArray());
+    }
+
+    /// <summary>
+    /// Writes one room's answer, or nothing when it does not match the filter.
+    /// </summary>
+    /// <remarks>
+    /// Reads the <c>resolved</c> array the room list already carries rather than resolving the
+    /// chain here. The server has done it correctly once; a second implementation on this side
+    /// would be a copy of PLAN.md 4.10 that could drift from the one the game reads.
+    /// </remarks>
+    internal static void WriteRoomFlag(
+        Utf8JsonWriter writer,
+        JsonElement room,
+        string flag,
+        bool? wanted)
+    {
+        if (!room.TryGetProperty("resolved", out var resolved)
+            || resolved.ValueKind != JsonValueKind.Array)
+        {
+            return;
+        }
+
+        foreach (var entry in resolved.EnumerateArray())
+        {
+            if (!entry.TryGetProperty("key", out var key)
+                || !string.Equals(key.GetString(), flag, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            var value = entry.TryGetProperty("value", out var v) && v.ValueKind == JsonValueKind.True;
+
+            if (wanted is { } only && only != value)
+            {
+                return;
+            }
+
+            writer.WriteStartObject();
+            writer.WriteString("key", room.TryGetProperty("key", out var k) ? k.GetString() : null);
+            writer.WriteString("title", room.TryGetProperty("title", out var t) ? t.GetString() : null);
+            writer.WriteBoolean(flag, value);
+            writer.WriteString(
+                "source",
+                entry.TryGetProperty("source", out var src) ? src.GetString() : null);
+            writer.WriteEndObject();
+            return;
+        }
+    }
+
+    /// <summary>The zone keys of one world, for a sweep that was given a world.</summary>
+    private static async Task<List<string>> ZoneKeysOfAsync(
+        BuilderClient client,
+        string world,
+        CancellationToken cancellationToken)
+    {
+        var json = await client
+            .GetAsync(ContentKinds.ListPath("zone", world, null)!, cancellationToken)
+            .ConfigureAwait(false);
+
+        using var document = JsonDocument.Parse(json);
+
+        return [.. document.RootElement.EnumerateArray()
+            .Select(z => z.TryGetProperty("key", out var k) ? k.GetString() : null)
+            .Where(k => !string.IsNullOrWhiteSpace(k))
+            .Select(k => k!)];
     }
 
     [McpServerTool(Name = "get_content")]

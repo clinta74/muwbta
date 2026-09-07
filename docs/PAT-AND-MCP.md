@@ -268,6 +268,8 @@ grows, and the REST surface is shaped for a React client that already knows the 
 | `upsert_content` | `POST`/`PATCH` by kind — one tool, kind-tagged payload |
 | `delete_content` | the `DELETE` endpoints |
 | `set_exit` | `PUT`/`DELETE /rooms/{key}/exits/{direction}` |
+| `set_flag` | `PUT /{rooms,zones,worlds}/{key}/flags/{flag}` — the three-state route the editor uses |
+| `find_rooms` | the zone room lists, projected to one flag's resolved value and its source |
 | `update_canon` | `POST /configurations/{key}`, canon only — every other field carried across |
 | `validate_zone` | `/zones/{key}/validate` + `/unfinished` + `/storyline`, merged — the agent wants "what is wrong here", not three calls |
 | `spawn_preview` | `/zones/{key}/preview` |
@@ -276,6 +278,25 @@ grows, and the REST surface is shaped for a React client that already knows the 
 
 `validate_zone` is the important one. Everything else is typing; that tool is what turns a
 generator into an author.
+
+`set_flag` is the one that exists to prevent a defect rather than to save a call. A flag map sent
+through `upsert_content` **replaces** the whole set (`SaveRoomRequest.Flags` says so in as many
+words), so an agent setting `indoors` on a room that already declares `dark` silently unsets the
+dark — and the room reads correctly in every listing afterwards, because a missing key and a false
+one look the same until you ask where the value came from. The builder's own editor never had this
+problem: it has only ever used the single-flag route, precisely because a whole-map write from two
+people at once loses one of them. The MCP surface skipped that route and the exposure was the
+`upsert_content` footgun. It also carries the third state, `null`, which removes the key so the
+level above decides — a whole-map write cannot express that at all.
+
+`find_rooms` came out of the first content sweep that needed it: marking the interiors of five
+realms `indoors`. The question is "which rooms here do not resolve this flag", across 238 rooms and
+18 zones, and there was no way to ask it — `list_content` returns each room's grid, legend and all
+eight resolved flags, which is most of the payload and none of the answer. Hence also the `fields`
+projection on `list_content`, which is done in the MCP process rather than asked of the server: a
+projection parameter on the REST endpoints would be a second contract for the React client to know
+and a second shape for the tests to cover, to save bytes on a wire that is loopback for the browser
+and expensive only for this one caller.
 
 `update_canon` is the one write that reaches a configuration, and it is deliberately narrow: the
 canon is prose about the world, not a deployment setting, and changing it alters nothing a player

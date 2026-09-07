@@ -63,7 +63,7 @@ default.
 
 ## What it exposes
 
-Seven tools, not sixty — the argument is in §11 of the design document. `list_content` and
+Thirteen tools, not sixty — the argument is in §11 of the design document. `list_content` and
 `get_content` are kind-tagged and carry most of the surface; the rest exist because they answer a
 question rather than fetch a row.
 
@@ -75,10 +75,12 @@ question rather than fetch a row.
 | `spawn_preview` | What a zone's spawns are worth once world and zone multipliers are applied. |
 | `check_quest` | Whether a quest can actually be finished. |
 | `where_used` | Which spawners carry a mob or item template, and where they sit. |
+| `find_rooms` | Every room in a zone or world with how one flag resolves for it, and whether that came from the room, its zone, its world or the default. |
 | `export_bundle` | A world or zone as import-shaped bundle JSON, for diffing before anything changes. |
 | `upsert_content` | Creates or updates one piece of content. Decides create-vs-update by asking the server. |
 | `delete_content` | Removes one piece of content. |
 | `set_exit` | Points an exit at a room, or removes it. States the whole exit, so a lock left out is a lock removed. |
+| `set_flag` | Sets one flag on a room, zone or world. Three states: true, false, or null to inherit. |
 | `update_canon` | Rewrites a configuration's canon, and nothing else about it. |
 
 A configuration's *settings* are not writable here — which one is active decides what the running
