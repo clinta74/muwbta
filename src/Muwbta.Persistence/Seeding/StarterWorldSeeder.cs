@@ -172,7 +172,10 @@ public static class StarterWorldSeeder
                 "│...................│",
                 "└─────────··────────┘",
             ],
-            new() { ["."] = "floor", ["·"] = "path", ["─"] = "wall", ["│"] = "wall", ["┌"] = "wall", ["┐"] = "wall", ["└"] = "wall", ["┘"] = "wall", ["═"] = "bench", ["▄"] = "anvil", ["░"] = "rubble", ["▲"] = "forge" }),
+            new() { ["."] = "floor", ["·"] = "path", ["─"] = "wall", ["│"] = "wall", ["┌"] = "wall", ["┐"] = "wall", ["└"] = "wall", ["┘"] = "wall", ["═"] = "bench", ["▄"] = "anvil", ["░"] = "rubble", ["▲"] = "forge" },
+            // Open at the front and roofed over the rest, which is what an "open front" is. The
+            // rain does not reach the anvil, so neither does the weather line.
+            [RoomFlags.Indoors.Key]),
 
         new("tavern-door", "Outside the Drowned Rat", 4, 2,
             "A painted sign shows a rodent floating cheerfully in a tankard. The door beneath "
@@ -205,7 +208,10 @@ public static class StarterWorldSeeder
                 "│═══════════════....│",
                 "└─────────··────────┘",
             ],
-            new() { ["."] = "floor", ["·"] = "path", ["─"] = "wall", ["│"] = "wall", ["┌"] = "wall", ["┐"] = "wall", ["└"] = "wall", ["┘"] = "wall", ["═"] = "bench", ["▬"] = "table", ["▲"] = "forge" }),
+            new() { ["."] = "floor", ["·"] = "path", ["─"] = "wall", ["│"] = "wall", ["┌"] = "wall", ["┐"] = "wall", ["└"] = "wall", ["┘"] = "wall", ["═"] = "bench", ["▬"] = "table", ["▲"] = "forge" },
+            // Indoors and not peaceful. A tavern is the obvious safe room and this one cannot be:
+            // the rats spawn here, and they are the first fight a new character ever picks.
+            [RoomFlags.Indoors.Key]),
 
         new("well-yard", "The Well Yard", 2, 3,
             "A round stone well with a rope that disappears into dark. Somebody has left a "
@@ -253,7 +259,12 @@ public static class StarterWorldSeeder
                 "│.══════..═════════.│",
                 "└───────────────────┘",
             ],
-            new() { ["."] = "floor", ["·"] = "path", ["†"] = "altar", ["─"] = "wall", ["│"] = "wall", ["┌"] = "wall", ["┐"] = "wall", ["└"] = "wall", ["┘"] = "wall", ["═"] = "bench" })
+            new() { ["."] = "floor", ["·"] = "path", ["†"] = "altar", ["─"] = "wall", ["│"] = "wall", ["┌"] = "wall", ["┐"] = "wall", ["└"] = "wall", ["┘"] = "wall", ["═"] = "bench" },
+            // The starter world's one bed. `sleep` needs `peaceful` and nothing here declared it,
+            // so a new character had the best recovery in the game and nowhere at all to use it.
+            // `noMob` comes with it: a wandering rat in a peaceful room is a rat that cannot be
+            // removed from it.
+            [RoomFlags.Indoors.Key, RoomFlags.Peaceful.Key, RoomFlags.NoMob.Key])
     ];
 
     public static async Task<bool> SeedAsync(
@@ -297,6 +308,7 @@ public static class StarterWorldSeeder
                 Legend = new Dictionary<string, string>(seed.Legend, StringComparer.Ordinal),
                 EditorX = seed.EditorX,
                 EditorY = seed.EditorY,
+                Flags = FlagsFor(seed),
             });
         }
 
@@ -677,6 +689,24 @@ public static class StarterWorldSeeder
         },
     ];
 
+    /// <summary>The room's declared flags, as a set. Empty for a room that declares none.</summary>
+    private static FlagSet FlagsFor(RoomSeed seed)
+    {
+        var flags = new FlagSet();
+
+        foreach (var key in seed.Flags ?? [])
+        {
+            flags.Set(key, true);
+        }
+
+        return flags;
+    }
+
+    /// <param name="Flags">
+    /// Room flags to declare true, from <see cref="RoomFlags"/>. Absent is not the same as false:
+    /// a key left out falls through to the zone and the world, which is what makes a village of
+    /// mostly-outdoor rooms cost three flags rather than twelve (PLAN.md §4.10).
+    /// </param>
     private sealed record RoomSeed(
         string Slug,
         string Title,
@@ -684,7 +714,8 @@ public static class StarterWorldSeeder
         int EditorY,
         string Description,
         string[] Grid,
-        Dictionary<string, string> Legend);
+        Dictionary<string, string> Legend,
+        string[]? Flags = null);
 
     /// <summary>What a reconcile did, for the startup log.</summary>
     public readonly record struct AbilityReconciliation(int Added, int Updated, int Removed)
