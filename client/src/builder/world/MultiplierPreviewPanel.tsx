@@ -72,8 +72,8 @@ export function MultiplierPreviewPanel({ zoneKey, refreshToken }: Props) {
   }
 
   return (
-    <div className="preview-table-wrap">
-      <table className="preview-table">
+    <div className="table-wrap">
+      <table className="data-table dense">
         <thead>
           <tr>
             <th>Template</th>

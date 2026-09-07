@@ -1,0 +1,28 @@
+/* ------------------------------------------------------------------ */
+/* The design system: tokens, base element rules, components.           */
+/*                                                                      */
+/* This is the whole of what is shared. A stylesheet for one feature —   */
+/* builder/builder.scss, game/game.scss — carries only what that        */
+/* feature has and nothing another feature could want.                  */
+/*                                                                      */
+/* Order matters and is the only reason this file exists: tokens define */
+/* the custom properties everything below reads, base sets the element  */
+/* rules, and components are written to win over base by class weight   */
+/* rather than by source order. A feature sheet loads after all three.  */
+/* ------------------------------------------------------------------ */
+
+@use 'tokens';
+@use 'base';
+
+@use 'components/panel';
+@use 'components/button';
+@use 'components/field';
+@use 'components/select';
+@use 'components/textarea';
+@use 'components/number';
+@use 'components/file';
+@use 'components/table';
+@use 'components/tabs';
+@use 'components/dialog';
+@use 'components/menu';
+@use 'components/toast';

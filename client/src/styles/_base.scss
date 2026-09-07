@@ -1,0 +1,110 @@
+/* ------------------------------------------------------------------ */
+/* Base: the reset and the bare element rules.                          */
+/*                                                                      */
+/* Only rules that match an element with no class of its own belong     */
+/* here. A variant of one of these — button.primary, .danger-button —   */
+/* is a component and lives in components/.                             */
+/* ------------------------------------------------------------------ */
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: ui-monospace, "Cascadia Code", "Consolas", monospace;
+  font-size: 14px;
+}
+
+
+h1 {
+  margin: 0;
+  font-size: 1.6rem;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+}
+
+h2 {
+  margin: 0 0 var(--space-2);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--dim);
+  font-weight: 600;
+}
+
+/* h1 and h2 had rules; h3 and h4 did not, so every panel title and every sub-heading in the
+   builder rendered at the browser's default — bold, 1.17em, and a full em of margin — beside
+   headings that had been given a deliberate size. Two levels are what the panels actually use:
+   h3 names the panel, h4 names a block inside it. The uppercase-dim treatment is the one the
+   field labels, the legends and .tree-head h3 already share, so h4 joins a language rather than
+   starting one. */
+h3 {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-lg);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+h4 {
+  margin: 0 0 var(--space-1);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--dim);
+  font-weight: 600;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: var(--space-2) var(--space-3);
+  cursor: pointer;
+}
+
+button:hover {
+  border-color: var(--accent);
+}
+
+input {
+  font: inherit;
+  color: inherit;
+  background: #0b0e13;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: var(--space-2) var(--space-2);
+  width: 100%;
+}
+
+input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+/* --- Text utilities ------------------------------------------------ */
+
+.dim {
+  color: var(--dim);
+}
+.good {
+  color: var(--good);
+}
+.bad {
+  color: var(--bad);
+}
+
+
+.detail {
+  font-size: 0.85em;
+}

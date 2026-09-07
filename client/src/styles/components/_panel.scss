@@ -1,0 +1,89 @@
+/* --- Panels, sub-panels and rows ----------------------------------- */
+
+/* A card. The outermost box of a screen that is not a list. */
+.panel {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--panel);
+  padding: var(--space-4) var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+/* A block *inside* a panel, with a legend naming it: a `<fieldset class="subpanel">`.
+ *
+ * <b>This had three names and one rule.</b> `.multiplier-set`, `.attack-list` and
+ * `.behavior-editor` were byte-identical declarations sharing a legend rule, and which one a
+ * given editor reached for was down to whichever component was written first — the item editor
+ * groups its stats in a `.multiplier-set`, the quest editor groups its rewards in a
+ * `.behavior-editor`, and neither has anything to do with multipliers or behaviour. Two names for
+ * one variant is what UX.md finding 1 was about; three is the same defect with more rope.
+ */
+.subpanel {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.subpanel legend {
+  padding: 0 var(--space-2);
+  color: var(--dim);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+/* An Add button at the foot of a list hugs the left edge rather than stretching. */
+.subpanel > button {
+  align-self: flex-start;
+}
+
+/* A stack of blocks at the panel's own rhythm. */
+.section-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+/* A row of controls that are not fields — buttons, mostly, plus the odd status word beside them. */
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.row input,
+.row select {
+  width: auto;
+  flex: 1 1 8rem;
+  margin-top: 0;
+}
+
+/* Something the panel needs you to read before you scroll past it — a secret shown once, a
+ * consequence that cannot be undone. The accent edge is the only chrome: a full accent border
+ * would compete with the panel it sits inside, and a background fill would read as disabled.
+ *
+ * The markup asked for this class in TokensPanel and no rule was ever written, so the one block
+ * in the builder whose entire job is "you will not see this again" rendered as bare text.
+ */
+.callout {
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.callout > :first-child {
+  margin-top: 0;
+}
+
+.callout > :last-child {
+  margin-bottom: 0;
+}

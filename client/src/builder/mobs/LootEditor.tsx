@@ -28,7 +28,7 @@ export function LootEditor({ rows, itemTemplates, onChange }: Props) {
     onChange(rows.map((row, i) => (i === index ? { ...row, ...patch } : row)))
 
   return (
-    <fieldset className="multiplier-set">
+    <fieldset className="subpanel">
       <legend>Loot</legend>
       <p className="dim detail">
         Rolled once per row when this mob dies, each independently — three rows at 0.5 can all

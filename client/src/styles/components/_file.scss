@@ -1,0 +1,48 @@
+/* --- File input ----------------------------------------------------- */
+
+/*
+ * The bundle picker, wearing the same frame as every other control.
+ *
+ * Styled through `::file-selector-button` rather than by hiding the input behind a button of our
+ * own. The usual trick — `display: none` on the input, a real `<button>` beside it calling
+ * `.click()` — throws away the element's own semantics and then has to rebuild them: the label
+ * association, the focus ring, the announced file name. The pseudo-element keeps all of that and
+ * needs no JavaScript at all.
+ */
+.file-field {
+  font: inherit;
+  color: var(--dim);
+  background: #0b0e13;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  /* Tighter than a text input: the button inside supplies its own height. */
+  padding: var(--space-1) var(--space-2);
+  width: 100%;
+  cursor: pointer;
+}
+
+.file-field:hover {
+  border-color: var(--accent);
+}
+
+.file-field:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* The base button's chrome, restated: a pseudo-element inherits nothing from the `button` rule. */
+.file-field::file-selector-button {
+  font: inherit;
+  color: var(--text);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-1) var(--space-3);
+  margin-right: var(--space-3);
+  cursor: pointer;
+}
+
+.file-field:hover::file-selector-button {
+  border-color: var(--accent);
+  color: var(--accent);
+}

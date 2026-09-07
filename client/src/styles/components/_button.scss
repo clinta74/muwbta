@@ -1,0 +1,32 @@
+/* --- Button variants ------------------------------------------------ */
+
+/* The bare `button` element rule in base/ is the quiet variant and needs no class. These are
+   the three that do. `.danger` is deliberately not an alias for `.danger-button`: two spellings
+   for one variant is how four destructive buttons came to render as ordinary ones (UX.md 1). */
+
+button.primary {
+  background: var(--accent);
+  color: #16110a;
+  border-color: var(--accent);
+  font-weight: 600;
+}
+
+button.link {
+  border: none;
+  color: var(--dim);
+  text-decoration: underline;
+  padding: 0;
+}
+
+/* Geometry taken from the base button rather than restated: it carried its own radius and a
+   narrower horizontal padding, so a Remove sat visibly shorter than the Add next to it. Only the
+   colour is this variant's business. */
+.danger-button {
+  border-color: var(--bad);
+  color: var(--bad);
+}
+
+.danger-button:hover {
+  border-color: var(--bad);
+  background: rgba(248, 81, 73, 0.12);
+}

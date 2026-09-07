@@ -1,0 +1,46 @@
+/* --- Overflow menu -------------------------------------------------- */
+
+.overflow-trigger {
+  border: none;
+  padding: var(--space-1) var(--space-2);
+  color: var(--dim);
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.overflow-trigger:hover {
+  color: var(--text);
+}
+
+.menu {
+  min-width: 9rem;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: var(--space-1);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
+  z-index: 60;
+}
+
+.menu-item {
+  padding: var(--space-2) var(--space-2);
+  border-radius: 4px;
+  color: var(--text);
+  font-size: 0.9em;
+  cursor: pointer;
+  outline: none;
+}
+
+.menu-item[data-highlighted] {
+  background: var(--bg);
+  color: var(--accent);
+}
+
+.menu-item-danger {
+  color: var(--bad);
+}
+
+.menu-item-danger[data-highlighted] {
+  background: var(--bg);
+  color: var(--bad);
+}

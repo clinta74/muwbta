@@ -38,7 +38,7 @@ export function MobBehaviorEditor({ draft, itemTemplates, onChange }: Props) {
   const unstocked = itemTemplates.filter((t) => !stocked.has(t.key))
 
   return (
-    <fieldset className="behavior-editor">
+    <fieldset className="subpanel">
       <legend>Behavior</legend>
 
       <Field

@@ -40,7 +40,7 @@ export function MultiplierEditor({ value, onChange, scope, disabled }: Props) {
   const set = (key: keyof Multipliers, next: number) => onChange({ ...value, [key]: next })
 
   return (
-    <fieldset className="multiplier-set">
+    <fieldset className="subpanel">
       <legend>Difficulty multipliers</legend>
       <p className="dim detail">
         1.0 = no change, 2.0 = double, 0.5 = half.{' '}

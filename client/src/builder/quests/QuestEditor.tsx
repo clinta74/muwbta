@@ -222,7 +222,7 @@ export function QuestEditor({ questKey, onChanged, onDeleted }: Props) {
 
       {error && <p className="bad">{error}</p>}
 
-      <fieldset className="behavior-editor">
+      <fieldset className="subpanel">
         <legend>Finishable?</legend>
         <ReachabilityPanel warnings={warnings} checking={checking} />
       </fieldset>
@@ -278,7 +278,7 @@ export function QuestEditor({ questKey, onChanged, onDeleted }: Props) {
         }}
       />
 
-      <fieldset className="behavior-editor">
+      <fieldset className="subpanel">
         <legend>Who</legend>
         <p className="dim">
           Both should be NPCs. A killable quest giver strands anyone mid-quest until it respawns,
@@ -309,7 +309,7 @@ export function QuestEditor({ questKey, onChanged, onDeleted }: Props) {
         </Field>
       </fieldset>
 
-      <fieldset className="behavior-editor">
+      <fieldset className="subpanel">
         <legend>What it asks for</legend>
         <p className="dim">
           Leave the item empty for a talk-to quest. Mark the item as a quest item in its own
@@ -341,7 +341,7 @@ export function QuestEditor({ questKey, onChanged, onDeleted }: Props) {
         </div>
       </fieldset>
 
-      <fieldset className="behavior-editor">
+      <fieldset className="subpanel">
         <legend>Rewards</legend>
         <p className="dim">
           XP and gold are scaled by the zone's multipliers when they are paid out, so these are
@@ -412,7 +412,7 @@ export function QuestEditor({ questKey, onChanged, onDeleted }: Props) {
         </Field>
       </fieldset>
 
-      <fieldset className="behavior-editor">
+      <fieldset className="subpanel">
         <legend>Chain</legend>
         <p className="dim">
           Quest keys, comma separated. All of them must be completed before this one is offered.
@@ -516,7 +516,7 @@ export function QuestEditor({ questKey, onChanged, onDeleted }: Props) {
         </Field>
       </fieldset>
 
-      <fieldset className="behavior-editor">
+      <fieldset className="subpanel">
         <legend>Dialogue</legend>
         <p className="dim">
           Every line is optional. Left blank, the NPC says the generated line shown under each

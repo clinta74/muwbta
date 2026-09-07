@@ -6,8 +6,7 @@ import { NavGuardProvider, useNavGuard } from './NavGuard'
 import { ToastProvider } from '../ui/Toast'
 import { Tabs, type TabItem } from '../ui/Tabs'
 import type { BuilderTab } from './routes'
-import './builder.css'
-import '../ui/ui.css'
+import './builder.scss'
 
 /** Passed down to the routed tabs via the router Outlet. */
 export interface BuilderOutletContext {

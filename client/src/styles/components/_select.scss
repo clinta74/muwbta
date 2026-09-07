@@ -1,0 +1,53 @@
+/* --- Select -------------------------------------------------------- */
+
+.select-wrap {
+  position: relative;
+  display: block;
+  width: 100%;
+}
+
+.select {
+  appearance: none;
+  font: inherit;
+  color: inherit;
+  background: #0b0e13;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: var(--space-2) var(--space-6) var(--space-2) var(--space-2);
+  width: 100%;
+  cursor: pointer;
+}
+
+.select:hover {
+  border-color: var(--accent);
+}
+
+.select:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.select:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.select-chevron {
+  position: absolute;
+  top: 50%;
+  right: 0.6rem;
+  transform: translateY(-50%);
+  color: var(--dim);
+  font-size: 0.7rem;
+  pointer-events: none;
+}
+
+.select-wrap-disabled {
+  opacity: 0.5;
+}
+
+/* The option list itself is OS-drawn; give it sane colours where the browser honours them. */
+.select option {
+  background: var(--panel);
+  color: var(--text);
+}

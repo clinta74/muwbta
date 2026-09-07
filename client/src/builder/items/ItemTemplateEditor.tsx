@@ -226,7 +226,7 @@ export function ItemTemplateEditor({ templateKey, onChanged, onDeleted }: Props)
 
       </div>
 
-      <fieldset className="multiplier-set">
+      <fieldset className="subpanel">
         <legend>Slots</legend>
         <p className="dim detail">
           Where it can be equipped. Tick more than one to let it go in any of them — a blade set to
@@ -311,7 +311,7 @@ export function ItemTemplateEditor({ templateKey, onChanged, onDeleted }: Props)
         </Field>
       </div>
 
-      <fieldset className="multiplier-set">
+      <fieldset className="subpanel">
         <legend>Swing timing</legend>
         <p className="dim detail">
           Blank speed means this is not a weapon: in a main hand it swings at the default 8
@@ -346,7 +346,7 @@ export function ItemTemplateEditor({ templateKey, onChanged, onDeleted }: Props)
         </div>
       </fieldset>
 
-      <fieldset className="multiplier-set">
+      <fieldset className="subpanel">
         <legend>Restrictions</legend>
         <p className="dim detail">
           Every one of these is off by default, and an item stays unrestricted until you say
@@ -495,7 +495,7 @@ export function ItemTemplateEditor({ templateKey, onChanged, onDeleted }: Props)
       </fieldset>
 
       {STAT_GROUPS.map((group) => (
-        <fieldset className="multiplier-set" key={group.label}>
+        <fieldset className="subpanel" key={group.label}>
           <legend>{group.label}</legend>
           {group.hint && <p className="dim detail">{group.hint}</p>}
 
@@ -524,7 +524,7 @@ export function ItemTemplateEditor({ templateKey, onChanged, onDeleted }: Props)
         </fieldset>
       ))}
 
-      <fieldset className="multiplier-set">
+      <fieldset className="subpanel">
         <legend>Other stats</legend>
         {carriedStats.length === 0 && (
           <p className="dim detail">Nothing beyond the fields above.</p>

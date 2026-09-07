@@ -247,7 +247,7 @@ export function AbilityEditor({ abilityKey, roster, onChanged, onDeleted }: Prop
         </p>
       )}
 
-      <fieldset className="behavior-editor">
+      <fieldset className="subpanel">
         <legend>Effects</legend>
 
         <p className="dim">

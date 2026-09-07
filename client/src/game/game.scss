@@ -1,84 +1,15 @@
 /* ------------------------------------------------------------------ */
-/* Design tokens                                                        */
-/*                                                                      */
-/* Colour was the only dimension that had any, which is exactly why it  */
-/* is the only one that stayed consistent. The others drifted: 24       */
-/* distinct spacing values with a run from 0.35 to 0.9 in steps of      */
-/* 0.05, 19 font sizes mixing rem and em for the same weight, and six   */
-/* radii doing the work of three. None of those were chosen against     */
-/* each other - each was chosen against whatever was on screen at the   */
-/* time (UX.md findings 3 and 4).                                       */
-/*                                                                      */
-/* Added ahead of adoption on purpose. They cost nothing until a rule   */
-/* uses one, so the migration can be incremental instead of one commit  */
-/* that touches every component and can only be reviewed by eye.        */
+/* The game client: sign-in, character select, and the five panels of  */
+/* PLAN.md §5, plus the phone layout MOBILE.md M1 calls for.           */
+/*                                                                    */
+/* Moved wholesale out of App.css, which held these, the builder's    */
+/* legacy rules and the design tokens in one 2,000-line file — so a   */
+/* change to a token and a change to the transcript were edits to the */
+/* same place. Tokens, base rules and components now live in          */
+/* styles/; the builder's half is in builder/builder.scss.            */
 /* ------------------------------------------------------------------ */
-:root {
-  /* Six steps, which absorb all 24 of the old values with no visible change.
-     Anything between two steps was a difference under a pixel. */
-  --space-1: 0.25rem;
-  --space-2: 0.5rem;
-  --space-3: 0.75rem;
-  --space-4: 1rem;
-  --space-5: 1.5rem;
-  --space-6: 2rem;
 
-  /* rem throughout. The old em sizes compounded inside nested components, so the
-     same intended weight rendered differently depending on where it sat. */
-  --text-xs: 0.7rem;
-  --text-sm: 0.8rem;
-  --text-base: 0.9rem;
-  --text-lg: 1rem;
-  --text-xl: 1.1rem;
-
-  /* Small for inputs and chips, medium for panels and cards, pill for anything
-     round. Three, where there were six. */
-  --radius-sm: 3px;
-  --radius-md: 6px;
-  --radius-pill: 999px;
-
-  --bg: #0e1116;
-  --panel: #161b22;
-  --border: #2a3038;
-  --text: #c9d1d9;
-  --dim: #6e7781;
-  --good: #3fb950;
-  --bad: #f85149;
-  --accent: #d9a441;
-  --speech: #79c0ff;
-  --movement: #8b949e;
-  /* The three ways someone talks to you from outside the room (PLAN §5.3). Distinct from
-     --speech, so a tell arriving mid-fight is not mistaken for someone standing next to you. */
-  --party: #56d4a0;
-  --tell: #d2a8ff;
-  --chat: #e3a663;
-  --emote: #a3b1c2;
-  --health: #f85149;
-  --focus: #79c0ff;
-  --stamina: #3fb950;
-}
-
-* {
-  box-sizing: border-box;
-}
-
-html,
-body,
-#root {
-  height: 100%;
-}
-
-body {
-  margin: 0;
-  background: var(--bg);
-  color: var(--text);
-  font-family: ui-monospace, "Cascadia Code", "Consolas", monospace;
-  font-size: 14px;
-}
-
-/* ------------------------------------------------------------------ */
-/* Shared                                                              */
-/* ------------------------------------------------------------------ */
+/* --- The page shell (sign-in and character select) ----------------- */
 
 .shell {
   max-width: 46rem;
@@ -86,86 +17,9 @@ body {
   padding: 3rem var(--space-5);
 }
 
-h1 {
-  margin: 0;
-  font-size: 1.6rem;
-  letter-spacing: 0.08em;
-  color: var(--accent);
-}
-
-h2 {
-  margin: 0 0 var(--space-2);
-  font-size: 0.72rem;
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-  color: var(--dim);
-  font-weight: 600;
-}
-
 .tagline {
   margin: var(--space-1) 0 var(--space-6);
   color: var(--dim);
-}
-
-.panel {
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--panel);
-  padding: var(--space-4) var(--space-4);
-  margin-bottom: var(--space-4);
-}
-
-.dim {
-  color: var(--dim);
-}
-.good {
-  color: var(--good);
-}
-.bad {
-  color: var(--bad);
-}
-
-button {
-  font: inherit;
-  color: inherit;
-  background: transparent;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  padding: var(--space-2) var(--space-3);
-  cursor: pointer;
-}
-
-button:hover {
-  border-color: var(--accent);
-}
-
-button.primary {
-  background: var(--accent);
-  color: #16110a;
-  border-color: var(--accent);
-  font-weight: 600;
-}
-
-button.link {
-  border: none;
-  color: var(--dim);
-  text-decoration: underline;
-  padding: 0;
-}
-
-input {
-  font: inherit;
-  color: inherit;
-  background: #0b0e13;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  padding: var(--space-2) var(--space-2);
-  width: 100%;
-}
-
-input:focus {
-  outline: none;
-  border-color: var(--accent);
 }
 
 /* ------------------------------------------------------------------ */
@@ -1192,746 +1046,6 @@ input:focus {
   padding-bottom: calc(var(--space-1) + env(safe-area-inset-bottom, 0px));
 }
 
-/* ------------------------------------------------------------------ */
-/* World builder (PLAN.md §7)                                          */
-/* ------------------------------------------------------------------ */
-
-/* The game screen stays mounted underneath so its SSE stream survives the switch. */
-.workspace.hidden {
-  display: none;
-}
-
-/* The builder shell layout (.builder, .builder-topbar, .builder-columns, .builder-col) now
-   lives in builder/builder.css. The old grid rules here conflicted with it - the topbar was
-   being crammed into a 15rem column - so they were removed. The .tree*, .editor-section,
-   .flag-*, .room-editor, .exit-list and .follow-toggle rules below are still used by the new
-   components and stay. */
-
-.tree-section {
-  margin-bottom: var(--space-4);
-}
-
-.tree-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-}
-
-.tree-head h3,
-.editor-section h3 {
-  margin: 0 0 var(--space-2);
-  font-size: 0.68rem;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: var(--dim);
-}
-
-.tree ul {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.tree li button {
-  display: block;
-  width: 100%;
-  text-align: left;
-  padding: var(--space-1) var(--space-2);
-  border: 0;
-  border-radius: 3px;
-  background: none;
-  color: var(--text);
-  font: inherit;
-  cursor: pointer;
-}
-
-.tree li button:hover {
-  background: var(--panel);
-}
-
-.tree li button.selected {
-  background: var(--panel);
-  color: var(--accent);
-}
-
-.tree-filter {
-  width: 100%;
-  margin-bottom: var(--space-2);
-}
-
-.room-list {
-  max-height: 16rem;
-  overflow-y: auto;
-}
-
-/* .follow-toggle now lives in the builder topbar - see builder/builder.css. */
-
-/* --- Zone canvas ------------------------------------------------- */
-
-/* --- Zone Canvas (Builder Map) -------------------------------------------------- */
-
-.zone-canvas-container {
-  margin-bottom: var(--space-5);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  background: var(--panel);
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.zone-canvas-header {
-  padding: var(--space-3) var(--space-4);
-  border-bottom: 1px solid var(--border);
-  min-height: 2.5rem;
-  display: flex;
-  align-items: center;
-  gap: var(--space-4);
-}
-
-.error-msg {
-  margin: 0;
-  padding: var(--space-2) var(--space-3);
-  background-color: color-mix(in srgb, var(--bad) 12%, transparent);
-  border: 1px solid color-mix(in srgb, var(--bad) 35%, transparent);
-  border-radius: 4px;
-  color: var(--bad);
-  font-size: 0.9rem;
-}
-
-.link-status {
-  margin: 0;
-  padding: var(--space-2) var(--space-3);
-  background-color: color-mix(in srgb, var(--accent) 10%, transparent);
-  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
-  border-radius: 4px;
-  color: var(--text);
-  font-size: 0.9rem;
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-.link-icon {
-  font-size: 1.1rem;
-}
-
-.cancel-link {
-  margin-left: auto;
-  padding: var(--space-1) var(--space-2);
-  background: color-mix(in srgb, var(--bad) 22%, transparent);
-  border: 1px solid color-mix(in srgb, var(--bad) 45%, transparent);
-  border-radius: 3px;
-  color: var(--bad);
-  cursor: pointer;
-  font-size: 0.9rem;
-  font-weight: bold;
-  transition: all 0.15s ease;
-}
-
-.cancel-link:hover {
-  background: color-mix(in srgb, var(--bad) 35%, transparent);
-  border-color: var(--bad);
-}
-
-.zone-canvas-wrapper {
-  position: relative;
-  width: 100%;
-  height: 28rem;
-  overflow: hidden;
-  background: linear-gradient(135deg, var(--bg) 0%, var(--panel) 100%);
-  border-bottom: 1px solid var(--border);
-  user-select: none;
-
-  /*
-   * Every touch gesture on this surface is ours. Without it the browser claims the drag first —
-   * one finger scrolls the page and two zoom the whole document — and the pointer handlers never
-   * see the moves, because the browser cancels the pointer once it starts scrolling.
-   */
-  touch-action: none;
-}
-
-.zone-canvas {
-  position: absolute;
-  top: 0;
-  left: 0;
-  background: transparent;
-}
-
-.zone-canvas .edges {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-}
-
-.edge {
-  stroke: var(--border);
-  stroke-width: 2;
-  stroke-linecap: round;
-  transition: stroke 0.15s ease;
-}
-
-.edge:hover {
-  stroke: var(--accent);
-  stroke-width: 2.5;
-}
-
-.edge.dangling {
-  stroke: var(--bad);
-  stroke-dasharray: 4 4;
-  opacity: 0.6;
-}
-
-.edge.vertical-exit {
-  stroke: var(--speech);
-  stroke-dasharray: 5 2;
-  opacity: 0.8;
-}
-
-.edge.vertical-stub {
-  fill: none;
-  stroke: var(--bad);
-  stroke-width: 1.5;
-  opacity: 0.6;
-}
-
-.direction-label {
-  fill: var(--text);
-  font-weight: bold;
-  pointer-events: none;
-  user-select: none;
-}
-
-.direction-indicator {
-  fill: var(--panel);
-  stroke: var(--accent);
-  stroke-width: 1.5;
-  opacity: 0.7;
-}
-
-.room-box {
-  position: absolute;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: var(--space-1);
-  padding: var(--space-2);
-  border: 2px solid var(--border);
-  border-radius: 6px;
-  background: var(--bg);
-  color: var(--text);
-  font: inherit;
-  font-size: 0.75em;
-  text-align: left;
-  cursor: pointer;
-  overflow: hidden;
-  transition: all 0.15s ease;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.room-box:hover {
-  border-color: var(--accent);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-  transform: translateY(-2px);
-}
-
-.room-box.selected {
-  border-color: var(--accent);
-  color: var(--accent);
-  background: linear-gradient(135deg, var(--bg) 0%, color-mix(in srgb, var(--accent) 6%, transparent) 100%);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 30%, transparent), 0 4px 12px rgba(0, 0, 0, 0.2);
-}
-
-.room-box.occupied {
-  border-color: var(--speech);
-  box-shadow: 0 0 0 3px var(--speech), 0 4px 12px rgba(0, 0, 0, 0.2);
-}
-
-.room-box.occupied.selected {
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 30%, transparent), 0 0 0 6px var(--speech), 0 4px 12px rgba(0, 0, 0, 0.2);
-}
-
-.room-box.unfinished {
-  background: repeating-linear-gradient(
-    45deg,
-    var(--bg),
-    var(--bg) 4px,
-    color-mix(in srgb, var(--bad) 12%, transparent) 4px,
-    color-mix(in srgb, var(--bad) 12%, transparent) 8px
-  );
-  opacity: 0.85;
-}
-
-.room-box-title {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-weight: 500;
-}
-
-.room-box-key {
-  color: var(--dim);
-  font-size: 0.8em;
-  letter-spacing: 0.02em;
-}
-
-.vertical-indicator {
-  position: absolute;
-  top: 2px;
-  right: 2px;
-  font-size: 0.9rem;
-  opacity: 0.6;
-}
-
-.zone-canvas-controls {
-  padding: var(--space-3) var(--space-4);
-  background: var(--panel);
-  border-top: 1px solid var(--border);
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  gap: var(--space-4);
-  flex-wrap: wrap;
-}
-
-/* Pinch does this on touch; the buttons are for a mouse and for the keyboard, which otherwise
-   have no zoom at all. */
-.zoom-controls {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-.zoom-controls button {
-  min-width: 2.2rem;
-}
-
-.zoom-level {
-  min-width: 3.2rem;
-  text-align: center;
-  font-size: 0.8rem;
-  color: var(--dim);
-  font-variant-numeric: tabular-nums;
-}
-
-.canvas-help {
-  margin: 0;
-  margin-left: auto;
-  font-size: 0.8rem;
-  color: var(--dim);
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-.help-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: var(--border);
-  color: var(--text);
-  font-size: 0.7rem;
-  font-weight: bold;
-}
-
-/* --- Room editor -------------------------------------------------- */
-
-.room-editor header,
-.mob-editor header {
-  display: flex;
-  align-items: baseline;
-  gap: var(--space-2);
-  margin-bottom: var(--space-2);
-}
-
-.room-editor header h2,
-.mob-editor header h2 {
-  margin: 0;
-  color: var(--accent);
-  font-size: 1rem;
-  text-transform: none;
-  letter-spacing: 0;
-}
-
-.room-key,
-code.dim {
-  color: var(--dim);
-  font-size: 0.85em;
-}
-
-.room-editor label,
-.mob-editor label {
-  display: block;
-  margin-bottom: var(--space-2);
-}
-
-.room-editor input,
-.room-editor textarea,
-.room-editor select,
-.mob-editor input,
-.mob-editor textarea,
-.mob-editor select,
-.tree-filter {
-  display: block;
-  width: 100%;
-  margin-top: var(--space-1);
-  padding: var(--space-2) var(--space-2);
-  border: 1px solid var(--border);
-  border-radius: 3px;
-  background: var(--bg);
-  color: var(--text);
-  font: inherit;
-}
-
-.editor-section {
-  margin: var(--space-4) 0;
-  padding-top: var(--space-3);
-  border-top: 1px solid var(--border);
-}
-
-.editor-section.danger {
-  border-top-color: var(--bad);
-}
-
-.row {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  flex-wrap: wrap;
-}
-
-/* Checkbox rows across the builder.
-   Ten of these existed before the class did — quest item, shopkeeper, wanders, repeatable, and
-   the rest — so every one of them rendered as a bare label with the box jammed against its text
-   and no alignment. Same shape as UX.md finding 1: markup asking for a class nobody wrote. */
-.field-check {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  margin: var(--space-2) 0;
-  cursor: pointer;
-}
-
-.field-check input[type='checkbox'] {
-  /* Undoes the generous sizing inputs get elsewhere. A checkbox is a checkbox. */
-  width: auto;
-  flex: none;
-  margin: 0;
-  accent-color: var(--accent);
-}
-
-/* Several checks side by side, for a set where any number may be ticked. Deliberately not `.row`:
-   its `input { flex: 1 1 8rem }` stretches a checkbox to eight rems. */
-.check-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-3);
-}
-
-.check-row .field-check {
-  margin: 0;
-}
-
-.row input,
-.row select {
-  width: auto;
-  flex: 1 1 8rem;
-  margin-top: 0;
-}
-
-.detail {
-  font-size: 0.85em;
-}
-
-.danger-button {
-  border: 1px solid var(--bad);
-  border-radius: 3px;
-  background: none;
-  color: var(--bad);
-  font: inherit;
-  padding: var(--space-2) var(--space-2);
-  cursor: pointer;
-}
-
-/* --- Flags -------------------------------------------------------- */
-
-.flag-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  gap: var(--space-2);
-}
-
-.flag {
-  padding: var(--space-2) var(--space-2);
-  border: 1px solid var(--border);
-  border-radius: 3px;
-}
-
-/* Inherited values are dimmed so a room that is PvP because of its zone never looks
-   like a plain unflagged room (PLAN.md §4.10). */
-.flag.inherited {
-  opacity: 0.72;
-  border-style: dashed;
-}
-
-.flag-head {
-  display: flex;
-  align-items: baseline;
-  gap: var(--space-2);
-}
-
-.flag-head strong {
-  color: var(--text);
-}
-
-.flag p {
-  margin: var(--space-1) 0 var(--space-2);
-}
-
-/* A flag whose registry entry says "later" — registered and read by nothing. Warned in the
-   builder rather than hidden, because a builder can still have a reason to set one ahead of the
-   code, and the honest thing is to say so rather than to silently accept it. */
-.flag-later {
-  color: var(--warn, #d8a657);
-}
-
-.flag-controls {
-  display: flex;
-  gap: var(--space-1);
-}
-
-.flag-controls button {
-  padding: var(--space-1) var(--space-2);
-  border: 1px solid var(--border);
-  border-radius: 3px;
-  background: none;
-  color: var(--dim);
-  font: inherit;
-  font-size: 0.85em;
-  cursor: pointer;
-}
-
-.flag-controls button.selected {
-  border-color: var(--accent);
-  color: var(--accent);
-}
-
-/* --- Exits -------------------------------------------------------- */
-
-.exit-list {
-  list-style: none;
-  margin: 0 0 var(--space-2);
-  padding: 0;
-}
-
-.exit-list li {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-1) 0;
-}
-
-.exit-list strong {
-  min-width: 3.5rem;
-  color: var(--movement);
-}
-
-/* --- Grid painter ------------------------------------------------- */
-
-.grid-painter .palette {
-  display: flex;
-  gap: var(--space-1);
-  flex-wrap: wrap;
-}
-
-/* Grouped so the box-drawing glyphs are findable. A flat row of ~50 swatches would be a
-   character map, which is the thing having a palette is meant to save you from. */
-.grid-painter .palette-groups {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  margin-bottom: var(--space-2);
-}
-
-.grid-painter .palette-group {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
-
-.grid-painter .palette-label {
-  color: var(--dim);
-  font-size: 0.7rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-}
-
-/* Box-drawing glyphs only join up at their true cell width, so the swatches drop the tracking
-   the rest of the builder uses. */
-.grid-painter .swatch,
-.grid-painter .cell {
-  letter-spacing: 0;
-}
-
-/* Drag-to-paint is the whole point of the control, and a drag on touch is a page scroll unless
-   the surface claims it. */
-.grid-painter .canvas {
-  touch-action: none;
-}
-
-.swatch {
-  width: 1.6rem;
-  height: 1.6rem;
-  border: 1px solid var(--border);
-  border-radius: 3px;
-  background: var(--bg);
-  color: var(--text);
-  font: inherit;
-  cursor: pointer;
-}
-
-.swatch.selected {
-  border-color: var(--accent);
-  color: var(--accent);
-}
-
-.grid-painter .canvas {
-  display: inline-block;
-  border: 1px solid var(--border);
-  border-radius: 3px;
-  padding: 2px;
-  background: var(--panel);
-  user-select: none;
-}
-
-.grid-row {
-  display: flex;
-}
-
-.grid-painter .cell {
-  width: 1.05rem;
-  height: 1.05rem;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--text);
-  font: inherit;
-  line-height: 1;
-  cursor: crosshair;
-}
-
-.grid-painter .cell:hover {
-  background: var(--border);
-}
-
-.grid-size {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  margin-top: var(--space-2);
-  color: var(--dim);
-}
-
-.grid-size input {
-  width: 3.5rem;
-  margin-top: 0;
-}
-
-.legend-editor {
-  margin-top: var(--space-2);
-  color: var(--dim);
-}
-
-.legend-editor ul {
-  list-style: none;
-  margin: var(--space-2) 0 0;
-  padding: 0;
-}
-
-.legend-editor li {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  margin-bottom: var(--space-1);
-}
-
-.legend-editor input {
-  width: auto;
-  flex: 1;
-  margin-top: 0;
-}
-
-/* --- Warnings ----------------------------------------------------- */
-
-.warning-list,
-.room-warnings {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-.warning-list li,
-.room-warnings li {
-  padding: var(--space-1) 0;
-  font-size: 0.85em;
-  border-bottom: 1px solid var(--border);
-}
-
-.room-warnings {
-  margin-bottom: var(--space-3);
-}
-
-.room-warnings li {
-  color: var(--accent);
-}
-
-.warning.dangling-exit,
-.warning.inherited-pvp {
-  color: var(--accent);
-}
-
-/* ------------------------------------------------------------------ */
-/* Builder on small screens (MOBILE.md M4b)                            */
-/* ------------------------------------------------------------------ */
-
-/*
- * Three panes to two, then two to one. The old rule here collapsed the whole builder to a single
- * scrolling column below 1100px, which put the tree, the editor, and the properties panel end to
- * end — three screens of scrolling to change one field.
- */
-@media (max-width: 1100px) {
-  /* The properties panel drops under the editor rather than squeezing it. The tree spans both
-     rows, so it keeps its full height beside them. */
-  .builder-columns {
-    grid-template-columns: 14rem 1fr;
-  }
-
-  .builder-columns > :nth-child(1) {
-    grid-row: 1 / -1;
-  }
-
-  .builder-columns > :nth-child(3) {
-    grid-column: 2;
-  }
-}
-
-@media (max-width: 768px) {
-  /* One pane. The tree becomes a drawer over it — see .builder[data-nav] in builder.css. */
-  .builder-columns,
-  .builder-columns-2 {
-    grid-template-columns: 1fr;
-  }
-
-  .builder-columns > :nth-child(3) {
-    grid-column: 1;
-  }
-}
 
 /* --- Ability bar ---------------------------------------------------- */
 
@@ -2050,4 +1164,101 @@ code.dim {
 
 .version-badge span {
   cursor: help;
+}
+
+/* ------------------------------------------------------------------ */
+/* The drawn realm maps (was components/map.css).                     */
+/* ------------------------------------------------------------------ */
+
+
+.map-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--bg);
+}
+
+.map-topbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--border);
+}
+
+.map-brand {
+  margin: 0;
+  color: var(--accent);
+  font-size: 1rem;
+  white-space: nowrap;
+}
+
+/* Wraps rather than scrolls: five realms is a short list, and a row that scrolls sideways hides
+   the realm you are looking for behind a gesture nothing advertises. */
+.map-realms {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.map-realm.current {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.map-here {
+  color: var(--movement);
+}
+
+.map-topbar-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.map-exit {
+  white-space: nowrap;
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.map-exit:hover {
+  background: var(--accent);
+  color: #16110a;
+}
+
+/*
+ * Scrolls both ways, because at full size the sheet is wider than any screen and taller than all
+ * of them. `min-height: 0` is what actually lets it scroll at all: this is a flex child, and a
+ * flex item's default `min-height: auto` sizes it to its content, so the frame would grow to five
+ * thousand pixels and push the scrolling onto the page instead - taking the topbar off the screen
+ * with it.
+ */
+.map-frame {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: var(--space-3);
+  /* The sheets are drawn on paper, not on the game's dark ground. */
+  background: var(--panel);
+}
+
+.map-sheet {
+  display: block;
+  margin: 0 auto;
+}
+
+.map-sheet[data-fit='width'] {
+  width: 100%;
+  height: auto;
+}
+
+/*
+ * At full size the intrinsic width and height attributes do the sizing, so this only has to stop
+ * the page's global `img { max-width: 100% }` from shrinking it straight back to fit - which is
+ * the whole difference between the two settings.
+ */
+.map-sheet[data-fit='none'] {
+  max-width: none;
 }

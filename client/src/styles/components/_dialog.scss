@@ -1,0 +1,81 @@
+/* --- Dialogs (Modal, ConfirmDialog) ------------------------------- */
+
+.dlg-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  animation: dlg-fade 120ms ease-out;
+}
+
+.dlg {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(30rem, calc(100vw - 2rem));
+  max-height: calc(100vh - 4rem);
+  overflow-y: auto;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: var(--space-4);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+  animation: dlg-rise 120ms ease-out;
+}
+
+.dlg:focus {
+  outline: none;
+}
+
+.dlg-title {
+  margin: 0 0 var(--space-2);
+  color: var(--accent);
+  font-size: 1rem;
+}
+
+.dlg-desc {
+  margin: 0 0 var(--space-3);
+  color: var(--dim);
+  font-size: 0.85em;
+}
+
+.dlg-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.dlg-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+
+.dlg-close {
+  position: absolute;
+  top: 0.6rem;
+  right: 0.6rem;
+  border: none;
+  padding: 0 var(--space-2);
+  color: var(--dim);
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.dlg-close:hover {
+  color: var(--text);
+}
+
+@keyframes dlg-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes dlg-rise {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -46%);
+  }
+}

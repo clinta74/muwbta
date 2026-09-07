@@ -33,7 +33,7 @@ export function MobStatsEditor({ stats, onChange }: Props) {
   return (
     <>
       {MOB_STAT_GROUPS.map((group) => (
-        <fieldset className="multiplier-set" key={group.label}>
+        <fieldset className="subpanel" key={group.label}>
           <legend>{group.label}</legend>
           {group.hint && <p className="dim detail">{group.hint}</p>}
 

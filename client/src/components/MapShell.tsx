@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import { api, mapSheetUrl, type MapSheet } from '../net/api'
-import './map.css'
 
 /**
  * The drawn maps, for anyone.

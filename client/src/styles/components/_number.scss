@@ -1,0 +1,17 @@
+/* --- Number fields -------------------------------------------------- */
+
+.number-input {
+  /* Inherits the base input look; declared so intent is obvious at call sites. */
+  width: 100%;
+}
+
+/* No spinner arrows anywhere - number fields are text fields with a filter. */
+input[type='number']::-webkit-inner-spin-button,
+input[type='number']::-webkit-outer-spin-button {
+  appearance: none;
+  margin: 0;
+}
+
+input[type='number'] {
+  appearance: textfield;
+}

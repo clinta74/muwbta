@@ -46,7 +46,7 @@ export function AttackEditor({ attacks, onChange }: Props) {
   }
 
   return (
-    <fieldset className="attack-list">
+    <fieldset className="subpanel">
       <legend>Attacks</legend>
       <p className="dim detail">
         Each attack keeps its own timer, so two attacks are two independent swings rather than one

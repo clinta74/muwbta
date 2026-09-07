@@ -1,0 +1,78 @@
+/* --- Data table ----------------------------------------------------- */
+
+/*
+ * Rows of facts with a header. One table shape for the whole client.
+ *
+ * There was already a good one — `.preview-table`, written for the multiplier preview — and there
+ * was also `<table class="grid">` in TokensPanel, which matched no rule at all: browser-default
+ * cell padding, no header treatment, and no rule between the rows. That is the panel where the
+ * gap between a token's name and its scope looked wrong, and it looked wrong because there was no
+ * gap, only whatever the user agent felt like. Promoting the working one and deleting the
+ * imaginary one is the whole fix.
+ */
+.data-table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.data-table th,
+.data-table td {
+  text-align: left;
+  /* The horizontal padding is the column gap. `--space-3` either side puts a readable 1.5rem
+     between one column's text and the next; the `--space-1`/`--space-2` the preview table used is
+     right for a dense numeric readout and too tight for words. */
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+
+/* No rule under the last row — the panel's own edge is already there. */
+.data-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.data-table thead th {
+  color: var(--dim);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* A cell holding a control rather than a fact: it should not add the row's line height to its own
+   padding, and a button in a table row is already its own hit target. */
+.data-table td:has(> button) {
+  padding-top: var(--space-1);
+  padding-bottom: var(--space-1);
+}
+
+/* Numbers line up on their digits and never wrap. */
+.data-table .numeric {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.data-table .strong {
+  font-weight: 600;
+  color: var(--good, inherit);
+}
+
+/* A readout of many short numeric columns — the multiplier preview. Tighter, because the columns
+   are digits and the point is to compare them down the page. */
+.data-table.dense {
+  font-size: 0.82rem;
+}
+
+.data-table.dense th,
+.data-table.dense td {
+  padding: var(--space-1) var(--space-2);
+}
+
+/* A table can be wider than the rail it sits in; scroll it rather than the page. */
+.table-wrap {
+  overflow-x: auto;
+  max-height: 22rem;
+  overflow-y: auto;
+}

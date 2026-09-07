@@ -1,0 +1,126 @@
+@use 'sass:list';
+
+/* --- Fields -------------------------------------------------------- */
+
+/* A labelled control: label above, control, then an optional hint and inline error. */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.field-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--dim);
+}
+
+.field-hint {
+  color: var(--dim);
+  font-size: 0.8em;
+}
+
+.field-error {
+  color: var(--bad);
+  font-size: 0.8em;
+}
+
+/* --- Field sizing --------------------------------------------------- */
+
+/*
+ * <b>`.field-row` was in the markup nineteen times and in the stylesheet nowhere.</b>
+ *
+ * The only rules that ever mentioned it were `.attack-list .field-row` and
+ * `.behavior-editor .field-row`, and both set nothing but `align-items`. It had no `display` in
+ * any of the four stylesheets — so everywhere outside those two containers it was a plain block,
+ * its children stacked, and the global `input { width: 100% }` blew each one out to the full rail.
+ * That is why an item's icon, which is one character, was as wide as its description.
+ *
+ * The row is a wrapping flex line and the *field* carries the size; the control inside keeps its
+ * `width: 100%` and fills whatever the field turns out to be. So a size is declared once, at the
+ * field, and nothing has to reach past it to the input.
+ */
+.field-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3) var(--space-4);
+}
+
+.field-row > * {
+  flex: var(--field-grow, 1) 1 var(--field-w, 12rem);
+  /* A flex item's automatic minimum is its content, and a long placeholder or an unbreakable key
+     is content that will not wrap — without this the item pushes past its basis and takes the row
+     with it. */
+  min-width: 0;
+}
+
+/*
+ * The sizes, as a scale rather than a number per call site.
+ *
+ * `$w` is what the field wants to be; `$grow` is whether it may take the slack when the row has
+ * some. The small ones do not: a field for one glyph that grows is a field for one glyph that is
+ * four inches wide, which is the bug this whole block exists to fix. The roomy ones do, so a row
+ * of [name, level] gives the name everything the level does not need.
+ *
+ * The width is set on the field itself as well as through the flex basis, so a sized field works
+ * on its own in a column and not only inside a row.
+ */
+$field-widths: (
+  /* one or two glyphs — an item icon, a mob icon */
+  'char': (3.5rem, 0),
+  /* a small number — level, count, weight, XP, gold */
+  'xs': (5.5rem, 0),
+  /* a short enum or a duration — expires in, cast time */
+  'sm': (8rem, 0),
+  /* the default: a name, a verb, an ordinary word */
+  'md': (12rem, 1),
+  /* a key or a sentence — required item, giver, token name */
+  'lg': (18rem, 2),
+  /* takes the line to itself */
+  'full': (100%, 1)
+);
+
+@each $name, $spec in $field-widths {
+  .field-w-#{$name} {
+    --field-w: #{list.nth($spec, 1)};
+    --field-grow: #{list.nth($spec, 2)};
+    width: var(--field-w);
+    max-width: 100%;
+  }
+}
+
+/* --- Checkboxes ----------------------------------------------------- */
+
+/* Checkbox rows across the builder.
+   Ten of these existed before the class did — quest item, shopkeeper, wanders, repeatable, and
+   the rest — so every one of them rendered as a bare label with the box jammed against its text
+   and no alignment. Same shape as UX.md finding 1: markup asking for a class nobody wrote. */
+.field-check {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: var(--space-2) 0;
+  cursor: pointer;
+}
+
+.field-check input[type='checkbox'] {
+  /* Undoes the generous sizing inputs get elsewhere. A checkbox is a checkbox. */
+  width: auto;
+  flex: none;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+/* Several checks side by side, for a set where any number may be ticked. Deliberately not `.row`:
+   its `input { flex: 1 1 8rem }` stretches a checkbox to eight rems. */
+.check-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.check-row .field-check {
+  margin: 0;
+}

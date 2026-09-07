@@ -12,7 +12,7 @@ import { QuestsTab } from './builder/quests/QuestsTab'
 import { AccountsTab } from './builder/accounts/AccountsTab'
 import { SetupTab } from './builder/setup/SetupTab'
 import { api, type Account, type Character } from './net/api'
-import './App.css'
+import './game/game.scss'
 
 type Stage =
   | { name: 'loading' }
