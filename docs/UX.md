@@ -377,3 +377,49 @@ after none of them.
 together moves to `client/tests/`, mirroring the feature — with a `@/` alias so a moved test does
 not open with a run of `../../src/`. The two misnamed unit tests were renamed rather than moved,
 because the pairing is the point: `useRailWidths.test.ts` and `stream.heartbeat.test.ts`.
+
+---
+
+## 15. What the screenshots found that the stylesheet did not — FIXED
+
+Findings 9–14 came from reading the CSS against the markup. These came from opening the builder
+and looking at it, and they are the ones worth remembering, because none of them was visible in
+the source.
+
+**Field rows were bottom-aligned.** `align-items: flex-end` came from the two descendant rules
+finding 9 replaced, and it is right only for fields with nothing under them. A field is
+label / control / hint, so aligning the bottoms aligns the *hints* — on the token panel, where one
+field has no hint, one has two lines and one has three, the three inputs sat at three different
+heights. Tops now.
+
+**A width should size the control, not the field.** They are the same thing inside a row, where
+the flex basis sizes the box and the control fills it. They are not the same thing when a field is
+alone on a line: sizing the box takes the label and the hint with it, and a hint is a sentence.
+And in a row, a field that grew kept its control pinned at the basis it started from.
+
+**A hint that is a paragraph is a paragraph.** Three of them — the cost-type note, the shared-timer
+note, the attack-delay note — ran to four, six and seven lines inside a narrow column. Two moved
+out of the field and one lost what the subpanel's intro already said. This is the failure mode the
+width scale invites: it is now easy to make a field narrow, and a narrow field makes any prose
+attached to it expensive.
+
+**`md` should not take the slack.** A picker with three options in it does not become easier to
+read at four hundred pixels. Only `lg` and `full` grow.
+
+**The topbar overflowed the window**, putting a horizontal scrollbar under the whole builder with
+*Exit builder* off the right edge. The ellipsis meant to prevent it never fired: `max-width` does
+not apply to an inline box and the room key is a `<code>`.
+
+**The responsive column rules had never run.** `@media (max-width: 1100px)` and its 768px sibling
+address the columns by position — `:nth-child(1)`, `:nth-child(3)` — and were written before the
+rails could be dragged. Handles put a divider between every pair, so child 3 is the editor and
+column 2 is a five-pixel track: the rule was pushing the editor into the divider. It did not show,
+because `grid-template-columns` there was being overridden by the newer rule in `builder.css`
+purely because that file loaded second. **Merging the two stylesheets is what made a dead rule
+live**, which is the one risk in finding 13 that a selector-set diff cannot catch — the diff proves
+no rule was lost, not that every rule kept losing the fights it used to lose. Worth checking for
+duplicate selectors across the layers after a merge, not just for missing ones.
+
+Adding `:not(.builder-columns-2)` to the two-pane rule then broke the one-pane rule below it, for
+the ordinary reason: two classes beat one, whatever the source order. Both sides carry the same
+weight now.
