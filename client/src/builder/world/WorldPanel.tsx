@@ -128,7 +128,7 @@ export function WorldPanel({ worldKey, onDeleted }: Props) {
             <Textarea rows={3} value={description} onChange={change(setDescription)} />
           </Field>
 
-          <Field label="Sort order" hint="Lower sorts first in the world list.">
+          <Field label="Sort order" width="xs" hint="Lower sorts first in the world list.">
             <NumberInput min={0} value={sortOrder} onChange={change(setSortOrder)} />
           </Field>
         </div>

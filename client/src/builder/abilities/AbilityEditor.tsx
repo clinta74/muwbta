@@ -144,7 +144,7 @@ export function AbilityEditor({ abilityKey, roster, onChanged, onDeleted }: Prop
         </Field>
         <Field
           label="Path"
-          width="sm"
+          width="md"
           hint="Changing this needs the key to match — rename the ability instead."
         >
           <Select value={draft.path} onChange={() => undefined} disabled>
@@ -169,12 +169,13 @@ export function AbilityEditor({ abilityKey, roster, onChanged, onDeleted }: Prop
         />
       </Field>
 
+      <p className="dim detail">
+        Focus for spells, Stamina for skills — the cost type is what makes it one or the other
+        (§4.7).
+      </p>
+
       <div className="field-row">
-        <Field
-          label="Costs"
-          width="sm"
-          hint="Focus for spells, Stamina for skills — the cost type is what makes it one or the other (§4.7)."
-        >
+        <Field label="Costs" width="sm">
           <Select value={draft.costType} onChange={(v) => set({ costType: v as CostType })}>
             {COST_TYPES.map((c) => (
               <option key={c} value={c}>
@@ -223,8 +224,8 @@ export function AbilityEditor({ abilityKey, roster, onChanged, onDeleted }: Prop
         </Field>
         <Field
           label="Shared timer"
-          width="xs"
-          hint={`Blank shares nothing. Numbered per Path, so ${draft.path} 1 and another Path's 1 are different timers.`}
+          width="sm"
+          hint="Blank shares nothing. Numbered per Path."
         >
           <OptionalNumberInput
             min={1}

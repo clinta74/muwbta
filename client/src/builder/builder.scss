@@ -63,10 +63,28 @@
   white-space: nowrap;
 }
 
+/* The ellipsis never fired: `max-width` does not apply to an inline box, and `<code>` is one. So a
+   long room key — `aldenmoor.millbrook.village-green` is an ordinary one — pushed the topbar past
+   the window and put a horizontal scrollbar under the whole builder, with *Exit builder* off the
+   right edge. `inline-block` is what makes the other three declarations mean anything. */
 .follow-room code {
+  display: inline-block;
   max-width: 16rem;
   overflow: hidden;
   text-overflow: ellipsis;
+  vertical-align: bottom;
+  white-space: nowrap;
+}
+
+/* And the readout gives way before the controls beside it do: a flex item's automatic minimum is
+   its content, so without this the row refuses to shrink however narrow the window gets. */
+.builder-topbar-right {
+  min-width: 0;
+}
+
+.follow-room {
+  min-width: 0;
+  overflow: hidden;
 }
 
 /* Themed checkboxes wherever the builder uses them. Dialogs portal to <body>, so these
@@ -1504,31 +1522,60 @@ code.dim {
  * Three panes to two, then two to one. The old rule here collapsed the whole builder to a single
  * scrolling column below 1100px, which put the tree, the editor, and the properties panel end to
  * end — three screens of scrolling to change one field.
+ *
+ * <b>It addressed the columns by position, and the rails moved out from under it.</b> This was
+ * written when the grid was three tracks and the columns were its only children. Draggable rails
+ * put a handle between every pair, so `:nth-child(3)` is the editor rather than the side panel and
+ * column 2 is a five-pixel handle track — the rule was pushing the editor into the divider.
+ *
+ * It did not show, because `grid-template-columns` here was overridden by the rule further up this
+ * file, purely because builder.css happened to load after App.css. Bringing the two stylesheets
+ * together is what let it apply. Selectors that say what they mean now, and the handles carry a
+ * side so a rule can name one.
  */
 @media (max-width: 1100px) {
-  /* The properties panel drops under the editor rather than squeezing it. The tree spans both
-     rows, so it keeps its full height beside them. */
-  .builder-columns {
-    grid-template-columns: 14rem 1fr;
+  /* Only a three-rail tab has anything to drop; a two-rail tab is already two panes. */
+  .builder-columns:not(.builder-columns-2) {
+    grid-template-columns: var(--rail-left, 15rem) auto 1fr;
   }
 
-  .builder-columns > :nth-child(1) {
-    grid-row: 1 / -1;
+  /* The side panel goes under the editor rather than squeezing it, and the tree keeps its full
+     height beside both rows. `1 / 3` and not `1 / -1`: there are no explicit rows here, so `-1`
+     resolves to the end of the explicit grid, which is the end of row one — it spans nothing. */
+  .builder-columns:not(.builder-columns-2) > aside.builder-col:first-child,
+  .builder-columns:not(.builder-columns-2) > .rail-handle-left {
+    grid-row: 1 / 3;
   }
 
-  .builder-columns > :nth-child(3) {
-    grid-column: 2;
+  .builder-columns:not(.builder-columns-2) > main.builder-col ~ aside.builder-col {
+    grid-column: 3;
+  }
+
+  /* Nothing left to drag: the panel it sized is no longer beside anything. */
+  .rail-handle-right {
+    display: none;
   }
 }
 
 @media (max-width: 768px) {
-  /* One pane. The tree becomes a drawer over it — see .builder[data-nav] in builder.scss. */
-  .builder-columns,
+  /* One pane. The tree becomes a drawer over it — see .builder[data-nav] above. The handles are
+     already hidden at this width, and the drawer is `position: fixed`, so what is left in the
+     grid is the editor and, on a three-rail tab, the side panel under it. */
+  /* `:not(.builder-columns-2)` above is two classes and a bare `.builder-columns` is one, so the
+     two-pane rule outweighs this one however late it appears — the three-rail tabs kept their two
+     tracks here and the editor came out one rail wide. Same weight on both sides, and then source
+     order decides, which is what it looked like it was doing all along. */
+  .builder-columns:not(.builder-columns-2),
   .builder-columns-2 {
     grid-template-columns: 1fr;
   }
 
-  .builder-columns > :nth-child(3) {
+  /* Restated at the two-pane rule's own weight rather than left to a shorter selector: that rule
+     is four classes and two types, and a bare `.builder-columns > .builder-col` loses to it — so
+     the side panel kept the third column it was given at 1100px and sat beside the editor in a
+     grid that only had one. */
+  .builder-columns > .builder-col,
+  .builder-columns:not(.builder-columns-2) > main.builder-col ~ aside.builder-col {
     grid-column: 1;
   }
 }

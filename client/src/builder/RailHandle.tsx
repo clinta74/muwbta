@@ -32,7 +32,7 @@ export function RailHandle({ side, width, onResize, onReset }: Props) {
 
   return (
     <div
-      className="rail-handle"
+      className={`rail-handle rail-handle-${side}`}
       role="separator"
       aria-orientation="vertical"
       aria-label={side === 'left' ? 'Resize the list' : 'Resize the side panel'}

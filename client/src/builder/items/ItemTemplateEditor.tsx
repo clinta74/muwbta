@@ -324,7 +324,7 @@ export function ItemTemplateEditor({ templateKey, onChanged, onDeleted }: Props)
               here - it means the weapon declares no speed of its own - and because the hand-rolled
               version could not accept a decimal at all: it round-tripped every keystroke through
               toPulses, so the point in "1." was erased as it was typed and 1.5 was unreachable. */}
-          <Field label="Attack delay" width="sm" hint="Seconds. Blank uses the default; minimum 1, in quarter steps.">
+          <Field label="Attack delay" width="sm" hint="Seconds, minimum 1.">
             <OptionalSecondsInput
               pulses={attackDelayPulses}
               minPulses={4}

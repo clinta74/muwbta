@@ -11,6 +11,8 @@
 
 .field-label {
   font-size: 0.72rem;
+  /* Pinned rather than inherited, because `--field-control-top` below is computed from it. */
+  line-height: 1.4;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--dim);
@@ -44,8 +46,21 @@
 .field-row {
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-end;
+  /*
+   * Aligned by their tops, so the controls land on one line.
+   *
+   * `flex-end` is what the two descendant rules this replaced were doing, and it is right only
+   * for fields that have nothing under them. A field is label / control / hint, so aligning the
+   * bottoms aligns the *hints* — and on the token panel, where one field has no hint, one has two
+   * lines and one has three, that put the three inputs at three different heights. Aligning the
+   * tops works because the labels above them are one line each.
+   */
+  align-items: flex-start;
   gap: var(--space-3) var(--space-4);
+
+  /* What sits between the top of a field and the top of its control: one line of label plus the
+     field's own gap. Anything in the row that is not a field needs it to reach the same line. */
+  --field-control-top: calc(0.72rem * 1.4 + var(--space-2));
 }
 
 .field-row > * {
@@ -56,19 +71,23 @@
   min-width: 0;
 }
 
-/* A Remove sitting at the end of a row of fields is not a field. Without this it takes the
-   default basis and the grow with it, so the button ends up wider than the value it removes. */
+/* A Remove sitting at the end of a row of fields is not a field. Without the flex it takes a
+   field's basis and grow, so the button comes out wider than the value it removes; without the
+   margin it sits on the labels' line rather than beside the controls it acts on. */
 .field-row > button {
   flex: 0 0 auto;
+  margin-top: var(--field-control-top);
 }
 
 /*
  * The sizes, as a scale rather than a number per call site.
  *
  * `$w` is what the field wants to be; `$grow` is whether it may take the slack when the row has
- * some. The small ones do not: a field for one glyph that grows is a field for one glyph that is
- * four inches wide, which is the bug this whole block exists to fix. The roomy ones do, so a row
- * of [name, level] gives the name everything the level does not need.
+ * some. Only `lg` and `full` do. A field for one glyph that grows is a field for one glyph that is
+ * four inches wide, which is the bug this whole block exists to fix — and the same argument
+ * applies at `md`: a picker with three options in it does not become easier to read at four
+ * hundred pixels. So a row of [cost, amount, targets] leaves the slack at the end of the line,
+ * and a row of [icon, name, level] gives it all to the name.
  *
  * The width is set on the field itself as well as through the flex basis, so a sized field works
  * on its own in a column and not only inside a row.
@@ -81,7 +100,7 @@ $field-widths: (
   /* a short enum or a duration — expires in, cast time */
   'sm': (8rem, 0),
   /* the default: a name, a verb, an ordinary word */
-  'md': (12rem, 1),
+  'md': (12rem, 0),
   /* a key or a sentence — required item, giver, token name */
   'lg': (18rem, 2),
   /* takes the line to itself */
@@ -92,9 +111,33 @@ $field-widths: (
   .field-w-#{$name} {
     --field-w: #{list.nth($spec, 1)};
     --field-grow: #{list.nth($spec, 2)};
-    width: var(--field-w);
-    max-width: 100%;
   }
+}
+
+/*
+ * A width sizes the *control*, not the field around it.
+ *
+ * The two are the same thing inside a row — the flex basis above sizes the box, and the control
+ * fills it — but they are not the same thing when a field is alone on a line. Sizing the box there
+ * takes the label and the hint down with it, and a hint is a sentence: "Lower sorts first in the
+ * world list." wrapped into the width of a two-digit box is four lines of column under a control
+ * one line tall. Alone on a line the field stays a block and only the control narrows, so the
+ * explanation gets the width it needs.
+ *
+ * Everything except the three text spans, so this reaches an `<input>`, a `.textarea`, a
+ * `.select-wrap` and whatever a picker turns out to render, without naming any of them.
+ */
+.field[class*='field-w-'] > *:not(.field-label):not(.field-hint):not(.field-error) {
+  width: var(--field-w);
+  max-width: 100%;
+}
+
+/* Inside a row the box is the thing that was sized, and `md` and `lg` are allowed to grow into
+   whatever the small fields beside them did not want — so the control fills the box rather than
+   staying pinned at the basis it started from. Without this a name field in a wide editor grew a
+   box of empty panel around an 18rem input. */
+.field-row > .field[class*='field-w-'] > *:not(.field-label):not(.field-hint):not(.field-error) {
+  width: 100%;
 }
 
 /* --- Checkboxes ----------------------------------------------------- */
