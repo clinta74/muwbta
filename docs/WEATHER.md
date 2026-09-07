@@ -50,8 +50,71 @@ time.
   no authored event needs one.
 
 **One content pass is still outstanding**: `indoors` is default-false, so every interior room in the
-Reaches currently has weather in it. It wants setting at zone level on the inns, keeps, mines and
-anything underground — content work, in the content repo.
+Reaches currently has weather in it. The pass was read and decided on 2026-09-07 and is written out
+below; it has not been applied.
+
+### The Reaches pass, as decided
+
+Read against all 238 rooms of the five realms. Twenty-four rooms and two zones
+(`azhen.ummath`, `azhen.thessivar`) were already flagged by an earlier pass. What is missing is
+eighteen writes, all of them `set_flag`.
+
+**Zones** — `indoors` true:
+
+| Zone | Why |
+|---|---|
+| `grask.the-owing` | Thirteen rooms of deep mine — stair, turns, drifts, chambers. No exceptions. |
+| `azhen.the-camp` | The zone description says it: survey tents pitched *inside somebody else's hall*. |
+| `nemhal.keshvaun` | Thirteen of fifteen rooms are the cult's interior. Two exceptions below. |
+| `the-unlit.the-crossing` | See the note on the Unlit. |
+| `the-unlit.the-regard` | See the note on the Unlit. |
+
+**Rooms** — `indoors` false, overriding the zone:
+`nemhal.keshvaun.the-outer-court` (open to a sky that is the wrong colour) and
+`nemhal.keshvaun.the-lamp-court`.
+
+**Rooms** — `indoors` true:
+
+| Room | Why |
+|---|---|
+| `ossara.gatetown.the-general-store` | "a **roofed** yard" |
+| `grask.stiltmarsh.the-underdeck` | below the piling yard; already `dark` |
+| `grask.the-landing.the-tally-house` | "a long **shed**, open on the quay side" |
+| `azhen.serrivet.the-tension-house` | "a **shed** of screws and springs" |
+| `nemhal.olmenneth.the-first-station` | "a **roofed** halt" |
+| `nemhal.olmenneth.the-plaster-store` | a store |
+| `nemhal.olmenneth.the-oil-press` | a press house — the prose never says so outright |
+| `nemhal.the-hold.the-chapel-corner` | "a corner **of the long room**", which is already indoors |
+| `nemhal.the-hold.the-sally-port` | an arch through the wall, two doors and a bar; you are inside it |
+| `nemhal.vurrach.the-drying-shed` | "a **shed** with the door wedged open" |
+| `nemhal.vurrach.the-well-house` | "a **roofed** well" |
+
+**Judged outdoors, though each was arguable**, recorded so the next person finds the reasoning
+rather than re-deriving it: `ossara.gatetown.market-row` (stalls under an awning *that leaks* — the
+joke needs rain to land), `ossara.the-terraces.the-cellar-mouth` (the doorway, not the cellar, which
+is already flagged), `grask.stiltmarsh.the-tallyman-post` (a hut described from outside it),
+`nemhal.vurrach.the-verge-camp` (hurdles are a windbreak, not a roof), and
+`nemhal.vurrach.the-bell-tower` (an *open* bell stage; its ringing chamber is separately flagged).
+
+**On the Unlit, which is the interesting one.** It is not sheltered — it is the opposite. *"There is
+nothing above you here, that is the one thing this place is."* `indoors` is the right mechanical
+flag, because it is what suppresses the weather and the turning of the day, but the word is exactly
+wrong for the place. That mismatch is the clearest argument for the `subterranean` climate in §1: a
+world should be able to say "no sky" without borrowing the word for "roof".
+
+### Sleeping, which turned out to be nearly solved
+
+`gatetown`, `grask.the-landing`, `azhen.the-camp` and `nemhal.the-hold` are all zone-level
+`peaceful` already, so four of the five realms gain a bed the moment the sleep gate ships, and
+Azhen's is under a roof once `the-camp` is flagged.
+
+**The Unlit has no peaceful room and should keep none.** It is `noRecall`, it is Act V, and its own
+description says nothing there is yours. It is also not a Reach — the world description opens by
+saying so — so "somewhere to sleep in each Reach" is satisfied without it. If that is judged wrong,
+the room to change is `the-unlit.the-crossing.the-arrival`: it is where you step out of the ring and
+one of only two Crossing rooms carrying no spawner, so `peaceful` there breaks nothing. It would
+want `noMob` beside it, because the drifters wander and a wandering mob in a peaceful room is one
+nobody can remove.
 
 ---
 
