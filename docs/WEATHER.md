@@ -49,9 +49,10 @@ time.
 - **The override table.** Nothing can force a storm yet. It was there to serve authored events, and
   no authored event needs one.
 
-**One content pass is still outstanding**: `indoors` is default-false, so every interior room in the
-Reaches currently has weather in it. The pass was read and decided on 2026-09-07 and is written out
-below; it has not been applied.
+**The content pass is done**: `indoors` is default-false, so every interior room in the Reaches had
+weather in it. The pass was read against all 238 rooms, decided, and applied to beta on 2026-09-07
+- eighteen writes, listed below. It is written out rather than just done, because the arguable
+calls are worth finding next time somebody wonders why Market Row gets rained on.
 
 ### The Reaches pass, as decided
 
