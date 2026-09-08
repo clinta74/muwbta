@@ -130,8 +130,9 @@ public static class BuilderTools
         value comes from - the room, its zone, its world, or the registry default. This is the
         question a content sweep asks: which rooms are not marked indoors, which are peaceful
         because their zone says so, which declare dark themselves. Give 'value' to keep only the
-        rooms that resolve that way. A world is many calls to the server, so name a zone when you
-        can.
+        rooms that resolve that way - which only narrows a yes-or-no flag, since a flag that
+        resolves to a word has no true or false to match. A world is many calls to the server, so
+        name a zone when you can.
         """)]
     public static async Task<string> FindRoomsAsync(
         BuilderClient client,
@@ -208,9 +209,16 @@ public static class BuilderTools
                 continue;
             }
 
-            var value = entry.TryGetProperty("value", out var v) && v.ValueKind == JsonValueKind.True;
+            if (!entry.TryGetProperty("value", out var value))
+            {
+                return;
+            }
 
-            if (wanted is { } only && only != value)
+            // Written through verbatim rather than read as a boolean. Flags are not all yes-or-no
+            // any more - `climate` resolves to a word - and reading one as `ValueKind is True`
+            // reported every climate in the world as `false`, which looks like an answer.
+            if (wanted is { } only && (value.ValueKind is not (JsonValueKind.True or JsonValueKind.False)
+                || only != (value.ValueKind is JsonValueKind.True)))
             {
                 return;
             }
@@ -218,7 +226,8 @@ public static class BuilderTools
             writer.WriteStartObject();
             writer.WriteString("key", room.TryGetProperty("key", out var k) ? k.GetString() : null);
             writer.WriteString("title", room.TryGetProperty("title", out var t) ? t.GetString() : null);
-            writer.WriteBoolean(flag, value);
+            writer.WritePropertyName(flag);
+            value.WriteTo(writer);
             writer.WriteString(
                 "source",
                 entry.TryGetProperty("source", out var src) ? src.GetString() : null);

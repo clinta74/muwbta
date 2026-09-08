@@ -129,6 +129,37 @@ public sealed class RoomProjectionTests
         Assert.Equal(expected, document.RootElement.GetArrayLength());
     }
 
+    private const string WithClimate = """
+        {
+          "key":"a.b.c","title":"A Room",
+          "resolved":[{"key":"climate","value":"alpine","source":"zone"}]
+        }
+        """;
+
+    [Fact]
+    public void A_flag_that_resolves_to_a_word_reports_the_word()
+    {
+        // Read as a boolean this said `false`, for every climate in every world, which looks
+        // exactly like an answer. Flags stopped being all yes-or-no when `climate` was added.
+        using var document = JsonDocument.Parse(Sweep(WithClimate, "climate", null));
+        var row = document.RootElement[0];
+
+        Assert.Equal("alpine", row.GetProperty("climate").GetString());
+        Assert.Equal("zone", row.GetProperty("source").GetString());
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void A_yes_or_no_filter_matches_nothing_that_resolves_to_a_word(bool wanted)
+    {
+        // Honest rather than helpful: "which rooms are climate-true" has no answer, so it gets no
+        // rows rather than an arbitrary half of them.
+        using var document = JsonDocument.Parse(Sweep(WithClimate, "climate", wanted));
+
+        Assert.Equal(0, document.RootElement.GetArrayLength());
+    }
+
     [Fact]
     public void A_flag_the_room_says_nothing_about_produces_no_row()
     {
