@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Globalization;
 using System.Text.Json.Serialization;
 using Muwbta.Domain.Abilities;
@@ -20,7 +21,7 @@ public sealed record WorldResponse(
     string Name,
     string Description,
     int SortOrder,
-    IReadOnlyDictionary<string, bool> Flags,
+    IReadOnlyDictionary<string, JsonElement> Flags,
     Multipliers Multipliers,
     int ZoneCount)
 {
@@ -28,10 +29,47 @@ public sealed record WorldResponse(
         new(world.Key, world.Name, world.Description, world.SortOrder, Flat(world.Flags),
             world.Multipliers.Clone(), zoneCount);
 
-    internal static IReadOnlyDictionary<string, bool> Flat(FlagSet flags) =>
-        RoomFlags.All
-            .Where(f => flags.BooleanOrNull(f.Key) is not null)
-            .ToDictionary(f => f.Key, f => flags.BooleanOrNull(f.Key)!.Value, StringComparer.Ordinal);
+    /// <summary>
+    /// The flags this level declares itself, as JSON of whichever kind each one is.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// A heterogeneous map - <c>{"pvp": true, "climate": "alpine"}</c> - because that is what the
+    /// database already holds and what a bundle already carries. The alternative was a second
+    /// field for text flags beside the boolean one, which would make every consumer join two maps
+    /// to answer one question.
+    /// </para>
+    /// <para>
+    /// Absent still means "not declared here", which is the distinction the whole inheritance
+    /// chain rests on: a key that is missing falls through, and a key holding <c>false</c> does
+    /// not.
+    /// </para>
+    /// </remarks>
+    internal static IReadOnlyDictionary<string, JsonElement> Flat(FlagSet flags)
+    {
+        var flat = new Dictionary<string, JsonElement>(StringComparer.Ordinal);
+
+        foreach (var flag in RoomFlags.All)
+        {
+            JsonElement? value = flag.Kind switch
+            {
+                RoomFlagKind.Boolean => flags.BooleanOrNull(flag.Key) is { } b
+                    ? JsonSerializer.SerializeToElement(b)
+                    : null,
+                RoomFlagKind.Text => flags.TextOrNull(flag.Key) is { } t
+                    ? JsonSerializer.SerializeToElement(t)
+                    : null,
+                _ => null,
+            };
+
+            if (value is { } declared)
+            {
+                flat[flag.Key] = declared;
+            }
+        }
+
+        return flat;
+    }
 }
 
 public sealed record ZoneResponse(
@@ -41,7 +79,7 @@ public sealed record ZoneResponse(
     string Description,
     int MinLevel,
     int MaxLevel,
-    IReadOnlyDictionary<string, bool> Flags,
+    IReadOnlyDictionary<string, JsonElement> Flags,
     Multipliers Multipliers,
     int RoomCount)
 {
@@ -68,7 +106,7 @@ public sealed record RoomResponse(
     string ZoneKey,
     string Title,
     string Description,
-    IReadOnlyDictionary<string, bool> Flags,
+    IReadOnlyDictionary<string, JsonElement> Flags,
     IReadOnlyList<ResolvedFlag> Resolved,
     IReadOnlyList<string> Grid,
     IReadOnlyDictionary<string, string> Legend,
@@ -76,9 +114,57 @@ public sealed record RoomResponse(
     int? EditorY,
     IReadOnlyList<ExitResponse> Exits);
 
-public sealed record ResolvedFlag(string Key, bool Value, string Source, string Summary);
+public sealed record ResolvedFlag(string Key, JsonElement Value, string Source, string Summary)
+{
+    /// <summary>Resolves one flag of either kind, for the room editor's inherited-value column.</summary>
+    public static ResolvedFlag For(RoomFlag flag, FlagSet? room, FlagSet? zone, FlagSet? world)
+    {
+        ArgumentNullException.ThrowIfNull(flag);
 
-public sealed record RoomFlagResponse(string Key, bool Default, string Summary, string Phase);
+        if (flag.Kind is RoomFlagKind.Text)
+        {
+            var text = RoomFlags.ResolveText(flag, room, zone, world);
+
+            return new ResolvedFlag(
+                flag.Key,
+                JsonSerializer.SerializeToElement(text.Value),
+                text.Source.ToString().ToLowerInvariant(),
+                flag.Summary);
+        }
+
+        var resolved = RoomFlags.Resolve(flag, room, zone, world);
+
+        return new ResolvedFlag(
+            flag.Key,
+            JsonSerializer.SerializeToElement(resolved.Value),
+            resolved.Source.ToString().ToLowerInvariant(),
+            flag.Summary);
+    }
+}
+
+/// <param name="Kind">"boolean" or "text" - which control the builder should draw.</param>
+/// <param name="Choices">
+/// Every value a text flag may take, the default first. Empty for a boolean, whose two are
+/// not worth sending.
+/// </param>
+public sealed record RoomFlagResponse(
+    string Key,
+    string Kind,
+    JsonElement Default,
+    string Summary,
+    string Phase,
+    IReadOnlyList<string> Choices)
+{
+    public static RoomFlagResponse From(RoomFlag flag) => new(
+        flag.Key,
+        flag.Kind.ToString().ToLowerInvariant(),
+        flag.Kind is RoomFlagKind.Text
+            ? JsonSerializer.SerializeToElement(flag.DefaultText)
+            : JsonSerializer.SerializeToElement(flag.DefaultBoolean),
+        flag.Summary,
+        flag.Phase,
+        flag.Choices);
+}
 
 /// <summary>
 /// The bundle format this build reads, so a client can compare before uploading.
@@ -130,7 +216,7 @@ public sealed record SaveWorldRequest(
     string? Name,
     string? Description,
     int? SortOrder,
-    IReadOnlyDictionary<string, bool>? Flags,
+    IReadOnlyDictionary<string, JsonElement>? Flags,
     Multipliers? Multipliers);
 
 /// <inheritdoc cref="SaveWorldRequest"/>
@@ -140,14 +226,14 @@ public sealed record SaveZoneRequest(
     string? Description,
     int? MinLevel,
     int? MaxLevel,
-    IReadOnlyDictionary<string, bool>? Flags,
+    IReadOnlyDictionary<string, JsonElement>? Flags,
     Multipliers? Multipliers);
 
 public sealed record SaveRoomRequest(
     string? ZoneKey,
     string? Title,
     string? Description,
-    IReadOnlyDictionary<string, bool>? Flags,
+    IReadOnlyDictionary<string, JsonElement>? Flags,
     IReadOnlyList<string>? Grid,
     IReadOnlyDictionary<string, string>? Legend,
     int? EditorX,
@@ -180,7 +266,28 @@ public sealed record SaveExitRequest(
 /// <see cref="SaveRoomRequest.Flags"/> and its world and zone equivalents replace the entire set,
 /// which quietly discards whatever another builder set in the meantime.
 /// </remarks>
-public sealed record SetFlagRequest(bool? Value);
+/// <param name="Value">
+/// <c>true</c>/<c>false</c> for a boolean flag, one of its choices for a text flag, and
+/// <c>null</c> - or an omitted property - to remove the key so the level above decides.
+/// </param>
+public sealed record SetFlagRequest(JsonElement? Value)
+{
+    /// <summary>The value as the domain models it, or null to clear the key.</summary>
+    /// <remarks>
+    /// Anything that is not a boolean, a string or null becomes null - which clears rather than
+    /// refuses. That is deliberate for the shape of the mistake: a client sending <c>{}</c> or a
+    /// number has not expressed a value, and treating "I do not know" as "inherit" keeps the
+    /// three states honest. A <em>wrong</em> value of the right shape - a climate that is not a
+    /// choice - is refused by the applier, where the registry can say what the choices are.
+    /// </remarks>
+    public FlagValue? ToFlagValue() => Value?.ValueKind switch
+    {
+        JsonValueKind.True => (FlagValue?)FlagValue.Of(true),
+        JsonValueKind.False => FlagValue.Of(false),
+        JsonValueKind.String => FlagValue.Of(Value!.Value.GetString() ?? string.Empty),
+        _ => null,
+    };
+}
 
 /// <summary>PLAN.md §7.6. Every field optional: <c>{ "direction": "north" }</c> is the common case.</summary>
 public sealed record DigRequest(

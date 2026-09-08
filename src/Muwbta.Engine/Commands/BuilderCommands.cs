@@ -238,34 +238,16 @@ internal static class BuilderCommands
         // different from setting it explicitly false.
         //
         // A word that is none of the nine is refused rather than read as "on". The fallthrough
-        // used to be `_ => true`, so `rflag pvp of` — one keystroke short of "off" — turned PvP on
+        // used to be `_ => true`, so `rflag pvp of` - one keystroke short of "off" - turned PvP on
         // and reported that it had, which undoes the whole point of a careful three-state design
-        // (BUGS.md #25).
-        bool? value;
+        // (BUGS.md #25). A text flag reaches the same refusal by the same route: its choices are
+        // its vocabulary, and a near-miss is a typo rather than an instruction.
+        var word = parts.Length < 2 ? null : parts[1].ToLowerInvariant();
 
-        if (parts.Length < 2)
+        if (!TryReadValue(flag, word, out var value))
         {
-            value = true;
-        }
-        else
-        {
-            switch (parts[1].ToLowerInvariant())
-            {
-                case "on" or "true" or "yes":
-                    value = true;
-                    break;
-                case "off" or "false" or "no":
-                    value = false;
-                    break;
-                case "clear" or "inherit":
-                    value = null;
-                    break;
-                default:
-                    ctx.Reply(
-                        $"'{parts[1]}' is not on, off, or clear.",
-                        "bad");
-                    return;
-            }
+            ctx.Reply(Vocabulary(flag, word), "bad");
+            return;
         }
 
         var result = ctx.Edit(new SetRoomFlag(room.Key, flag.Key, value));
@@ -276,14 +258,74 @@ internal static class BuilderCommands
             return;
         }
 
-        ctx.Reply(
-            value switch
+        ctx.Reply(Confirmation(flag, value), "heading");
+    }
+
+    /// <summary>
+    /// Reads the word after the flag name, or fails so the caller can say what was expected.
+    /// </summary>
+    /// <remarks>
+    /// A bare <c>rflag pvp</c> means "on", which is the shorthand a builder toggling a boolean
+    /// wants. A bare <c>rflag climate</c> cannot mean anything - there is no "on" for a word with
+    /// six values - so it is refused and answered with the list.
+    /// </remarks>
+    private static bool TryReadValue(RoomFlag flag, string? word, out FlagValue? value)
+    {
+        value = null;
+
+        if (word is "clear" or "inherit")
+        {
+            return true;
+        }
+
+        if (flag.Kind is RoomFlagKind.Text)
+        {
+            if (word is null || !flag.Accepts(word))
             {
-                true => $"{flag.Key} is now on here.",
-                false => $"{flag.Key} is now off here.",
-                _ => $"{flag.Key} now inherits from the zone.",
-            },
-            "heading");
+                return false;
+            }
+
+            value = FlagValue.Of(word);
+            return true;
+        }
+
+        switch (word)
+        {
+            case null or "on" or "true" or "yes":
+                value = FlagValue.Of(true);
+                return true;
+            case "off" or "false" or "no":
+                value = FlagValue.Of(false);
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    private static string Vocabulary(RoomFlag flag, string? word) => flag.Kind switch
+    {
+        RoomFlagKind.Text when word is null =>
+            $"{flag.Key} is one of: {string.Join(", ", flag.Choices)}, or clear.",
+        RoomFlagKind.Text =>
+            $"'{word}' is not one of: {string.Join(", ", flag.Choices)}, or clear.",
+        _ => $"'{word}' is not on, off, or clear.",
+    };
+
+    private static string Confirmation(RoomFlag flag, FlagValue? value)
+    {
+        if (value is not { } set)
+        {
+            return $"{flag.Key} now inherits from the zone.";
+        }
+
+        if (set.TryAsText(out var text))
+        {
+            return $"{flag.Key} is now {text} here.";
+        }
+
+        return set.TryAsBoolean(out var on) && on
+            ? $"{flag.Key} is now on here."
+            : $"{flag.Key} is now off here.";
     }
 
     private static void ListFlags(CommandContext ctx, Room room)

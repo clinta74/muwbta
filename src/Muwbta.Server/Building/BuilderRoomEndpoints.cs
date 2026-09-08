@@ -341,7 +341,7 @@ public static class BuilderRoomEndpoints
 
         return await BuilderEndpoints.SaveAsync(
             editor,
-            new SetRoomFlag(roomKey, flag, request.Value),
+            new SetRoomFlag(roomKey, flag, request.ToFlagValue()),
             http,
             ct,
             () => queries.RoomAsync(roomKey, ct));

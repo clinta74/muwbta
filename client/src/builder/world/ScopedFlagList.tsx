@@ -1,12 +1,14 @@
 import { useState } from 'react'
+import type { FlagValue } from '../../net/builderApi'
 import { useBuilderData } from '../BuilderData'
+import { FlagControl, flagIsPositive, flagLabel } from './FlagControl'
 
 interface Props {
   scope: 'world' | 'zone'
   /** The flags this entity declares itself. A key that is absent is inherited, not off. */
-  flags: Record<string, boolean>
+  flags: Record<string, FlagValue>
   inheritedNote: string
-  onSet: (key: string, value: boolean | null) => Promise<unknown>
+  onSet: (key: string, value: FlagValue | null) => Promise<unknown>
 }
 
 /**
@@ -26,7 +28,7 @@ export function ScopedFlagList({ scope, flags, inheritedNote, onSet }: Props) {
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState<string | null>(null)
 
-  function set(key: string, value: boolean | null) {
+  function set(key: string, value: FlagValue | null) {
     setError(null)
     setPending(key)
     void onSet(key, value)
@@ -49,7 +51,7 @@ export function ScopedFlagList({ scope, flags, inheritedNote, onSet }: Props) {
               <div className="flag-head">
                 <strong>{definition.key}</strong>
                 {declared ? (
-                  <span className={own ? 'good' : 'dim'}>{own ? 'on' : 'off'}</span>
+                  <span className={flagIsPositive(own) ? 'good' : 'dim'}>{flagLabel(own)}</span>
                 ) : (
                   <span className="dim">inherited</span>
                 )}
@@ -68,37 +70,17 @@ export function ScopedFlagList({ scope, flags, inheritedNote, onSet }: Props) {
                 )}
               </p>
 
-              <div className="flag-controls">
-                <button
-                  type="button"
-                  disabled={pending === definition.key}
-                  className={declared && own ? 'selected' : ''}
-                  onClick={() => set(definition.key, true)}
-                >
-                  on
-                </button>
-                <button
-                  type="button"
-                  disabled={pending === definition.key}
-                  className={declared && !own ? 'selected' : ''}
-                  onClick={() => set(definition.key, false)}
-                >
-                  off
-                </button>
-                <button
-                  type="button"
-                  disabled={pending === definition.key}
-                  className={!declared ? 'selected' : ''}
-                  onClick={() => set(definition.key, null)}
-                  title={
-                    scope === 'zone'
-                      ? 'Remove the key so the world decides'
-                      : 'Remove the key so the registry default decides'
-                  }
-                >
-                  inherit
-                </button>
-              </div>
+              <FlagControl
+                definition={definition}
+                own={own}
+                disabled={pending === definition.key}
+                inheritTitle={
+                  scope === 'zone'
+                    ? 'Remove the key so the world decides'
+                    : 'Remove the key so the registry default decides'
+                }
+                onSet={(next) => set(definition.key, next)}
+              />
             </li>
           )
         })}

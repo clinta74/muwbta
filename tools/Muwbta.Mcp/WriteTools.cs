@@ -208,12 +208,15 @@ public static class WriteTools
 
     [McpServerTool(Name = "set_flag")]
     [Description("""
-        Sets one room, zone or world flag, and touches nothing else. Three states: true and false
-        are decisions made at this level, and null removes the key so the level above decides -
+        Sets one room, zone or world flag, and touches nothing else. Three states: a value is a
+        decision made at this level, and omitting it removes the key so the level above decides -
         which is not the same as false. Prefer this over upsert_content for flags: a flag map sent
         that way replaces the entire set, so setting one flag on something that already declares
-        another silently drops it. Flag keys come from the registry (pvp, peaceful, respawn, noMob,
-        noRecall, dark, indoors, unfinished).
+        another silently drops it.
+        Most flags are yes-or-no and take true or false: pvp, peaceful, respawn, noMob, noRecall,
+        dark, indoors, unfinished. One takes a word - climate, which is one of temperate, coastal,
+        arid, alpine, subterranean or blighted, and decides what kind of weather a realm has.
+        Read the flag registry if you are unsure; a value of the wrong kind is refused.
         """)]
     public static async Task<string> SetFlagAsync(
         BuilderClient client,
@@ -221,7 +224,8 @@ public static class WriteTools
         [Description("One of: room, zone, world.")] string kind,
         [Description("The room, zone or world key.")] string key,
         [Description("The flag key, e.g. 'indoors'.")] string flag,
-        [Description("true, false, or null to inherit from the level above.")] bool? value = null,
+        [Description("true or false for a yes-or-no flag, a word for one that takes one, or omit to inherit.")]
+        JsonElement? value = null,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(client);

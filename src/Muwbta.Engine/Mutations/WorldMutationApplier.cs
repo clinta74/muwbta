@@ -189,9 +189,9 @@ public sealed class WorldMutationApplier(
             return MutationResult.Fail(MutationError.NotFound, $"No world '{change.Key}'.");
         }
 
-        if (EditFlag(target.Flags, change.Flag, change.Value) is not { } flags)
+        if (EditFlag(target.Flags, change.Flag, change.Value, out var problem) is not { } flags)
         {
-            return UnknownFlag(change.Flag);
+            return RefusedFlag(problem);
         }
 
         target.Flags = flags;
@@ -294,9 +294,9 @@ public sealed class WorldMutationApplier(
             return MutationResult.Fail(MutationError.NotFound, $"No zone '{change.Key}'.");
         }
 
-        if (EditFlag(zone.Flags, change.Flag, change.Value) is not { } flags)
+        if (EditFlag(zone.Flags, change.Flag, change.Value, out var problem) is not { } flags)
         {
-            return UnknownFlag(change.Flag);
+            return RefusedFlag(problem);
         }
 
         zone.Flags = flags;
@@ -776,9 +776,9 @@ public sealed class WorldMutationApplier(
             return MutationResult.Fail(MutationError.NotFound, $"No room '{change.Key}'.");
         }
 
-        if (EditFlag(room.Flags, change.Flag, change.Value) is not { } flags)
+        if (EditFlag(room.Flags, change.Flag, change.Value, out var problem) is not { } flags)
         {
-            return UnknownFlag(change.Flag);
+            return RefusedFlag(problem);
         }
 
         room.Flags = flags;
@@ -797,24 +797,58 @@ public sealed class WorldMutationApplier(
     /// builder exists to express (§4.10). The set is copied rather than edited in place because
     /// callers hand the result straight to a primitive that persistence replays.
     /// </remarks>
-    private static FlagSet? EditFlag(FlagSet current, string flag, bool? value)
+    /// <summary>
+    /// The edited set, or null with a reason - the one place any flag is written at any scope.
+    /// </summary>
+    /// <remarks>
+    /// <b>The kind is checked here rather than at the edge</b>, because all three scopes and every
+    /// caller funnel through this method, and a text flag set to <c>true</c> is not a thing the
+    /// resolver can do anything with: it falls through to the default, silently, forever. Refusing
+    /// on the way in is the only point at which anybody finds out.
+    /// </remarks>
+    private static FlagSet? EditFlag(
+        FlagSet current,
+        string flag,
+        FlagValue? value,
+        out string? problem)
     {
-        if (!RoomFlags.IsKnown(flag))
+        problem = null;
+
+        if (RoomFlags.Find(flag) is not { } definition)
         {
+            problem = $"'{flag}' is not a known room flag.";
             return null;
         }
 
         var next = current.Clone();
 
-        if (value is { } set)
-        {
-            next.Set(flag, set);
-        }
-        else
+        // Null clears the key rather than storing false, which is what makes the level above
+        // decide (§4.10). That is the same for both kinds.
+        if (value is not { } set)
         {
             next.Clear(flag);
+            return next;
         }
 
+        switch (definition.Kind)
+        {
+            case RoomFlagKind.Boolean when set.Kind is FlagValueKind.Boolean:
+                break;
+
+            case RoomFlagKind.Text when set.TryAsText(out var text) && definition.Accepts(text):
+                break;
+
+            case RoomFlagKind.Text:
+                problem =
+                    $"'{flag}' is one of: {string.Join(", ", definition.Choices)}.";
+                return null;
+
+            default:
+                problem = $"'{flag}' is a yes-or-no flag.";
+                return null;
+        }
+
+        next.Set(flag, set);
         return next;
     }
 
@@ -823,9 +857,9 @@ public sealed class WorldMutationApplier(
     /// (§4.10), but there is no reason to let a builder type a new one into existence - it would
     /// be a flag nothing ever reads.
     /// </remarks>
-    private static MutationResult UnknownFlag(string flag) => MutationResult.Fail(
+    private static MutationResult RefusedFlag(string? problem) => MutationResult.Fail(
         MutationError.Invalid,
-        $"'{flag}' is not a known room flag.");
+        problem ?? "That flag cannot be set to that.");
 
     // -----------------------------------------------------------------------
     // Exits

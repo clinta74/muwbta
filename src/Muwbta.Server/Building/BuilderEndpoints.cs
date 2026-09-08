@@ -41,7 +41,7 @@ public static class BuilderEndpoints
         // The flag registry drives the room editor's checkboxes, so a newly registered flag
         // reaches the UI with no client change at all (PLAN.md §4.10).
         group.MapGet("/room-flags", () => Results.Ok(
-            RoomFlags.All.Select(f => new RoomFlagResponse(f.Key, f.Default, f.Summary, f.Phase))));
+            RoomFlags.All.Select(RoomFlagResponse.From)));
 
         // The terrain vocabulary, same idea as the flag registry above: adding a kind reaches the
         // room editor's dropdown with no client change.
@@ -662,7 +662,7 @@ public static class BuilderEndpoints
         CancellationToken ct) =>
         await SaveAsync(
             editor,
-            new SetWorldFlag(key, flag, request.Value),
+            new SetWorldFlag(key, flag, request.ToFlagValue()),
             http,
             ct,
             () => queries.WorldAsync(key, ct));
@@ -761,7 +761,7 @@ public static class BuilderEndpoints
         CancellationToken ct) =>
         await SaveAsync(
             editor,
-            new SetZoneFlag(key, flag, request.Value),
+            new SetZoneFlag(key, flag, request.ToFlagValue()),
             http,
             ct,
             () => queries.ZoneAsync(key, ct));
@@ -2117,7 +2117,7 @@ public static class BuilderEndpoints
     /// database, but there is no reason to let a client type a new one into existence - it
     /// would be a flag nothing ever reads (PLAN.md §4.10).
     /// </summary>
-    internal static FlagSet ToFlagSet(IReadOnlyDictionary<string, bool>? flags)
+    internal static FlagSet ToFlagSet(IReadOnlyDictionary<string, JsonElement>? flags)
     {
         var set = new FlagSet();
 
@@ -2126,9 +2126,30 @@ public static class BuilderEndpoints
             return set;
         }
 
-        foreach (var (key, value) in flags.Where(f => RoomFlags.IsKnown(f.Key)))
+        foreach (var (key, value) in flags)
         {
-            set.Set(key, value);
+            if (RoomFlags.Find(key) is not { } flag)
+            {
+                continue;
+            }
+
+            // Kind-matched rather than coerced. A `climate` of true and a `dark` of "yes" are
+            // both a client sending something this level cannot mean, and storing either would
+            // make the resolver fall through forever without anybody finding out. Dropped here
+            // and refused loudly on the single-flag route, which is the one a person uses.
+            switch (flag.Kind, value.ValueKind)
+            {
+                case (RoomFlagKind.Boolean, JsonValueKind.True):
+                    set.Set(key, true);
+                    break;
+                case (RoomFlagKind.Boolean, JsonValueKind.False):
+                    set.Set(key, false);
+                    break;
+                case (RoomFlagKind.Text, JsonValueKind.String)
+                    when flag.Accepts(value.GetString()):
+                    set.Set(key, value.GetString()!);
+                    break;
+            }
         }
 
         return set;

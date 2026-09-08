@@ -261,6 +261,56 @@ public sealed class WeatherTests
     }
 
     // -----------------------------------------------------------------------
+    // Climate
+    // -----------------------------------------------------------------------
+
+    [Fact]
+    public void A_world_with_no_climate_gets_the_temperate_one()
+    {
+        var harness = Loaded();
+        harness.PrimeSky();
+
+        Assert.Equal(
+            WeatherOracle.At("test", "temperate", harness.Weather.Now).State,
+            harness.Weather.StateOf("test"));
+    }
+
+    [Fact]
+    public void The_climate_flag_on_the_world_changes_the_sky()
+    {
+        // The whole point of the text flag: content decides what kind of weather a realm has.
+        var harness = Loaded();
+        harness.Mutate(new Engine.Mutations.SetWorldFlag("test", RoomFlags.Climate.Key, "subterranean"));
+        harness.PrimeSky();
+
+        // Underground has no weather at all, which is the one climate with an absolute answer.
+        Assert.Equal(WeatherState.Clear, harness.Weather.StateOf("test"));
+
+        var quiet = true;
+
+        for (var hour = 0; hour < 500 && quiet; hour++)
+        {
+            harness.AdvanceSky(1);
+            quiet = harness.Weather.StateOf("test") is WeatherState.Clear;
+        }
+
+        Assert.True(quiet, "the weather changed in a world that has no sky");
+    }
+
+    [Fact]
+    public void A_zone_can_declare_its_own_climate_without_changing_the_realms()
+    {
+        // Weather is per-world, so a zone's climate changes what a *room* resolves and nothing
+        // about the front crossing the realm. Stated as a test because the asymmetry is the kind
+        // of thing somebody would otherwise call a bug.
+        var harness = Loaded();
+        harness.Mutate(new Engine.Mutations.SetZoneFlag("test.zone", RoomFlags.Climate.Key, "alpine"));
+
+        Assert.Equal("alpine", harness.World.TextFlag(West, RoomFlags.Climate));
+        Assert.Equal("temperate", harness.World.WorldTextFlag("test", RoomFlags.Climate));
+    }
+
+    // -----------------------------------------------------------------------
     // sky
     // -----------------------------------------------------------------------
 

@@ -23,13 +23,16 @@ public sealed class WeatherDistributionTests
 {
     private const string World = "ossara";
 
+    /// <summary>Stated rather than defaulted, because every band below is cut against it.</summary>
+    private const string Climate = "temperate";
+
     private static Dictionary<WeatherState, int> WalkAYear(string worldKey)
     {
         var counts = new Dictionary<WeatherState, int>();
 
         for (var hour = 0; hour < GameInstant.HoursPerYear; hour++)
         {
-            var reading = WeatherOracle.At(worldKey, GameInstant.FromGameHours(hour));
+            var reading = WeatherOracle.At(worldKey, Climate, GameInstant.FromGameHours(hour));
             counts[reading.State] = counts.GetValueOrDefault(reading.State) + 1;
         }
 
@@ -91,10 +94,12 @@ public sealed class WeatherDistributionTests
     {
         var midsummer = WeatherOracle.At(
             World,
+            Climate,
             GameInstant.FromGameHours(GameInstant.HoursPerYear * 0.375));
 
         var midwinter = WeatherOracle.At(
             World,
+            Climate,
             GameInstant.FromGameHours(GameInstant.HoursPerYear * 0.875));
 
         Assert.True(
@@ -108,7 +113,7 @@ public sealed class WeatherDistributionTests
         for (var hour = 0; hour < GameInstant.HoursPerYear; hour++)
         {
             var when = GameInstant.FromGameHours(hour);
-            var reading = WeatherOracle.At(World, when);
+            var reading = WeatherOracle.At(World, Climate, when);
 
             if (reading.State is WeatherState.Snow or WeatherState.Blizzard)
             {
@@ -129,7 +134,7 @@ public sealed class WeatherDistributionTests
         {
             var when = GameInstant.FromGameHours(hour);
 
-            if (WeatherOracle.At("ossara", when).State != WeatherOracle.At("khaldra", when).State)
+            if (WeatherOracle.At("ossara", Climate, when).State != WeatherOracle.At("khaldra", Climate, when).State)
             {
                 differences++;
             }
@@ -145,8 +150,8 @@ public sealed class WeatherDistributionTests
         var when = GameInstant.FromGameHours(4_211.5);
 
         Assert.Equal(
-            WeatherOracle.At(World, when),
-            WeatherOracle.At(World, when));
+            WeatherOracle.At(World, Climate, when),
+            WeatherOracle.At(World, Climate, when));
     }
 
     [Fact]
@@ -163,8 +168,8 @@ public sealed class WeatherDistributionTests
 
         for (var hour = 0; hour < GameInstant.HoursPerYear; hour++)
         {
-            var before = WeatherOracle.At(World, GameInstant.FromGameHours(hour)).State;
-            var after = WeatherOracle.At(World, GameInstant.FromGameHours(hour + 1)).State;
+            var before = WeatherOracle.At(World, Climate, GameInstant.FromGameHours(hour)).State;
+            var after = WeatherOracle.At(World, Climate, GameInstant.FromGameHours(hour + 1)).State;
 
             // Fog is the deliberate exception, and the only state that turns on the clock rather
             // than on the three scalars: it can be there at dawn and gone by sunrise with nothing

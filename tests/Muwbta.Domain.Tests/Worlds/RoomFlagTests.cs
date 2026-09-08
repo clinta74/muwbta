@@ -22,7 +22,17 @@ public sealed class RoomFlagTests
     {
         // §4.10 requires absence to be safe. If a flag ever wants to default true it has to
         // argue for it here first, rather than sliding in as an ordinary registration.
-        Assert.All(RoomFlags.All, flag => Assert.False(flag.Default));
+        //
+        // A text flag's harmless value is its first choice rather than false, so the claim is
+        // stated per kind: no boolean defaults on, and no text flag defaults to something the
+        // registry does not list.
+        Assert.All(
+            RoomFlags.All.Where(f => f.Kind is RoomFlagKind.Boolean),
+            flag => Assert.False(flag.DefaultBoolean));
+
+        Assert.All(
+            RoomFlags.All.Where(f => f.Kind is RoomFlagKind.Text),
+            flag => Assert.True(flag.Accepts(flag.DefaultText), $"{flag.Key} defaults off-list"));
     }
 
     [Fact]

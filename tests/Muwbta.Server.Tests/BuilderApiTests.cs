@@ -386,9 +386,34 @@ public sealed class BuilderApiTests(PostgresFixture postgres)
             await client.GetAsync(new Uri("/api/builder/room-flags", UriKind.Relative)));
 
         Assert.Contains(flags.EnumerateArray(), f => f.GetProperty("key").GetString() == "pvp");
-        Assert.All(
-            flags.EnumerateArray(),
-            f => Assert.False(f.GetProperty("default").GetBoolean()));
+
+        // Kind-aware, because the registry is no longer all booleans. The claim is still §4.10's:
+        // whatever a flag defaults to has to be the harmless value, and for a text flag that means
+        // one of its own choices rather than a word nothing recognises.
+        Assert.All(flags.EnumerateArray(), flag =>
+        {
+            var choices = flag.GetProperty("choices").EnumerateArray()
+                .Select(c => c.GetString())
+                .ToList();
+
+            if (flag.GetProperty("kind").GetString() == "text")
+            {
+                Assert.NotEmpty(choices);
+                Assert.Contains(flag.GetProperty("default").GetString(), choices);
+            }
+            else
+            {
+                Assert.Empty(choices);
+                Assert.False(flag.GetProperty("default").GetBoolean());
+            }
+        });
+
+        // The one the weather reads, with its vocabulary, so the editor can draw a list.
+        var climate = flags.EnumerateArray()
+            .Single(f => f.GetProperty("key").GetString() == "climate");
+
+        Assert.Equal("text", climate.GetProperty("kind").GetString());
+        Assert.Equal("temperate", climate.GetProperty("default").GetString());
     }
 
     /// <summary>

@@ -1340,6 +1340,30 @@ code.dim {
   color: var(--accent);
 }
 
+/*
+ * A text flag's list, styled to sit beside the boolean buttons rather than to stand out from
+ * them. Both panels render it, and only the room editor is inside `.room-editor`, so the rule
+ * hangs off `.flag-controls` where the control actually lives.
+ *
+ * Accented whenever a value is chosen, which is the same signal `selected` gives a button: this
+ * level has decided something, rather than inheriting it.
+ */
+.flag-controls select {
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: none;
+  color: var(--dim);
+  font: inherit;
+  font-size: 0.85em;
+  cursor: pointer;
+}
+
+.flag-controls select.selected {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
 /* --- Exits -------------------------------------------------------- */
 
 .exit-list {

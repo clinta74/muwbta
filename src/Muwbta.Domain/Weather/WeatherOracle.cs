@@ -80,11 +80,14 @@ public static class WeatherOracle
         var moisture = Math.Clamp(
             climate.BaseMoisture
             - (climate.SeasonalMoistureSwing * seasonal)
-            + (0.55 * Centred(moistureNoise)),
+            + (climate.MoistureVariability * Centred(moistureNoise)),
             0,
             1);
 
-        var wind = Math.Clamp(climate.Windiness + (0.6 * Centred(windNoise)), 0, 1);
+        var wind = Math.Clamp(
+            climate.Windiness + (climate.WindVariability * Centred(windNoise)),
+            0,
+            1);
 
         return new WeatherReading(
             Classify(temperature, moisture, wind, when.TimeOfDay),
@@ -93,9 +96,9 @@ public static class WeatherOracle
             wind);
     }
 
-    /// <summary>The world's sky right now, at its own climate.</summary>
-    public static WeatherReading At(string worldKey, GameInstant when) =>
-        At(worldKey, Climates.For(worldKey), when);
+    /// <summary>The world's sky right now, under a named climate.</summary>
+    public static WeatherReading At(string worldKey, string? climate, GameInstant when) =>
+        At(worldKey, Climates.For(climate), when);
 
     /// <summary>
     /// A stable hash of the world key. Deliberately not <c>string.GetHashCode</c>, which is

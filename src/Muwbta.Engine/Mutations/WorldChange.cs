@@ -214,7 +214,7 @@ public sealed record RenameRoom(RoomKey From, RoomKey To) : WorldChange
 }
 
 /// <summary>Sets or clears one flag on one room. A null value clears it (PLAN.md §4.10).</summary>
-public sealed record SetRoomFlag(RoomKey Key, string Flag, bool? Value) : WorldChange
+public sealed record SetRoomFlag(RoomKey Key, string Flag, FlagValue? Value) : WorldChange
 {
     public override string EntityKind => "room";
 
@@ -231,7 +231,7 @@ public sealed record SetRoomFlag(RoomKey Key, string Flag, bool? Value) : WorldC
 /// silent - the second write simply carries an older map. Rooms already had this primitive; the
 /// scopes above them are where the blast radius is largest, so they needed it more.
 /// </remarks>
-public sealed record SetZoneFlag(string Key, string Flag, bool? Value) : WorldChange
+public sealed record SetZoneFlag(string Key, string Flag, FlagValue? Value) : WorldChange
 {
     public override string EntityKind => "zone";
 
@@ -241,7 +241,7 @@ public sealed record SetZoneFlag(string Key, string Flag, bool? Value) : WorldCh
 /// <summary>
 /// Sets or clears one flag on one world. See <see cref="SetZoneFlag"/> - same shape, one level up.
 /// </summary>
-public sealed record SetWorldFlag(string Key, string Flag, bool? Value) : WorldChange
+public sealed record SetWorldFlag(string Key, string Flag, FlagValue? Value) : WorldChange
 {
     public override string EntityKind => "world";
 

@@ -235,7 +235,44 @@ public sealed class WorldState(IRandomSource random)
         ArgumentNullException.ThrowIfNull(flag);
 
         var room = FindRoom(key);
-        return room is null ? flag.Default : ResolveFlag(room, flag).Value;
+        return room is null ? flag.DefaultBoolean : ResolveFlag(room, flag).Value;
+    }
+
+    /// <summary>
+    /// A text flag resolved for this room, or the registry default when nothing declares it.
+    /// </summary>
+    public string TextFlag(RoomKey key, RoomFlag flag)
+    {
+        ArgumentNullException.ThrowIfNull(flag);
+
+        var room = FindRoom(key);
+
+        if (room is null)
+        {
+            return flag.DefaultText;
+        }
+
+        var zone = FindZone(room.ZoneKey);
+        var world = zone is null ? null : FindWorld(zone.WorldKey);
+
+        return RoomFlags.ResolveText(flag, room.Flags, zone?.Flags, world?.Flags).Value;
+    }
+
+    /// <summary>
+    /// A text flag resolved for a whole world, for anything that is a property of the realm
+    /// rather than of a room.
+    /// </summary>
+    /// <remarks>
+    /// The weather asks this: a sky belongs to a world, so the room and zone levels of the chain
+    /// have nothing to say about it even though a builder may set them. A zone that declares
+    /// itself alpine changes what a <em>room</em> resolves, and changes nothing about the front
+    /// crossing the realm - which is the honest answer while weather is per-world.
+    /// </remarks>
+    public string WorldTextFlag(string worldKey, RoomFlag flag)
+    {
+        ArgumentNullException.ThrowIfNull(flag);
+
+        return RoomFlags.ResolveText(flag, null, null, FindWorld(worldKey)?.Flags).Value;
     }
 
     public PlayerActor? FindBySession(Guid sessionId) => _bySession.GetValueOrDefault(sessionId);

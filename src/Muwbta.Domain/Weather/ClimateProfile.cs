@@ -10,6 +10,12 @@ namespace Muwbta.Domain.Weather;
 /// <param name="BaseMoisture">Where this climate sits on the dry-to-wet scale, 0 to 1.</param>
 /// <param name="SeasonalMoistureSwing">How much wetter its wet half is than its dry half.</param>
 /// <param name="Windiness">Where it sits on the still-to-gale scale, 0 to 1.</param>
+/// <param name="MoistureVariability">
+/// How far a front can move the moisture either way. Zero is a climate with no fronts at all -
+/// the moisture is exactly <paramref name="BaseMoisture"/> forever - which is what makes an
+/// underground realm weatherless rather than merely dry.
+/// </param>
+/// <param name="WindVariability">The same, for the wind.</param>
 public readonly record struct ClimateProfile(
     double MeanTemperature,
     double SeasonalSwing,
@@ -17,25 +23,25 @@ public readonly record struct ClimateProfile(
     double WeatherSwing,
     double BaseMoisture,
     double SeasonalMoistureSwing,
-    double Windiness);
+    double Windiness,
+    double MoistureVariability,
+    double WindVariability);
 
 /// <summary>
-/// The climates a world can have, and the one every world has today.
+/// The climates a world can have, keyed by the <c>climate</c> flag's choices.
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>Nothing authored selects one yet, and that is a known gap rather than an oversight.</b>
-/// Every world resolves <see cref="Temperate"/> through <see cref="For"/>. The design
-/// (docs/WEATHER.md §1) wants <c>climate</c> to be an inherited text flag so a world declares
-/// <c>arid</c> once and an alpine zone inside it overrides — which needs the flag registry to
-/// grow a text-valued kind, and needs both builder flag panels, the <c>rflag</c> verb, the flag
-/// DTO and the bundle validator to stop assuming booleans. That is a sensible change and a
-/// disproportionate one to make on the way to a system with no mechanical effect.
+/// The names here are exactly <see cref="Worlds.RoomFlags.Climate"/>'s choices, and
+/// <see cref="For"/> is the only thing that maps between them. That is checked by a test rather
+/// than by the type system, because the registry lives in <c>Worlds</c> and the numbers live here,
+/// and a reference from the flag registry into the weather model would be the wrong direction: the
+/// registry should not know what a climate is <em>for</em>.
 /// </para>
 /// <para>
-/// The profiles are written and tested regardless, because they are the design rather than
-/// speculation: when a source for the value lands, <see cref="For"/> is the single call site that
-/// changes and everything downstream already takes a profile.
+/// An unrecognised name resolves to <see cref="Temperate"/>. That cannot happen through the API,
+/// which refuses a choice the registry does not know, and the resolution chain drops one anyway -
+/// this is the third guard, for a value that reached the database some other way.
 /// </para>
 /// </remarks>
 public static class Climates
@@ -48,7 +54,9 @@ public static class Climates
         WeatherSwing: 4,
         BaseMoisture: 0.44,
         SeasonalMoistureSwing: 0.10,
-        Windiness: 0.34);
+        Windiness: 0.34,
+        MoistureVariability: 0.55,
+        WindVariability: 0.6);
 
     /// <summary>Milder either way and wetter throughout, with the wind off the water.</summary>
     public static readonly ClimateProfile Coastal = new(
@@ -58,7 +66,9 @@ public static class Climates
         WeatherSwing: 4,
         BaseMoisture: 0.52,
         SeasonalMoistureSwing: 0.08,
-        Windiness: 0.48);
+        Windiness: 0.48,
+        MoistureVariability: 0.55,
+        WindVariability: 0.6);
 
     /// <summary>Hot, dry, and swinging hard between noon and dawn.</summary>
     public static readonly ClimateProfile Arid = new(
@@ -68,7 +78,9 @@ public static class Climates
         WeatherSwing: 3,
         BaseMoisture: 0.18,
         SeasonalMoistureSwing: 0.06,
-        Windiness: 0.30);
+        Windiness: 0.30,
+        MoistureVariability: 0.55,
+        WindVariability: 0.6);
 
     /// <summary>Cold enough that most of the year's weather arrives as snow.</summary>
     public static readonly ClimateProfile Alpine = new(
@@ -78,31 +90,66 @@ public static class Climates
         WeatherSwing: 5,
         BaseMoisture: 0.48,
         SeasonalMoistureSwing: 0.06,
-        Windiness: 0.52);
+        Windiness: 0.52,
+        MoistureVariability: 0.55,
+        WindVariability: 0.6);
 
     /// <summary>
     /// No sky at all: one temperature all year and nothing falling out of anything.
     /// </summary>
     /// <remarks>
-    /// This is how an underground realm stops having weather without every room in it carrying
-    /// <c>indoors</c> — the classifier returns <see cref="WeatherState.Clear"/> at this moisture
-    /// forever, and a cave that says "the air is still and close" is saying the true thing.
+    /// <para>
+    /// How an underground realm stops having weather without every room in it carrying
+    /// <c>indoors</c>. The moisture sits below the first threshold and never moves, so the
+    /// classifier answers <see cref="WeatherState.Clear"/> forever, and a cave that says "the air
+    /// is still and close" is saying the true thing.
+    /// </para>
+    /// <para>
+    /// <b>The zeroes are the whole profile.</b> This said the same thing in prose while the noise
+    /// amplitudes were fixed in the oracle rather than declared here, so it rained underground and
+    /// the comment claiming otherwise was simply wrong - caught by the test that asserts the hard
+    /// zero rather than "rarely".
+    /// </para>
     /// </remarks>
     public static readonly ClimateProfile Subterranean = new(
         MeanTemperature: 9,
-        SeasonalSwing: 0.5,
-        DiurnalSwing: 0.5,
-        WeatherSwing: 0.5,
+        SeasonalSwing: 0,
+        DiurnalSwing: 0,
+        WeatherSwing: 0,
         BaseMoisture: 0.30,
         SeasonalMoistureSwing: 0,
-        Windiness: 0.05);
+        Windiness: 0.05,
+        MoistureVariability: 0,
+        WindVariability: 0);
 
     /// <summary>
-    /// The climate a world runs on. Temperate for everything, until content can say otherwise.
+    /// Wrong weather: warm when it should not be, and the wet half of the year gone dry.
     /// </summary>
-    public static ClimateProfile For(string worldKey)
+    /// <remarks>
+    /// For a place where the seasons have stopped keeping the office. The seasonal swing runs
+    /// <em>backwards</em> - it is warmest at midwinter - which is not a value a real climate takes
+    /// and is the point: somewhere that has come loose should read as loose to anybody paying
+    /// attention over a game year, without a single line of prose saying so.
+    /// </remarks>
+    public static readonly ClimateProfile Blighted = new(
+        MeanTemperature: 14,
+        SeasonalSwing: -7,
+        DiurnalSwing: 3,
+        WeatherSwing: 6,
+        BaseMoisture: 0.34,
+        SeasonalMoistureSwing: -0.08,
+        Windiness: 0.40,
+        MoistureVariability: 0.55,
+        WindVariability: 0.6);
+
+    /// <summary>The profile for a climate name, defaulting to temperate for anything unknown.</summary>
+    public static ClimateProfile For(string? climate) => climate switch
     {
-        ArgumentNullException.ThrowIfNull(worldKey);
-        return Temperate;
-    }
+        "coastal" => Coastal,
+        "arid" => Arid,
+        "alpine" => Alpine,
+        "subterranean" => Subterranean,
+        "blighted" => Blighted,
+        _ => Temperate,
+    };
 }

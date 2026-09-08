@@ -1126,15 +1126,8 @@ public sealed class BuilderQueries(MuwbtaDbContext db)
             room.Description,
             WorldResponse.Flat(room.Flags),
             [
-                .. RoomFlags.All.Select(flag =>
-                {
-                    var resolved = RoomFlags.Resolve(flag, room.Flags, zoneFlags, worldFlags);
-                    return new ResolvedFlag(
-                        flag.Key,
-                        resolved.Value,
-                        resolved.Source.ToString().ToLowerInvariant(),
-                        flag.Summary);
-                }),
+                .. RoomFlags.All.Select(
+                    flag => ResolvedFlag.For(flag, room.Flags, zoneFlags, worldFlags)),
             ],
             room.Grid,
             room.Legend,

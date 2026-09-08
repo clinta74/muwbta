@@ -47,6 +47,20 @@ public readonly record struct FlagValue
     public static FlagValue Of(string value) =>
         new(FlagValueKind.Text, false, 0, value ?? string.Empty);
 
+    /// <summary>
+    /// The two primitives this union actually models, so a call site can pass one.
+    /// </summary>
+    /// <remarks>
+    /// Implicit because the alternative is <c>FlagValue.Of(true)</c> at every point a flag is
+    /// written, including a hundred tests that only want a peaceful room and have no opinion about
+    /// how a flag is represented. There is no ambiguity to hide: a <c>bool</c> is the boolean kind
+    /// and a <c>string</c> is the text kind, and no other type converts at all.
+    /// </remarks>
+    public static implicit operator FlagValue(bool value) => Of(value);
+
+    /// <inheritdoc cref="op_Implicit(bool)"/>
+    public static implicit operator FlagValue(string value) => Of(value);
+
     /// <summary>Wraps JSON text to be written back out untouched.</summary>
     public static FlagValue RawJson(string json) =>
         new(FlagValueKind.Json, false, 0, json ?? "null");

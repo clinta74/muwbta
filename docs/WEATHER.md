@@ -35,14 +35,14 @@ must be free to tell it without contradicting a sentence the engine already prin
 files say so at the top, because it is the kind of rule that erodes one nicely-written line at a
 time.
 
-**Three things from the proposal deliberately did not ship:**
+**Three things from the proposal did not ship with it. One has since been built:**
 
-- **Authored climate.** Every world resolves `Temperate` through `Climates.For`. Making `climate` an
-  inherited text flag needs `RoomFlagKind` to grow a text kind, and needs both builder flag panels,
-  the flag DTO, the `rflag` verb and the bundle validator to stop assuming booleans — a fair change,
-  and a disproportionate one on the way to a system with no mechanical effect. The profiles for
-  coastal, arid, alpine and subterranean are written and tested; `Climates.For` is the single call
-  site that changes.
+- **Authored climate.** ~~Every world resolves `Temperate`.~~ **Built the same day**, as the
+  inherited text flag §1 wanted. `RoomFlagKind` grew a `Text` kind, `RoomFlag` carries its choices
+  and a `FlagValue` default, and the registry, API, `rflag`, MCP `set_flag` and both builder flag
+  panels stopped assuming booleans. Six choices, `temperate` the default. Weather is per-world, so
+  the world's `climate` is the one the sky reads; a zone or room may declare one and it changes
+  what that room resolves rather than the realm's weather.
 - **The configurable epoch.** Year zero is a constant in `GameInstant`. Nothing an operator gains by
   moving it is worth a migration, a bundle field and a builder control today; it is one nullable
   timestamp on `game_configurations` when that stops being true.

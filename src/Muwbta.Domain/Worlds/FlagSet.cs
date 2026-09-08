@@ -40,6 +40,14 @@ public sealed class FlagSet
     public bool? BooleanOrNull(string key) =>
         _values.TryGetValue(key, out var value) && value.TryAsBoolean(out var flag) ? flag : null;
 
+    /// <summary>
+    /// The text stored under this key, or null when absent <em>or stored as another kind</em>.
+    /// The text sibling of <see cref="BooleanOrNull"/>, and null means the same thing: this level
+    /// does not declare the flag, so resolution falls through.
+    /// </summary>
+    public string? TextOrNull(string key) =>
+        _values.TryGetValue(key, out var value) && value.TryAsText(out var text) ? text : null;
+
     public void Set(string key, FlagValue value)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(key);
@@ -47,6 +55,8 @@ public sealed class FlagSet
     }
 
     public void Set(string key, bool value) => Set(key, FlagValue.Of(value));
+
+    public void Set(string key, string value) => Set(key, FlagValue.Of(value));
 
     /// <summary>
     /// Removes the key entirely rather than storing <c>false</c>. That difference is the whole

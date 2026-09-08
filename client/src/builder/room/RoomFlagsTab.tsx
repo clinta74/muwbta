@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { builderApi, type RoomDetail } from '../../net/builderApi'
+import { builderApi, type FlagValue, type RoomDetail } from '../../net/builderApi'
 import { useBuilderData } from '../BuilderData'
+import { FlagControl, flagIsPositive, flagLabel } from '../world/FlagControl'
 
 interface Props {
   room: RoomDetail
@@ -19,7 +20,7 @@ export function RoomFlagsTab({ room, onChanged }: Props) {
   const { flagDefinitions } = useBuilderData()
   const [error, setError] = useState<string | null>(null)
 
-  function set(key: string, value: boolean | null) {
+  function set(key: string, value: FlagValue | null) {
     void builderApi
       .setRoomFlag(room.key, key, value)
       .then(onChanged)
@@ -41,7 +42,7 @@ export function RoomFlagsTab({ room, onChanged }: Props) {
             <li key={definition.key} className={declared ? 'flag' : 'flag inherited'}>
               <div className="flag-head">
                 <strong>{definition.key}</strong>
-                <span className={value ? 'good' : 'dim'}>{value ? 'on' : 'off'}</span>
+                <span className={flagIsPositive(value) ? 'good' : 'dim'}>{flagLabel(value)}</span>
                 {!declared && resolved && resolved.source !== 'default' && (
                   <span className="dim"> · from {resolved.source}</span>
                 )}
@@ -60,30 +61,12 @@ export function RoomFlagsTab({ room, onChanged }: Props) {
                 )}
               </p>
 
-              <div className="flag-controls">
-                <button
-                  type="button"
-                  className={declared && own ? 'selected' : ''}
-                  onClick={() => set(definition.key, true)}
-                >
-                  on
-                </button>
-                <button
-                  type="button"
-                  className={declared && !own ? 'selected' : ''}
-                  onClick={() => set(definition.key, false)}
-                >
-                  off
-                </button>
-                <button
-                  type="button"
-                  className={!declared ? 'selected' : ''}
-                  onClick={() => set(definition.key, null)}
-                  title="Remove the key so the zone or world decides"
-                >
-                  inherit
-                </button>
-              </div>
+              <FlagControl
+                definition={definition}
+                own={own}
+                inheritTitle="Remove the key so the zone or world decides"
+                onSet={(next) => set(definition.key, next)}
+              />
             </li>
           )
         })}

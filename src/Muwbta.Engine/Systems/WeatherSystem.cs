@@ -58,9 +58,22 @@ public sealed class WeatherSystem(IGameClock clock)
     {
         ArgumentNullException.ThrowIfNull(worldKey);
 
-        return _state.TryGetValue(worldKey, out var known)
-            ? known
-            : WeatherOracle.At(worldKey, Now).State;
+        return _state.TryGetValue(worldKey, out var known) ? known : WeatherState.Clear;
+    }
+
+    /// <summary>
+    /// What the sky over a world is doing, computed rather than remembered.
+    /// </summary>
+    /// <remarks>
+    /// Takes the world state because the climate is a flag on the world row, and a world that has
+    /// not declared one gets <c>temperate</c> from the registry. This is the only place the two
+    /// halves meet: the calendar and the noise are pure, and the climate is content.
+    /// </remarks>
+    public WeatherReading ReadingFor(WorldState world, string worldKey)
+    {
+        ArgumentNullException.ThrowIfNull(world);
+
+        return WeatherOracle.At(worldKey, world.WorldTextFlag(worldKey, RoomFlags.Climate), Now);
     }
 
     /// <summary>
@@ -99,7 +112,11 @@ public sealed class WeatherSystem(IGameClock clock)
         foreach (var realm in world.AllWorlds)
         {
             var key = realm.Key;
-            var reading = WeatherOracle.At(key, now);
+
+            var reading = WeatherOracle.At(
+                key,
+                world.WorldTextFlag(key, RoomFlags.Climate),
+                now);
 
             var hadWeather = _state.TryGetValue(key, out var previousWeather);
             var hadDaylight = _daylight.TryGetValue(key, out var previousDaylight);

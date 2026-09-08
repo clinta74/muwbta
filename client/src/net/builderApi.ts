@@ -5,12 +5,25 @@
 
 import { request } from './api'
 
+/**
+ * One entry in the server's flag registry, which is what the flag panels render from.
+ *
+ * `kind` decides the control: a boolean gets the three-state on/off/inherit buttons, and a text
+ * flag gets a list of `choices`. Adding a flag of either kind still reaches the UI with no client
+ * change, which is the property §4.10 wanted from rendering off the registry in the first place.
+ */
 export interface RoomFlagDefinition {
   key: string
-  default: boolean
+  kind: 'boolean' | 'text'
+  default: FlagValue
   summary: string
   phase: string
+  /** Every value a text flag may take, the default first. Empty for a boolean. */
+  choices: string[]
 }
+
+/** What a flag can be set to. `null` removes the key so the level above decides. */
+export type FlagValue = boolean | string
 
 /** What bundle format the running server reads. See `builderApi.bundleFormat`. */
 export interface BundleFormatInfo {
@@ -55,7 +68,7 @@ export interface WorldSummary {
   name: string
   description: string
   sortOrder: number
-  flags: Record<string, boolean>
+  flags: Record<string, FlagValue>
   multipliers: Multipliers
   zoneCount: number
 }
@@ -67,7 +80,7 @@ export interface ZoneSummary {
   description: string
   minLevel: number
   maxLevel: number
-  flags: Record<string, boolean>
+  flags: Record<string, FlagValue>
   multipliers: Multipliers
   roomCount: number
 }
@@ -196,7 +209,7 @@ export interface ExitConditions {
 /** Where a flag's effective value came from, so inherited values can be shown as inherited. */
 export interface ResolvedFlag {
   key: string
-  value: boolean
+  value: FlagValue
   source: 'room' | 'zone' | 'world' | 'default'
   summary: string
 }
@@ -206,7 +219,7 @@ export interface RoomDetail {
   zoneKey: string
   title: string
   description: string
-  flags: Record<string, boolean>
+  flags: Record<string, FlagValue>
   resolved: ResolvedFlag[]
   grid: string[]
   legend: Record<string, string>
@@ -748,7 +761,7 @@ export const builderApi = {
     }),
 
   /** @see setRoomFlag — same three states, one scope up. */
-  setWorldFlag: (key: string, flag: string, value: boolean | null) =>
+  setWorldFlag: (key: string, flag: string, value: FlagValue | null) =>
     request<WorldSummary>(`${base}/worlds/${key}/flags/${flag}`, {
       method: 'PUT',
       body: JSON.stringify({ value }),
@@ -773,7 +786,7 @@ export const builderApi = {
     }),
 
   /** @see setRoomFlag — same three states, one scope up. */
-  setZoneFlag: (key: string, flag: string, value: boolean | null) =>
+  setZoneFlag: (key: string, flag: string, value: FlagValue | null) =>
     request<ZoneSummary>(`${base}/zones/${key}/flags/${flag}`, {
       method: 'PUT',
       body: JSON.stringify({ value }),
@@ -890,7 +903,7 @@ export const builderApi = {
    * decides again. Narrow by design: a full-object room PATCH replaces every flag, which
    * quietly discards whatever another builder changed in the meantime (PLAN §1).
    */
-  setRoomFlag: (key: string, flag: string, value: boolean | null) =>
+  setRoomFlag: (key: string, flag: string, value: FlagValue | null) =>
     request<RoomDetail>(`${base}/rooms/${key}/flags/${flag}`, {
       method: 'PUT',
       body: JSON.stringify({ value }),

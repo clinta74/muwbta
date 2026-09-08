@@ -1626,7 +1626,14 @@ Four rules make this safe to extend:
   `content_audit` row like every other edit. If a *temporary* room state is ever wanted — a
   ritual that pacifies a chamber for a minute — it needs its own expiring-effect mechanism, not
   a write into content.
-- **Inheritance resolves room → zone → world → registry default.** The same three-level hierarchy
+- **Flags are mostly booleans, and `climate` is not.** A flag's value is one of a closed set of
+kinds; `climate` is the first that is a word rather than a yes. The choices are declared in the
+registry beside the flag, the API refuses anything else, and the builder renders a list rather than
+a text box - a free-text flag would be one where `alpne` resolves to the default and nothing says
+so, which is §4.10's own failure mode reappearing one layer down. A value of the wrong kind, or of
+the right kind and off the list, falls through to the level above exactly as a mistyped key does.
+
+**Inheritance resolves room → zone → world → registry default.** The same three-level hierarchy
   the multipliers use (§4.4), but *overriding* rather than composing: the nearest level that
   declares the flag wins. An arena world or a duelling zone sets `pvp` once instead of on forty
   rooms. The room editor shows inherited values greyed out with their source, so a room that is
@@ -1643,6 +1650,7 @@ The starting registry:
 | `noRecall` | false | `Travel.Refuse` | `recall` and any future teleport out are refused | Phase 5.3 |
 | `dark` | false | room rendering | Nothing is drawn without a light source (§4.18) | Phase 5 |
 | `indoors` | false | weather narration | No weather line, and no notice of the day turning | Weather |
+| `climate` | `temperate` | weather | What kind of sky a place has: temperate, coastal, arid, alpine, subterranean, blighted | Weather |
 | `unfinished` | false | builder | The build to-do list (§7.6) | Phase 2 |
 
 **`peaceful` beats `pvp`.** A room carrying both is peaceful. Conflicts must resolve toward the
