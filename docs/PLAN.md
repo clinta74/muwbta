@@ -565,14 +565,21 @@ Range 1–20, modifier = `(value − 10) / 2` rounded down.
 Three vitals: **Health** (damage pool, zero = death), **Focus** (powers abilities — the mana
 analogue), **Stamina** (movement and heavy attacks).
 
-**Recovery is a percentage of each vital's own maximum per minute** — 15% asleep, 8% resting, 2%
-standing, plus a point per Vitality modifier — **except that Adept and Hallow get focus back twice
+**Recovery is a percentage of each vital's own maximum per minute, rounded up** — 35% asleep, 17%
+resting, 2% standing, plus a point per Vitality modifier — **except that Adept and Hallow get focus back twice
 as fast**. All three vitals shared one rate at first, which meant the two Paths that spend focus to
 do anything at all got it back at the rate of the two that keep it as a small reserve behind a
 stamina bar: an Adept's empty focus took the better part of an hour on their feet. Only focus moves;
 health and stamina are the same number for everyone, so this is a caster's resource being a caster's
 resource rather than a blanket buff. `RegenCalculator` takes the Path rather than defaulting it,
 because getting it wrong is silent.
+
+The sleep and rest rates were 15% and 8%, rounded down, until playtesting in September 2026: an
+empty bar took six to eight minutes asleep and up to twenty resting, and sleep is already confined to
+peaceful rooms, so the walk back to safety was the cost and the wait on top of it was only downtime.
+Now an empty bar fills in three ticks asleep and six resting at any level. Rounding down had been
+doubling the wait on the smallest bars, which are a new character's. Standing stayed at 2% because
+it is also how a mob heals between fights.
 
 **Sleep is only allowed in a `peaceful` room** (§4.10). It pays the best recovery in the game and
 costs nothing but the verbs it suspends, which made lying down anywhere at all the correct play;
@@ -2055,7 +2062,8 @@ Counting emptiness makes that silence mean "well fed" instead of logging the who
 starving.
 
 **They slow recovery and do nothing else.** `Needs.RegenShare` multiplies the regeneration rate down
-to a floor of 40% at worst, and the *worse* of the two decides it rather than the sum — so the answer
+to a floor of 60% at worst (40% until playtesting found a starving character waiting an hour to
+rest back to full), and the *worse* of the two decides it rather than the sum — so the answer
 is always "deal with whichever is worse" and letting both slide is not punished twice. There is no
 damage and no block. `RegenSystem` already skips anyone in combat, so the whole cost lands on
 downtime: it makes food worth carrying without making a fight harder.

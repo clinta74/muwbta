@@ -10,10 +10,17 @@ public static class RegenCalculator
     /// Base regen percentage per vital per state, per tick. All vitals regen at the same rate
     /// for their state; different vitals' max values cause the absolute amounts to differ.
     /// </summary>
+    /// <remarks>
+    /// <b>Sleep fills an empty bar in three minutes; rest in six.</b> Raised from 15% and 8% after
+    /// playtesting. Sleep is only allowed in a peaceful room, so it is already a trip back to safety,
+    /// and making that trip then cost the better part of ten minutes was downtime with no decision in
+    /// it. Rest stays at half the sleep rate, so lying down somewhere safe is still worth the walk.
+    /// <b>Standing is left at 2%,</b> because it is also the rate a mob heals at between fights.
+    /// </remarks>
     private static readonly Dictionary<CharacterRestState, double> BaseRegenPercent = new()
     {
-        { CharacterRestState.Sleep, 0.15 },   // 15% of max per tick
-        { CharacterRestState.Rest, 0.08 },    // 8% of max per tick
+        { CharacterRestState.Sleep, 0.35 },   // 35% of max per tick
+        { CharacterRestState.Rest, 0.17 },    // 17% of max per tick
         { CharacterRestState.Stand, 0.02 },   // 2% of max per tick
     };
 
@@ -55,8 +62,19 @@ public static class RegenCalculator
     {
         ArgumentNullException.ThrowIfNull(vitals);
 
-        return Math.Max(1, (int)Math.Floor(vitals.HealthMax * EffectivePercent(state, vitalityModifier, vitals)));
+        return Share(vitals.HealthMax, EffectivePercent(state, vitalityModifier, vitals));
     }
+
+    /// <summary>A share of a maximum, rounded up, and never less than one.</summary>
+    /// <remarks>
+    /// <b>Rounded up, not down.</b> Flooring lost most of a point every tick on a small bar, and small
+    /// bars are exactly the ones a new character has: a level-one Warden's twenty focus rested back at
+    /// one a minute, twice as long as the rate said. The epsilon keeps floating-point noise from
+    /// rounding a whole number up a further point: resting at a −2 Vitality modifier is
+    /// 60 × (0.17 − 0.02), which comes out 9.000000000000002, not 9.
+    /// </remarks>
+    private static int Share(int maximum, double percent) =>
+        Math.Max(1, (int)Math.Ceiling((maximum * percent) - 1e-9));
 
     /// <summary>The share of a maximum that comes back this tick, before any per-vital rate.</summary>
     /// <remarks>
@@ -76,7 +94,7 @@ public static class RegenCalculator
 
     /// <summary>
     /// Calculate how much of each vital regenerates in a single 60-second tick.
-    /// Amount is always at least 1 per vital, floored after applying modifiers.
+    /// Amount is always at least 1 per vital, rounded up after applying modifiers.
     /// </summary>
     /// <remarks>
     /// Vitality modifier adds percentage points to the base regen rate. This ties recovery
@@ -98,8 +116,8 @@ public static class RegenCalculator
         var effectivePercent = EffectivePercent(state, vitalityModifier, vitals);
 
         var health = HealthFor(state, vitals, vitalityModifier);
-        var focus = Math.Max(1, (int)Math.Floor(vitals.FocusMax * effectivePercent * FocusRateFor(path)));
-        var stamina = Math.Max(1, (int)Math.Floor(vitals.StaminaMax * effectivePercent));
+        var focus = Share(vitals.FocusMax, effectivePercent * FocusRateFor(path));
+        var stamina = Share(vitals.StaminaMax, effectivePercent);
 
         return (health, focus, stamina);
     }

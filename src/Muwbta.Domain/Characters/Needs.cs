@@ -39,11 +39,13 @@ public static class Needs
 
     /// <summary>The least of its normal rate recovery can fall to, when a need is at its worst.</summary>
     /// <remarks>
-    /// Two fifths, so an ignored need is a long wait rather than a stopped one. A floor of zero
+    /// Three fifths, so an ignored need is a longer wait rather than a stopped one. A floor of zero
     /// would make carrying rations mandatory instead of sensible, and would strand anyone who ran
-    /// out somewhere with nothing to eat.
+    /// out somewhere with nothing to eat. Raised from two fifths after playtesting: at 0.4 a starving
+    /// character took half an hour asleep and an hour resting to fill up, which read as the game
+    /// being slow rather than as a reason to buy bread.
     /// </remarks>
-    public const double SlowestRegenShare = 0.4;
+    public const double SlowestRegenShare = 0.6;
 
     /// <summary>Where a need stops being background and starts being worth saying out loud.</summary>
     /// <remarks>

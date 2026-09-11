@@ -14,10 +14,10 @@ public sealed class RegenCalculatorTests
             vitalityModifier: 0,
             CharacterPath.Warden);
 
-        // 15% of max per vital
-        Assert.Equal(9, health);   // floor(60 * 0.15)
-        Assert.Equal(3, focus);    // floor(20 * 0.15)
-        Assert.Equal(15, stamina); // floor(100 * 0.15)
+        // 35% of max per vital, rounded up
+        Assert.Equal(21, health);  // 60 * 0.35
+        Assert.Equal(7, focus);    // 20 * 0.35
+        Assert.Equal(35, stamina); // 100 * 0.35
     }
 
     [Fact]
@@ -30,10 +30,10 @@ public sealed class RegenCalculatorTests
             vitalityModifier: 0,
             CharacterPath.Warden);
 
-        // 8% of max per vital
-        Assert.Equal(4, health);   // floor(60 * 0.08)
-        Assert.Equal(1, focus);    // floor(20 * 0.08) = 1
-        Assert.Equal(8, stamina);  // floor(100 * 0.08)
+        // 17% of max per vital, rounded up
+        Assert.Equal(11, health);  // ceil(60 * 0.17) = ceil(10.2)
+        Assert.Equal(4, focus);    // ceil(20 * 0.17) = ceil(3.4)
+        Assert.Equal(17, stamina); // 100 * 0.17
     }
 
     [Fact]
@@ -46,10 +46,10 @@ public sealed class RegenCalculatorTests
             vitalityModifier: 0,
             CharacterPath.Warden);
 
-        // 2% of max per vital, minimum 1
-        Assert.Equal(1, health);   // floor(60 * 0.02) = 1
-        Assert.Equal(1, focus);    // floor(40 * 0.02) = 1 (minimum)
-        Assert.Equal(2, stamina);  // floor(100 * 0.02) = 2
+        // 2% of max per vital, rounded up
+        Assert.Equal(2, health);   // ceil(60 * 0.02) = ceil(1.2)
+        Assert.Equal(1, focus);    // ceil(20 * 0.02) = ceil(0.4)
+        Assert.Equal(2, stamina);  // 100 * 0.02
     }
 
     [Fact]
@@ -60,9 +60,8 @@ public sealed class RegenCalculatorTests
             CharacterPath.Warden);
         var boostedRegen = RegenCalculator.Calculate(CharacterRestState.Rest, vitals, vitalityModifier: 3, CharacterPath.Warden);
 
-        // +3 modifier adds 3% to base 8% = 11% total
-        var expectedHealth = (int)Math.Floor(60 * 0.11);
-        Assert.Equal(expectedHealth, boostedRegen.health);
+        // +3 modifier adds 3% to base 17% = 20% total
+        Assert.Equal(12, boostedRegen.health); // 60 * 0.20
         Assert.True(boostedRegen.health > baseRegen.health);
     }
 
@@ -74,9 +73,9 @@ public sealed class RegenCalculatorTests
             CharacterPath.Warden);
         var penalizedRegen = RegenCalculator.Calculate(CharacterRestState.Rest, vitals, vitalityModifier: -2, CharacterPath.Warden);
 
-        // -2 modifier reduces base 8% by 2% = 6% total
-        var expectedHealth = (int)Math.Floor(60 * 0.06);
-        Assert.Equal(expectedHealth, penalizedRegen.health);
+        // -2 modifier reduces base 17% by 2% = 15% total. 60 * 0.15 in doubles is a hair over 9,
+        // and must not round up to 10.
+        Assert.Equal(9, penalizedRegen.health);
         Assert.True(penalizedRegen.health < baseRegen.health);
     }
 
@@ -116,8 +115,7 @@ public sealed class RegenCalculatorTests
             vitalityModifier: 10,
             CharacterPath.Warden);
 
-        var expectedHealth = (int)Math.Floor(60 * 0.12);
-        Assert.Equal(expectedHealth, health);
+        Assert.Equal(8, health); // ceil(60 * 0.12) = ceil(7.2)
         Assert.True(health > 2); // Significantly more than default 1
     }
 
@@ -138,9 +136,9 @@ public sealed class RegenCalculatorTests
             CharacterPath.Warden);
 
         Assert.True(changed);
-        Assert.Equal(39, vitals.Health);    // 30 + 9 (15% of 60)
-        Assert.Equal(13, vitals.Focus);     // 10 + 3 (15% of 20)
-        Assert.Equal(55, vitals.Stamina);   // 40 + 15 (15% of 100)
+        Assert.Equal(51, vitals.Health);    // 30 + 21 (35% of 60)
+        Assert.Equal(17, vitals.Focus);     // 10 + 7 (35% of 20)
+        Assert.Equal(75, vitals.Stamina);   // 40 + 35 (35% of 100)
     }
 
     [Fact]
@@ -159,9 +157,9 @@ public sealed class RegenCalculatorTests
         RegenCalculator.ApplyRegen(CharacterRestState.Sleep, vitals, vitalityModifier: 0,
             CharacterPath.Warden);
 
-        Assert.Equal(60, vitals.Health);   // 55 + 9 = 64, capped to 60
-        Assert.Equal(20, vitals.Focus);    // 18 + 3 = 21, capped to 20
-        Assert.Equal(100, vitals.Stamina); // 90 + 15 = 105, capped to 100
+        Assert.Equal(60, vitals.Health);   // 55 + 21, capped to 60
+        Assert.Equal(20, vitals.Focus);    // 18 + 7, capped to 20
+        Assert.Equal(100, vitals.Stamina); // 90 + 35, capped to 100
     }
 
     [Fact]
@@ -242,6 +240,37 @@ public sealed class RegenCalculatorTests
         Assert.True(rest.health > stand.health);
         Assert.True(rest.focus > stand.focus);
         Assert.True(rest.stamina > stand.stamina);
+    }
+
+    /// <summary>
+    /// An empty bar fills in three ticks asleep and six resting, at every Path's starting size.
+    /// </summary>
+    /// <remarks>
+    /// The promise the rates were tuned to keep, pinned directly rather than through the percentages,
+    /// because rounding is what used to break it: a level-one Warden's twenty focus rested back at
+    /// one a tick and took twenty.
+    /// </remarks>
+    [Theory]
+    [InlineData(CharacterRestState.Sleep, 3)]
+    [InlineData(CharacterRestState.Rest, 6)]
+    public void An_empty_bar_fills_in_minutes(CharacterRestState state, int ticks)
+    {
+        foreach (var path in Enum.GetValues<CharacterPath>())
+        {
+            var vitals = Vitals.StartingFor(path);
+            vitals.Health = 0;
+            vitals.Focus = 0;
+            vitals.Stamina = 0;
+
+            for (var i = 0; i < ticks; i++)
+            {
+                RegenCalculator.ApplyRegen(state, vitals, vitalityModifier: 0, path);
+            }
+
+            Assert.Equal(vitals.HealthMax, vitals.Health);
+            Assert.Equal(vitals.FocusMax, vitals.Focus);
+            Assert.Equal(vitals.StaminaMax, vitals.Stamina);
+        }
     }
 
     /// <summary>
