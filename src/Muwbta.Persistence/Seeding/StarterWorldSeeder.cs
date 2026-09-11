@@ -409,6 +409,18 @@ public static class StarterWorldSeeder
     /// <summary>The starter configuration's key (PLAN.md §4.16).</summary>
     public const string ConfigurationKey = "aldenmoor-starter";
 
+    /// <summary>What a new character in Millbrook is handed (PLAN.md §4.16).</summary>
+    /// <remarks>
+    /// Plain and local, like the rest of the village: a knife and a couple of heels of bread. Both
+    /// no-drop and worth nothing to a shop, which is the point of a kit - it is a start, not
+    /// something to sell.
+    /// </remarks>
+    public static IReadOnlyList<StartingKitItem> StarterKit { get; } =
+    [
+        new("aldenmoor-worn-knife"),
+        new("aldenmoor-heel-of-bread", 2),
+    ];
+
     /// <summary>
     /// Plants a <see cref="GameConfiguration"/> matching the engine's compiled fallback, so the
     /// value the server is obeying is visible and editable rather than implicit.
@@ -442,17 +454,33 @@ public static class StarterWorldSeeder
         var existing = await db.GameConfigurations
             .FirstOrDefaultAsync(c => c.Key == ConfigurationKey, cancellationToken);
 
+        await EnsureKitTemplatesAsync(db, cancellationToken);
+
         if (existing is not null)
         {
             // A row planted before the canon existed gets it once. A builder's own text is never
             // replaced: empty is the only state this fills, and empty is what those rows have.
+            // The kit follows the same rule for the same reason.
+            var changed = false;
+
             if (string.IsNullOrWhiteSpace(existing.Canon))
             {
                 existing.Canon = StarterCanon;
-                existing.UpdatedAt = DateTimeOffset.UtcNow;
-                await db.SaveChangesAsync(cancellationToken);
+                changed = true;
             }
 
+            if (existing.StartingKit.Count == 0)
+            {
+                existing.StartingKit = [.. StarterKit];
+                changed = true;
+            }
+
+            if (changed)
+            {
+                existing.UpdatedAt = DateTimeOffset.UtcNow;
+            }
+
+            await db.SaveChangesAsync(cancellationToken);
             return false;
         }
 
@@ -470,12 +498,37 @@ public static class StarterWorldSeeder
             // The line GameLoop used to hold as a literal, now where it can be changed.
             WelcomeMessage = "Welcome to Aldenmoor, {name}.",
             Canon = StarterCanon,
+            StartingKit = [.. StarterKit],
             IsActive = !anyActive,
             UpdatedAt = DateTimeOffset.UtcNow,
         });
 
         await db.SaveChangesAsync(cancellationToken);
         return true;
+    }
+
+    /// <summary>
+    /// Adds any template the starter kit names that this database does not have yet.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="SeedAsync"/> only ever plants into an empty database, so a development database
+    /// made before the kit existed has the configuration and not the items it hands out. Only the
+    /// kit's own templates, and only the missing ones: everything else a builder may have changed.
+    /// </remarks>
+    private static async Task EnsureKitTemplatesAsync(MuwbtaDbContext db, CancellationToken cancellationToken)
+    {
+        foreach (var entry in StarterKit)
+        {
+            if (await db.ItemTemplates.AnyAsync(t => t.Key == entry.ItemKey, cancellationToken))
+            {
+                continue;
+            }
+
+            if (ItemTemplates.FirstOrDefault(t => t.Key == entry.ItemKey) is { } template)
+            {
+                db.ItemTemplates.Add(template);
+            }
+        }
     }
 
     /// <summary>
@@ -539,7 +592,7 @@ public static class StarterWorldSeeder
                 ["type"] = "npc",
                 ["wanders"] = false,
                 ["shopkeeper"] = true,
-                ["sells"] = new List<object> { "bread", "waterskin", "aldenmoor-ale" },
+                ["sells"] = new List<object> { "bread", "waterskin", "aldenmoor-ale", "aldenmoor-healing-draught" },
                 ["markup"] = 0.1,
                 ["greeting"] = new List<object>
                 {
@@ -621,6 +674,49 @@ public static class StarterWorldSeeder
             Weight = 1,
             BaseValue = 2,
             DrinkValue = 1,
+        },
+
+        // The starting kit (StarterKit). No-drop and worth nothing to a shop, so a new character
+        // is a start and not a way to make money.
+        new()
+        {
+            Key = "aldenmoor-worn-knife",
+            Name = "a worn kitchen knife",
+            Description = "The handle is bound in twine. It has cut more bread than anything else.",
+            Icon = "/",
+            Slots = [ItemSlot.MainHand],
+            Weight = 1,
+            BaseValue = 0,
+            BaseStats = new Dictionary<string, object> { ["damageMin"] = 1, ["damageMax"] = 3 },
+            AttackVerb = "stab",
+            IsNoDrop = true,
+        },
+        new()
+        {
+            Key = "aldenmoor-heel-of-bread",
+            Name = "a heel of bread",
+            Description = "The end of a loaf, wrapped in a cloth. Somebody meant it kindly.",
+            Icon = "i",
+            Weight = 1,
+            BaseValue = 0,
+            FoodValue = 3,
+            IsNoDrop = true,
+        },
+
+        // A drink with an effect, which is all a potion is (ItemTemplate.UseEffects).
+        new()
+        {
+            Key = "aldenmoor-healing-draught",
+            Name = "a small healing draught",
+            Description = "Something green in a stoppered bottle. Nell swears by it and will not say what is in it.",
+            Icon = "!",
+            Weight = 1,
+            BaseValue = 6,
+            DrinkValue = 1,
+            UseEffects =
+            [
+                new AbilityEffectSpec("heal.restore", new Dictionary<string, string> { ["healPercent"] = "40" }),
+            ],
         },
     ];
 

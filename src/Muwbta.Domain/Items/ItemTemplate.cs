@@ -1,3 +1,4 @@
+using Muwbta.Domain.Abilities;
 using Muwbta.Domain.Characters;
 
 namespace Muwbta.Domain.Items;
@@ -156,6 +157,45 @@ public sealed class ItemTemplate
     /// <summary>How much thirst drinking this answers, or null when it is not drink.</summary>
     /// <inheritdoc cref="FoodValue" path="/remarks"/>
     public int? DrinkValue { get; set; }
+
+    /// <summary>What <see cref="UseCooldownPulses"/> means when an item leaves it blank: 30 seconds.</summary>
+    public const int DefaultUseCooldownPulses = 120;
+
+    /// <summary>The one cooldown every consumable with effects shares.</summary>
+    public const string UseCooldownKey = "item.use";
+
+    /// <summary>
+    /// What eating or drinking this does besides answering hunger or thirst: ability effects, run
+    /// on whoever consumes it. Empty for nearly everything.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>A potion is a drink with effects</b>, not a new kind of item. It is still consumed by
+    /// <c>drink</c> (or <c>eat</c>), gated on <see cref="DrinkValue"/> or <see cref="FoodValue"/>
+    /// as before, so a healing draught is authored with a drink value of one and its effect beside
+    /// it. From playtesting: the only way back from a hard fight was to sit and wait, and this is
+    /// downtime a player can now buy their way out of, at a price and on a timer.
+    /// </para>
+    /// <para>
+    /// <b>The abilities' own effects.</b> <c>heal.restore</c> and <c>resource.restore</c> already
+    /// refill health, focus and stamina by an amount or a share of the bar, and a second vocabulary
+    /// for the same thing would drift from the first. Harmless effects only - a thing you drink has
+    /// nobody to hurt, and a harmful effect wants a target and a fight - so <see cref="ItemUse"/>
+    /// refuses the rest, on save and in the bundle validator alike.
+    /// </para>
+    /// </remarks>
+    public List<AbilityEffectSpec> UseEffects { get; set; } = [];
+
+    /// <summary>
+    /// Pulses before anything else with effects can be consumed, or null for
+    /// <see cref="DefaultUseCooldownPulses"/>.
+    /// </summary>
+    /// <remarks>
+    /// <b>One timer for every consumable</b> (<see cref="UseCooldownKey"/>): a healing draught makes
+    /// a stamina tonic wait too. Separate timers would make a pack of different potions a fight with
+    /// no downtime at all, which is the opposite of what a price was meant to buy.
+    /// </remarks>
+    public int? UseCooldownPulses { get; set; }
 
     /// <summary>
     /// The Paths that may wear or wield this. Empty means anyone.

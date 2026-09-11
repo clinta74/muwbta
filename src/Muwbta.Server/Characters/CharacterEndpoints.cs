@@ -131,6 +131,24 @@ public static partial class CharacterEndpoints
         };
 
         db.Characters.Add(character);
+
+        // What the live configuration hands a new character (PLAN.md §4.16), saved in the same
+        // transaction so a character never exists without the kit it was promised.
+        var kit = await db.GameConfigurations.AsNoTracking()
+            .Where(c => c.IsActive)
+            .Select(c => c.StartingKit)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (kit is { Count: > 0 })
+        {
+            var keys = kit.Select(k => k.ItemKey).ToList();
+            var templates = await db.ItemTemplates.AsNoTracking()
+                .Where(t => keys.Contains(t.Key))
+                .ToDictionaryAsync(t => t.Key, StringComparer.Ordinal, cancellationToken);
+
+            db.ItemInstances.AddRange(StartingKitGrant.ItemsFor(kit, templates, character.Id));
+        }
+
         await db.SaveChangesAsync(cancellationToken);
 
         return Results.Created($"/api/characters/{character.Id}", ToResponse(character));

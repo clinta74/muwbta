@@ -381,7 +381,8 @@ public sealed class WorldImporter(MuwbtaDbContext db, WorldEditor editor)
         new UpsertItemTemplate(i.Key, i.Name, i.Description, i.Icon, [.. SlotRules.Normalize(i.Slots)],
             i.IsTwoHanded, i.Weight, i.BaseValue,
             i.BaseStats ?? [], i.AttackDelayPulses, i.AttackVerb, i.IsQuestItem,
-            i.IsLore, i.IsNoDrop, i.IsLightSource, i.FoodValue, i.DrinkValue, i.Paths ?? []);
+            i.IsLore, i.IsNoDrop, i.IsLightSource, i.FoodValue, i.DrinkValue, i.Paths ?? [],
+            i.UseEffects ?? [], i.UseCooldownPulses);
 
     private static WorldChange MobChangeFor(BundleMobTemplate m) =>
         new UpsertMobTemplate(m.Key, m.Name, m.Description, m.Icon, m.Level, m.WanderIntervalPulses,
@@ -419,7 +420,7 @@ public sealed class WorldImporter(MuwbtaDbContext db, WorldEditor editor)
             ? new UpsertGameConfiguration(
                 c.Key, c.Name, c.Description ?? string.Empty,
                 c.StartingRoomKey, c.WelcomeMessage ?? string.Empty,
-                c.Canon, c.WorldKeys, Live: false)
+                c.Canon, c.WorldKeys, Live: false, StartingKit: c.StartingKit)
             : null;
 
     private static WorldChange SpawnerChangeFor(BundleSpawner s) =>
@@ -644,6 +645,12 @@ public sealed class WorldImporter(MuwbtaDbContext db, WorldEditor editor)
         {
             Check(rooms, configuration.StartingRoomKey, "missing-room", "configuration", configuration.Key,
                 $"starts characters in '{configuration.StartingRoomKey}', which is neither in this bundle nor here.");
+
+            foreach (var entry in configuration.StartingKit ?? [])
+            {
+                Check(items, entry.ItemKey, "missing-item", "configuration", configuration.Key,
+                    $"hands new characters '{entry.ItemKey}', which is neither in this bundle nor here.");
+            }
         }
 
         foreach (var quest in bundle.Quests ?? [])

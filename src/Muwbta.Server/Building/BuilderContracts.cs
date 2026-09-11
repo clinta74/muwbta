@@ -403,7 +403,9 @@ public sealed record ItemTemplateResponse(
     bool IsLightSource,
     int? FoodValue,
     int? DrinkValue,
-    IReadOnlyList<CharacterPath> Paths);
+    IReadOnlyList<CharacterPath> Paths,
+    IReadOnlyList<AbilityEffectSpec> UseEffects,
+    int? UseCooldownPulses);
 
 public sealed record SaveItemTemplateRequest(
     string? Name,
@@ -423,7 +425,9 @@ public sealed record SaveItemTemplateRequest(
     bool? IsLightSource,
     int? FoodValue,
     int? DrinkValue,
-    List<CharacterPath>? Paths);
+    List<CharacterPath>? Paths,
+    List<AbilityEffectSpec>? UseEffects = null,
+    int? UseCooldownPulses = null);
 
 /// <param name="Wander">One of <see cref="WanderMode"/>. Never null on the way out.</param>
 public sealed record SpawnerResponse(
@@ -808,7 +812,9 @@ public sealed record GameConfigurationResponse(
     string Canon,
     int CanonTokens,
     /// <summary>The worlds this configuration is for; a world belongs to at most one.</summary>
-    IReadOnlyList<string> WorldKeys);
+    IReadOnlyList<string> WorldKeys,
+    /// <summary>What a new character is handed while this configuration is live.</summary>
+    IReadOnlyList<StartingKitItem> StartingKit);
 
 /// <param name="ActiveStartingRoomKey">
 /// What the running loop is obeying right now, which is not always what a row says. A database
@@ -846,7 +852,12 @@ public sealed record GameConfigurationRequest(
     /// The worlds this configuration is for, or null to leave the stored list alone. A world
     /// another configuration already lists is refused, with its owner named.
     /// </summary>
-    List<string>? WorldKeys = null);
+    List<string>? WorldKeys = null,
+    /// <summary>
+    /// What a new character is handed, or null to leave the stored kit alone. Every key must be an
+    /// item template on this server; an empty list hands out nothing.
+    /// </summary>
+    List<StartingKitItem>? StartingKit = null);
 
 /// <summary>What this server refuses to hear. One list, for the whole server.</summary>
 /// <param name="BlockedWords">

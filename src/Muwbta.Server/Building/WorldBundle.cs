@@ -5,6 +5,7 @@ using Muwbta.Domain.Characters;
 using Muwbta.Domain.Inhabitants;
 using Muwbta.Domain.Items;
 using Muwbta.Domain.Spawning;
+using Muwbta.Domain.Worlds;
 using Muwbta.Server.Infrastructure;
 
 namespace Muwbta.Server.Building;
@@ -69,6 +70,14 @@ public sealed record WorldBundle(
     /// else is advisory (§7.4), but a bundle whose shape this build does not understand cannot
     /// be partially applied usefully - it would import the fields that happened to match and
     /// silently drop the rest, which is the failure mode a version number exists to prevent.
+    ///
+    /// <b>19 because a configuration hands out a starting kit.</b> <c>startingKit</c> is new on a
+    /// configuration, and null means "leave the stored kit alone", so a v18 bundle read as v19 simply
+    /// arrives with no opinion about the kit. The weak kind of bump: nothing is lost in that
+    /// direction, but a v19 file read by a v18 server would drop the kit silently, which is the
+    /// partial apply the number is here to refuse. The same bump carries <c>useEffects</c> and
+    /// <c>useCooldownPulses</c> on an item - what a potion does when it is drunk - under the same
+    /// rule: absent is none.
     ///
     /// <b>15 because an item names every slot it fits, and may claim two.</b> <c>slot</c> is gone
     /// and <c>slots</c> plus <c>twoHanded</c> stand in its place. <b>The strong kind of bump, in
@@ -194,7 +203,7 @@ public sealed record WorldBundle(
     /// spawner in it would quietly change behaviour - which is the silent partial apply this
     /// number exists to refuse, arriving through a rename rather than through a new field.
     /// </remarks>
-    public const int CurrentFormatVersion = 18;
+    public const int CurrentFormatVersion = 19;
 }
 
 /// <summary>
@@ -229,7 +238,12 @@ public sealed record BundleGameConfiguration(
     /// The worlds this configuration is for, or null to leave the stored list alone. Carried by
     /// every export, since it is what a configuration <em>is</em> and costs a few bytes.
     /// </summary>
-    List<string>? WorldKeys = null);
+    List<string>? WorldKeys = null,
+    /// <summary>
+    /// What a new character is handed, or null to leave the stored kit alone. Carried by every
+    /// export that carries the configuration.
+    /// </summary>
+    List<StartingKitItem>? StartingKit = null);
 
 /// <summary>
 /// What the export was asked for, recorded so a bundle can say what it is rather than leaving
@@ -308,7 +322,9 @@ public sealed record BundleItemTemplate(
     bool IsLightSource,
     int? FoodValue,
     int? DrinkValue,
-    List<CharacterPath>? Paths);
+    List<CharacterPath>? Paths,
+    List<AbilityEffectSpec>? UseEffects = null,
+    int? UseCooldownPulses = null);
 
 /// <summary>
 /// One ability, whole. Unlike a zone-scoped entity there is nothing to scope an ability *to* -

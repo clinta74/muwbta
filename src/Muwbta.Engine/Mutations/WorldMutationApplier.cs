@@ -1387,6 +1387,8 @@ public sealed class WorldMutationApplier(
             FoodValue = change.FoodValue,
             DrinkValue = change.DrinkValue,
             Paths = [.. change.Paths],
+            UseEffects = [.. change.UseEffects ?? []],
+            UseCooldownPulses = change.UseCooldownPulses,
         });
 
         return MutationResult.Ok([change]);

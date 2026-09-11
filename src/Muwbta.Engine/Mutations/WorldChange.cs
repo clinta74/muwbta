@@ -375,7 +375,9 @@ public sealed record UpsertItemTemplate(
     bool IsLightSource,
     int? FoodValue,
     int? DrinkValue,
-    List<CharacterPath> Paths) : WorldChange
+    List<CharacterPath> Paths,
+    List<AbilityEffectSpec>? UseEffects = null,
+    int? UseCooldownPulses = null) : WorldChange
 {
     public override string EntityKind => "item-template";
 
@@ -489,7 +491,8 @@ public sealed record UpsertGameConfiguration(
     string WelcomeMessage,
     string? Canon,
     List<string>? WorldKeys,
-    bool Live) : WorldChange
+    bool Live,
+    List<StartingKitItem>? StartingKit = null) : WorldChange
 {
     public override string EntityKind => "configuration";
 

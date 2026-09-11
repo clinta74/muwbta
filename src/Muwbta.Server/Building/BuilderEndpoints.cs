@@ -263,7 +263,8 @@ public static class BuilderEndpoints
                 c.UpdatedAt,
                 c.Canon,
                 Canon.EstimateTokens(Canon.Resolve(c.Canon)),
-                [.. c.WorldKeys]))
+                [.. c.WorldKeys],
+                [.. c.StartingKit]))
             .ToList();
 
         // What the loop is actually obeying, which is not always what the rows say: a database
@@ -391,6 +392,60 @@ public static class BuilderEndpoints
             }
         }
 
+        // Null leaves the stored kit alone. Otherwise every line names an item this server has,
+        // once, in a sane number. Refused rather than warned about, unlike a starting room that is
+        // not there yet: a kit line naming nothing hands out nothing, and nobody would notice.
+        List<StartingKitItem>? kit = null;
+
+        if (request.StartingKit is not null)
+        {
+            if (request.StartingKit.Count > GameConfiguration.MaxStartingKitEntries)
+            {
+                return Results.BadRequest(new
+                {
+                    error = $"A starting kit is limited to {GameConfiguration.MaxStartingKitEntries} different items.",
+                });
+            }
+
+            kit = [.. request.StartingKit.Select(k => k with { ItemKey = k.ItemKey?.Trim() ?? string.Empty })];
+
+            if (kit.FirstOrDefault(k => k.ItemKey.Length == 0) is not null)
+            {
+                return Results.BadRequest(new { error = "Every starting kit line needs an item key." });
+            }
+
+            if (kit.FirstOrDefault(k => k.Count is < 1 or > GameConfiguration.MaxStartingKitCount) is { } badCount)
+            {
+                return Results.BadRequest(new
+                {
+                    error = $"'{badCount.ItemKey}' is handed out {badCount.Count} times; a kit line is 1 to "
+                        + $"{GameConfiguration.MaxStartingKitCount}.",
+                });
+            }
+
+            if (kit.GroupBy(k => k.ItemKey, StringComparer.Ordinal).FirstOrDefault(g => g.Count() > 1) is { } twice)
+            {
+                return Results.BadRequest(new
+                {
+                    error = $"'{twice.Key}' is in the starting kit twice; give it one line with a count.",
+                });
+            }
+
+            var keys = kit.Select(k => k.ItemKey).ToList();
+            var known = await db.ItemTemplates.AsNoTracking()
+                .Where(t => keys.Contains(t.Key))
+                .Select(t => t.Key)
+                .ToListAsync(ct);
+
+            if (keys.FirstOrDefault(k => !known.Contains(k)) is { } unknown)
+            {
+                return Results.BadRequest(new
+                {
+                    error = $"'{unknown}' is not an item template on this server.",
+                });
+            }
+        }
+
         // Whether this edit also moves the running loop. The applier has no database, so the
         // question is answered here and carried on the mutation.
         var live = await db.GameConfigurations.AsNoTracking()
@@ -401,7 +456,7 @@ public static class BuilderEndpoints
         var outcome = await editor.ApplyAsync(
             new UpsertGameConfiguration(
                 key, request.Name, request.Description ?? string.Empty,
-                request.StartingRoomKey, welcome, request.Canon, worldKeys, live),
+                request.StartingRoomKey, welcome, request.Canon, worldKeys, live, kit),
             accountId,
             ct);
 
@@ -431,7 +486,8 @@ public static class BuilderEndpoints
         return Results.Ok(new GameConfigurationResponse(
             key, request.Name, request.Description ?? string.Empty,
             request.StartingRoomKey, welcome, live, exists, DateTimeOffset.UtcNow,
-            canon, Canon.EstimateTokens(Canon.Resolve(canon)), [.. stored?.WorldKeys ?? []]));
+            canon, Canon.EstimateTokens(Canon.Resolve(canon)), [.. stored?.WorldKeys ?? []],
+            [.. stored?.StartingKit ?? []]));
     }
 
     /// <remarks>
@@ -520,7 +576,8 @@ public static class BuilderEndpoints
         return Results.Ok(new GameConfigurationResponse(
             entity.Key, entity.Name, entity.Description, entity.StartingRoomKey,
             entity.WelcomeMessage, IsActive: true, exists, DateTimeOffset.UtcNow,
-            entity.Canon, Canon.EstimateTokens(Canon.Resolve(entity.Canon)), [.. entity.WorldKeys]));
+            entity.Canon, Canon.EstimateTokens(Canon.Resolve(entity.Canon)), [.. entity.WorldKeys],
+            [.. entity.StartingKit]));
     }
 
     /// <summary>
@@ -1341,6 +1398,11 @@ public static class BuilderEndpoints
             return badSlots;
         }
 
+        if (ValidateUseEffects(request.UseEffects, request.UseCooldownPulses) is { } badUse)
+        {
+            return badUse;
+        }
+
         var change = new UpsertItemTemplate(
             key,
             Trim(request.Name) ?? key,
@@ -1359,9 +1421,30 @@ public static class BuilderEndpoints
             request.IsLightSource ?? false,
             request.FoodValue,
             request.DrinkValue,
-            request.Paths ?? []);
+            request.Paths ?? [],
+            request.UseEffects ?? [],
+            request.UseCooldownPulses);
 
         return await SaveAsync(editor, change, http, ct, () => queries.ItemTemplateAsync(key, ct));
+    }
+
+    /// <summary>What a consumable does, refused on the terms the bundle validator uses.</summary>
+    private static IResult? ValidateUseEffects(List<AbilityEffectSpec>? effects, int? cooldownPulses)
+    {
+        if (cooldownPulses is < 0)
+        {
+            return Results.BadRequest(new { error = "The wait before another cannot be negative." });
+        }
+
+        foreach (var effect in effects ?? [])
+        {
+            if (ItemUse.Problem(effect) is { } why)
+            {
+                return Results.BadRequest(new { error = why });
+            }
+        }
+
+        return null;
     }
 
     private static async Task<IResult> UpdateItemTemplateAsync(
@@ -1391,6 +1474,11 @@ public static class BuilderEndpoints
             return badSlots;
         }
 
+        if (ValidateUseEffects(request.UseEffects, request.UseCooldownPulses) is { } badUse)
+        {
+            return badUse;
+        }
+
         var change = new UpsertItemTemplate(
             key,
             Trim(request.Name) ?? existing.Name,
@@ -1409,7 +1497,9 @@ public static class BuilderEndpoints
             request.IsLightSource ?? existing.IsLightSource,
             request.FoodValue ?? existing.FoodValue,
             request.DrinkValue ?? existing.DrinkValue,
-            request.Paths ?? [.. existing.Paths]);
+            request.Paths ?? [.. existing.Paths],
+            request.UseEffects ?? [.. existing.UseEffects],
+            request.UseCooldownPulses ?? existing.UseCooldownPulses);
 
         return await SaveAsync(editor, change, http, ct, () => queries.ItemTemplateAsync(key, ct));
     }

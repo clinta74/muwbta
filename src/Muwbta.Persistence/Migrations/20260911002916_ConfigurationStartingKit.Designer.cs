@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Muwbta.Domain.Abilities;
 using Muwbta.Domain.Inhabitants;
@@ -14,9 +15,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Muwbta.Persistence.Migrations
 {
     [DbContext(typeof(MuwbtaDbContext))]
-    partial class MuwbtaDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260911002916_ConfigurationStartingKit")]
+    partial class ConfigurationStartingKit
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -646,17 +649,6 @@ namespace Muwbta.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("jsonb")
                         .HasColumnName("slots");
-
-                    b.Property<int?>("UseCooldownPulses")
-                        .HasColumnType("integer")
-                        .HasColumnName("use_cooldown_pulses");
-
-                    b.Property<List<AbilityEffectSpec>>("UseEffects")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("jsonb")
-                        .HasColumnName("use_effects")
-                        .HasDefaultValueSql("'[]'::jsonb");
 
                     b.Property<int>("Weight")
                         .HasColumnType("integer")

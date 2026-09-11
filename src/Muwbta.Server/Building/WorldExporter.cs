@@ -113,20 +113,28 @@ public sealed class WorldExporter(MuwbtaDbContext db, TimeProvider clock)
         var spawners = await SpawnersAsync(kind, zoneKeys, cancellationToken);
         var quests = await QuestsAsync(kind, zoneKeys, cancellationToken);
 
-        var (items, mobs) = await TemplatesAsync(kind, spawners, quests, cancellationToken);
+        // The configurations that are *for* these worlds. A configuration belongs to a server
+        // rather than to a zone, which is why this used to carry all of them - but it tags the
+        // worlds it serves, so "is this one ours?" has an answer, and a Reaches bundle carrying
+        // the Aldenmoor starter shipped a configuration whose starting room was not in the file.
+        // Which one is live is left behind deliberately - see BundleGameConfiguration.
+        //
+        // Read before the templates, because a starting kit names items that nothing else in the
+        // scope has to reach: the knife every new character is handed need drop from nothing.
+        var configurations = await ConfigurationsAsync(kind, key, worlds, cancellationToken);
+
+        var (items, mobs) = await TemplatesAsync(
+            kind,
+            spawners,
+            quests,
+            [.. configurations.SelectMany(c => c.StartingKit ?? []).Select(k => k.ItemKey)],
+            cancellationToken);
 
         // Every ability, whatever the scope. An ability belongs to a Path rather than to a zone,
         // so there is nothing to filter it by - and a zone bundle that carried none would move a
         // crypt into an environment where the abilities meant to fight through it are whatever
         // that server happened to have.
         var abilities = await AbilitiesAsync(cancellationToken);
-
-        // The configurations that are *for* these worlds. A configuration belongs to a server
-        // rather than to a zone, which is why this used to carry all of them - but it tags the
-        // worlds it serves, so "is this one ours?" has an answer, and a Reaches bundle carrying
-        // the Aldenmoor starter shipped a configuration whose starting room was not in the file.
-        // Which one is live is left behind deliberately - see BundleGameConfiguration.
-        var configurations = await ConfigurationsAsync(kind, key, worlds, cancellationToken);
 
         // Only the sheets for the worlds this export carries. Unlike abilities and configurations
         // a map has an obvious owner, so a zone-scoped bundle takes the one world it names and no
@@ -230,7 +238,10 @@ public sealed class WorldExporter(MuwbtaDbContext db, TimeProvider clock)
         i.Key, i.Name, i.Description, i.Icon, i.Slots, i.IsTwoHanded, i.Weight, i.BaseValue,
         new Dictionary<string, object>(i.BaseStats),
         i.AttackDelayPulses, i.AttackVerb, i.IsQuestItem,
-        i.IsLore, i.IsNoDrop, i.IsLightSource, i.FoodValue, i.DrinkValue, i.Paths);
+        i.IsLore, i.IsNoDrop, i.IsLightSource, i.FoodValue, i.DrinkValue, i.Paths,
+        [.. i.UseEffects.Select(e =>
+            new AbilityEffectSpec(e.Key, new Dictionary<string, string>(e.Params ?? [], StringComparer.Ordinal)))],
+        i.UseCooldownPulses);
 
     /// <inheritdoc cref="ItemFor"/>
     private static BundleMobTemplate MobFor(MobTemplate m) => new(
@@ -378,7 +389,8 @@ public sealed class WorldExporter(MuwbtaDbContext db, TimeProvider clock)
         return [.. configurations.Select(c => new BundleGameConfiguration(
             c.Key, c.Name, c.Description, c.StartingRoomKey, c.WelcomeMessage,
             carriesCanon ? Assist.Canon.Resolve(c.Canon) : null,
-            new List<string>(c.WorldKeys)))];
+            new List<string>(c.WorldKeys),
+            [.. c.StartingKit]))];
     }
 
     private async Task<IReadOnlyList<BundleAbility>> AbilitiesAsync(CancellationToken cancellationToken)
@@ -595,6 +607,7 @@ public sealed class WorldExporter(MuwbtaDbContext db, TimeProvider clock)
             string kind,
             IReadOnlyList<BundleSpawner> spawners,
             IReadOnlyList<BundleQuest> quests,
+            IReadOnlyList<string> kitItemKeys,
             CancellationToken cancellationToken)
     {
         var mobKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -614,6 +627,11 @@ public sealed class WorldExporter(MuwbtaDbContext db, TimeProvider clock)
                 Add(mobKeys, quest.TurninMobKey);
                 Add(itemKeys, quest.RequiredItemKey);
                 Add(itemKeys, quest.RewardItemKey);
+            }
+
+            foreach (var kitItem in kitItemKeys)
+            {
+                Add(itemKeys, kitItem);
             }
         }
 

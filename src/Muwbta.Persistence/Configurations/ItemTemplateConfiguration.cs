@@ -29,6 +29,14 @@ internal sealed class ItemTemplateConfiguration : IEntityTypeConfiguration<ItemT
         builder.Property(e => e.FoodValue).HasColumnName("food_value");
         builder.Property(e => e.DrinkValue).HasColumnName("drink_value");
 
+        // The same jsonb shape an ability's effect list is stored in, because it is that list.
+        builder.Property(e => e.UseEffects)
+            .HasColumnName("use_effects")
+            .HasColumnType("jsonb")
+            .HasDefaultValueSql("'[]'::jsonb")
+            .IsRequired();
+        builder.Property(e => e.UseCooldownPulses).HasColumnName("use_cooldown_pulses");
+
         // The slots it may fill, as a jsonb array of names - same shape and same argument as
         // Paths below, and stored as names rather than the enum's numbers so a slot inserted into
         // the middle of ItemSlot later does not silently reinterpret every row.

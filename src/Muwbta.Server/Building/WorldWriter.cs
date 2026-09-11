@@ -454,6 +454,8 @@ public sealed class WorldWriter(MuwbtaDbContext db, TimeProvider clock)
                         FoodValue = c.FoodValue,
                         DrinkValue = c.DrinkValue,
                         Paths = [.. c.Paths],
+                        UseEffects = [.. c.UseEffects ?? []],
+                        UseCooldownPulses = c.UseCooldownPulses,
                     });
 
                     return ContentAction.Create;
@@ -483,6 +485,8 @@ public sealed class WorldWriter(MuwbtaDbContext db, TimeProvider clock)
                 entity.FoodValue = c.FoodValue;
                 entity.DrinkValue = c.DrinkValue;
                 entity.Paths = [.. c.Paths];
+                entity.UseEffects = [.. c.UseEffects ?? []];
+                entity.UseCooldownPulses = c.UseCooldownPulses;
 
                 return ContentAction.Update;
             }
@@ -659,6 +663,13 @@ public sealed class WorldWriter(MuwbtaDbContext db, TimeProvider clock)
                 if (c.WorldKeys is not null)
                 {
                     entity.WorldKeys = new List<string>(c.WorldKeys);
+                }
+
+                // Null leaves the kit alone, by the same rule: a realm's file, or update_canon
+                // re-posting the row, must not empty what a builder set.
+                if (c.StartingKit is not null)
+                {
+                    entity.StartingKit = [.. c.StartingKit];
                 }
 
                 // IsActive is untouched on purpose. An edit says what a configuration means, never
@@ -910,6 +921,11 @@ public sealed class WorldWriter(MuwbtaDbContext db, TimeProvider clock)
                     ["welcomeMessage"] = entity.WelcomeMessage,
                     ["canon"] = entity.Canon,
                     ["worldKeys"] = new JsonArray([.. entity.WorldKeys.Select(k => (JsonNode?)k)]),
+                    ["startingKit"] = new JsonArray([.. entity.StartingKit.Select(k => (JsonNode?)new JsonObject
+                    {
+                        ["itemKey"] = k.ItemKey,
+                        ["count"] = k.Count,
+                    })]),
 
                     // Included here though it never travels in a bundle: an activation's whole
                     // content is this field moving, and an audit pair that showed no difference

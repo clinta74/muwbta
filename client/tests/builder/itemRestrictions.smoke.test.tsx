@@ -30,6 +30,8 @@ const oathmaul = vi.hoisted(
     isLightSource: false,
     foodValue: null,
     drinkValue: null,
+    useEffects: [],
+    useCooldownPulses: null,
     paths: ['Warden'],
   }),
 )

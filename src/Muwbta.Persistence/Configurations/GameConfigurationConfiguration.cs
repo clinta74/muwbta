@@ -44,6 +44,22 @@ internal sealed class GameConfigurationConfiguration : IEntityTypeConfiguration<
             .HasColumnType("text[]")
             .IsRequired();
 
+        // A short list read only alongside its row, so jsonb rather than a join table - the same
+        // argument an item template's Paths makes.
+        builder.Property(c => c.StartingKit)
+            .HasColumnName("starting_kit")
+            .HasColumnType("jsonb")
+            .HasConversion(
+                v => System.Text.Json.JsonSerializer.Serialize(v, (System.Text.Json.JsonSerializerOptions?)null),
+                v => System.Text.Json.JsonSerializer
+                    .Deserialize<List<StartingKitItem>>(v, (System.Text.Json.JsonSerializerOptions?)null) ?? new List<StartingKitItem>(),
+                new Microsoft.EntityFrameworkCore.ChangeTracking.ValueComparer<List<StartingKitItem>>(
+                    (a, b) => a!.SequenceEqual(b!),
+                    v => v.Aggregate(0, (h, k) => HashCode.Combine(h, k.GetHashCode())),
+                    v => v.ToList()))
+            .HasDefaultValueSql("'[]'::jsonb")
+            .IsRequired();
+
         builder.Property(c => c.IsActive).HasColumnName("is_active").IsRequired();
         builder.Property(c => c.UpdatedAt).HasColumnName("updated_at").IsRequired();
 

@@ -1,3 +1,5 @@
+using System.Globalization;
+using Muwbta.Domain.Abilities;
 using Muwbta.Domain.Characters;
 using Muwbta.Domain.Items;
 using Muwbta.Domain.Worlds;
@@ -171,5 +173,95 @@ public sealed class NutritionCommandTests
 
         harness.Execute(kael, "dri");
         Assert.Contains("Drink what?", harness.DrainText(kael), StringComparison.Ordinal);
+    }
+
+    // -----------------------------------------------------------------------
+    // Potions: drinks with effects
+    // -----------------------------------------------------------------------
+
+    private static ItemTemplate Tonic(WorldHarness harness, int amount = 25, int? cooldown = 40)
+    {
+        var template = harness.DefineItem("tonic", "a stamina tonic", slot: null, drinkValue: 1);
+        template.UseEffects =
+        [
+            new AbilityEffectSpec("resource.restore", new Dictionary<string, string>
+            {
+                ["resource"] = "Stamina",
+                ["amount"] = amount.ToString(CultureInfo.InvariantCulture),
+            }),
+        ];
+        template.UseCooldownPulses = cooldown;
+        return template;
+    }
+
+    /// <summary>A draught does what it says whether or not you are thirsty, and says how much.</summary>
+    [Fact]
+    public void A_draught_restores_what_it_says_even_when_not_thirsty()
+    {
+        var harness = Loaded();
+        var kael = harness.AddPlayer("Kael", Room);
+        harness.GiveItem(kael, Tonic(harness));
+        kael.Character.Vitals.Stamina = 10;
+        kael.Character.Vitals.Thirst = 0;
+
+        harness.Execute(kael, "drink tonic");
+
+        Assert.Equal(35, kael.Character.Vitals.Stamina);
+        Assert.Empty(harness.World.InventoryOf(kael.CharacterId));
+        Assert.Contains("+25 stamina", harness.DrainText(kael), StringComparison.Ordinal);
+    }
+
+    /// <summary>Every draught shares one timer, and the second waits for it.</summary>
+    [Fact]
+    public void A_second_draught_waits_for_the_first()
+    {
+        var harness = Loaded();
+        var kael = harness.AddPlayer("Kael", Room);
+        var tonic = Tonic(harness, cooldown: 40);
+        harness.GiveItem(kael, tonic);
+        harness.GiveItem(kael, tonic);
+        kael.Character.Vitals.Stamina = 10;
+
+        harness.Execute(kael, "drink tonic");
+        harness.Drain(kael);
+        harness.Execute(kael, "drink tonic");
+
+        Assert.Contains("more second", harness.DrainText(kael), StringComparison.Ordinal);
+        Assert.Single(harness.World.InventoryOf(kael.CharacterId));
+        Assert.Equal(35, kael.Character.Vitals.Stamina);
+
+        harness.Clock.AdvancePulses(40);
+        harness.Execute(kael, "drink tonic");
+
+        Assert.Empty(harness.World.InventoryOf(kael.CharacterId));
+        Assert.Equal(60, kael.Character.Vitals.Stamina);
+    }
+
+    /// <summary>Refused rather than wasted, as a drink to somebody not thirsty is.</summary>
+    [Fact]
+    public void A_draught_is_not_wasted_on_someone_at_their_best()
+    {
+        var harness = Loaded();
+        var kael = harness.AddPlayer("Kael", Room);
+        harness.GiveItem(kael, Tonic(harness));
+        kael.Character.Vitals.Thirst = 0;
+
+        harness.Execute(kael, "drink tonic");
+
+        Assert.Contains("already at your best", harness.DrainText(kael), StringComparison.Ordinal);
+        Assert.Single(harness.World.InventoryOf(kael.CharacterId));
+    }
+
+    [Fact]
+    public void Quaff_drinks()
+    {
+        var harness = Loaded();
+        var kael = harness.AddPlayer("Kael", Room);
+        harness.GiveItem(kael, Tonic(harness));
+        kael.Character.Vitals.Stamina = 10;
+
+        harness.Execute(kael, "quaff tonic");
+
+        Assert.Equal(35, kael.Character.Vitals.Stamina);
     }
 }

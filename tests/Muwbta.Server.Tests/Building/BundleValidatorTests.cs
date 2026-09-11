@@ -1,6 +1,8 @@
 using System.Text.Json;
+using Muwbta.Domain.Abilities;
 using Muwbta.Domain.Characters;
 using Muwbta.Domain.Spawning;
+using Muwbta.Domain.Worlds;
 using Muwbta.Server.Building;
 
 namespace Muwbta.Server.Tests.Building;
@@ -771,6 +773,90 @@ public sealed class BundleValidatorTests
             RewardXp: 10, RewardGold: 1, RewardItemKey: null, RewardItemCount: 0, RewardFlagKey: null,
             PrerequisiteQuestKeys: [], IsRepeatable: false, AutoStart: false, Paths: [],
             Dialogue: dialogue, SortOrder: 0);
+
+    // -----------------------------------------------------------------------
+    // Consumables with effects
+    // -----------------------------------------------------------------------
+
+    private static AbilityEffectSpec Effect(string key, params (string Name, string Value)[] settings) =>
+        new(key, settings.ToDictionary(s => s.Name, s => s.Value));
+
+    [Fact]
+    public void A_draught_is_fine()
+    {
+        var bundle = Valid() with
+        {
+            ItemTemplates = [Item("draught") with { DrinkValue = 1, UseEffects = [Effect("heal.restore", ("healPercent", "40"))] }],
+        };
+
+        Assert.True(Check(bundle).Ok, string.Join(" | ", Check(bundle).Findings.Select(f => f.Message)));
+    }
+
+    [Fact]
+    public void A_harmful_effect_on_something_drunk_is_an_error()
+    {
+        var bundle = Valid() with
+        {
+            ItemTemplates = [Item("bad-draught") with { DrinkValue = 1, UseEffects = [Effect("control.stun")] }],
+        };
+
+        AssertError(bundle, "harmful");
+    }
+
+    [Fact]
+    public void Effects_on_something_nobody_can_eat_or_drink_are_an_error()
+    {
+        var bundle = Valid() with
+        {
+            ItemTemplates = [Item("charm") with { UseEffects = [Effect("heal.restore")] }],
+        };
+
+        AssertError(bundle, "neither food nor drink");
+    }
+
+    // -----------------------------------------------------------------------
+    // Starting kits
+    // -----------------------------------------------------------------------
+
+    private static WorldBundle WithKit(BundleItemTemplate? carried, params StartingKitItem[] kit)
+    {
+        var bundle = Valid();
+
+        return bundle with
+        {
+            ItemTemplates = carried is null ? [Item("a-torch")] : [carried],
+            Configurations =
+            [
+                new BundleGameConfiguration(
+                    "test-start", "Test", "", "test.zone.west", "Hello.",
+                    WorldKeys: ["test"], StartingKit: [.. kit]),
+            ],
+        };
+    }
+
+    [Fact]
+    public void A_kit_item_that_can_be_sold_on_is_a_warning()
+    {
+        var check = Check(WithKit(Item("worn-knife"), new StartingKitItem("worn-knife")));
+
+        Assert.Contains(check.Warnings, w => w.Message.Contains("not no-drop", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void A_no_drop_kit_item_is_fine()
+    {
+        var check = Check(WithKit(Item("worn-knife") with { IsNoDrop = true }, new StartingKitItem("worn-knife", 2)));
+
+        Assert.DoesNotContain(check.Warnings, w => w.Message.Contains("hands", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void A_kit_naming_an_item_the_bundle_lacks_is_a_warning()
+    {
+        var check = Check(WithKit(null, new StartingKitItem("worn-knife")));
+
+        Assert.Contains(check.Warnings, w => w.Message.Contains("does not carry", StringComparison.Ordinal));
+    }
 
     // -----------------------------------------------------------------------
     // Quest summaries name their items

@@ -340,6 +340,9 @@ public static class BundleValidator
     private static void CheckConfigurations(WorldBundle bundle, Action<string> warn)
     {
         var worlds = bundle.Worlds.Select(w => w.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var items = bundle.ItemTemplates
+            .GroupBy(i => i.Key, StringComparer.Ordinal)
+            .ToDictionary(g => g.Key, g => g.First(), StringComparer.Ordinal);
 
         foreach (var configuration in bundle.Configurations)
         {
@@ -355,6 +358,8 @@ public static class BundleValidator
                 warn($"configuration {configuration.Key} is for {string.Join(", ", tagged)}, and this "
                     + "bundle carries none of those worlds");
             }
+
+            CheckStartingKit(configuration, items, warn);
 
             var tokens = Canon.EstimateTokens(Canon.Resolve(configuration.Canon));
 
@@ -705,6 +710,23 @@ public static class BundleValidator
                 error($"{item.Key} declares an attack speed but reaches neither hand, so it can "
                     + "never swing");
             }
+
+            // The rule the builder refuses on save: only harmless effects, and only ones that exist.
+            foreach (var effect in item.UseEffects ?? [])
+            {
+                if (ItemUse.Problem(effect) is { } problem)
+                {
+                    error($"{item.Key}: {problem}");
+                }
+            }
+
+            // Effects are run by eat and drink, which read the food and drink values first - so a
+            // potion with neither is one no verb will ever touch.
+            if (item.UseEffects is { Count: > 0 } && item.FoodValue is null && item.DrinkValue is null)
+            {
+                error($"{item.Key} has effects when consumed but is neither food nor drink, so nothing "
+                    + "can consume it; give a draught a drink value of 1");
+            }
         }
     }
 
@@ -969,6 +991,45 @@ public static class BundleValidator
         }
 
         CheckOfferKeywords(bundle, error);
+    }
+
+    /// <summary>What a configuration hands a new character, judged against the items carried.</summary>
+    /// <remarks>
+    /// Warnings, like the rest of a configuration's findings: a kit naming an item this file does
+    /// not carry may be pointing at one the server already has, and a kit item that can be dropped
+    /// is a world's choice to make. It is still worth saying, because a starter item that can be
+    /// sold or handed on turns character creation into a way to mint things.
+    /// </remarks>
+    private static void CheckStartingKit(
+        BundleGameConfiguration configuration,
+        IReadOnlyDictionary<string, BundleItemTemplate> items,
+        Action<string> warn)
+    {
+        foreach (var entry in configuration.StartingKit ?? [])
+        {
+            if (entry.Count is < 1 or > GameConfiguration.MaxStartingKitCount)
+            {
+                warn($"configuration {configuration.Key} hands out {entry.Count} of {entry.ItemKey}; "
+                    + $"a kit line is 1 to {GameConfiguration.MaxStartingKitCount}");
+            }
+
+            if (!items.TryGetValue(entry.ItemKey, out var item))
+            {
+                if (items.Count > 0)
+                {
+                    warn($"configuration {configuration.Key} hands new characters {entry.ItemKey}, "
+                        + "which this bundle does not carry");
+                }
+
+                continue;
+            }
+
+            if (!item.IsNoDrop)
+            {
+                warn($"configuration {configuration.Key} hands new characters {entry.ItemKey}, which is "
+                    + "not no-drop, so a new character can sell it or give it away");
+            }
+        }
     }
 
     /// <summary>Words too common to count as naming anything.</summary>

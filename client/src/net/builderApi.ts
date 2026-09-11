@@ -355,6 +355,13 @@ export interface ItemTemplate {
   /** How much thirst `drink` answers, or null when it is not drink. */
   drinkValue: number | null
   /**
+   * What eating or drinking this does besides answering a need: the abilities' own effects, run on
+   * whoever consumes it. A potion is a drink with these. Harmless effects only.
+   */
+  useEffects: AbilityEffectSpec[]
+  /** Pulses before anything else with effects can be consumed; null for the server's default. */
+  useCooldownPulses: number | null
+  /**
    * The Paths that may wear or wield this. **Empty means anyone**, which is why it is a list of
    * what is allowed rather than of what is forbidden — an item is unrestricted until a builder
    * opts in.
@@ -574,6 +581,12 @@ const base = '/api/builder'
  * A named starter configuration (PLAN.md §4.16): where a new character wakes up and what the game
  * says to them. A server holds several and exactly one is live.
  */
+/** One line of a starting kit: an item template key, and how many. */
+export interface StartingKitItem {
+  itemKey: string
+  count: number
+}
+
 export interface GameConfiguration {
   key: string
   name: string
@@ -600,6 +613,11 @@ export interface GameConfiguration {
    * "Download bundle" on a configuration exports these worlds together with it and its canon.
    */
   worldKeys: string[]
+  /**
+   * What a character made while this configuration is live is handed, once, into the pack. Kit
+   * items should be no-drop, or making a character becomes a way to mint things to sell.
+   */
+  startingKit: StartingKitItem[]
 }
 
 
@@ -1054,7 +1072,7 @@ export const builderApi = {
     key: string,
     body: Pick<
       GameConfiguration,
-      'name' | 'description' | 'startingRoomKey' | 'welcomeMessage' | 'canon' | 'worldKeys'
+      'name' | 'description' | 'startingRoomKey' | 'welcomeMessage' | 'canon' | 'worldKeys' | 'startingKit'
     >,
   ) =>
     request<GameConfiguration>(`${base}/configurations/${key}`, {

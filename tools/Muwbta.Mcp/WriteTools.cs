@@ -36,6 +36,11 @@ namespace Muwbta.Mcp;
 /// file. It carries every other field of the configuration across untouched and cannot reach
 /// <c>/activate</c> at all.
 ///
+/// <c>set_starting_kit</c> is the second, and narrow the same way: it writes what a new character
+/// is handed and carries everything else across. Unlike the canon it does change what a player
+/// meets - the next character made gets the kit - which is why it names any kit item that is not
+/// no-drop, since a kit that can be sold or handed on makes character creation a way to mint things.
+///
 /// Every write passes <see cref="WorldGuard"/> first. The token's scope is the other guard and is
 /// the server's; a BuilderRead token is refused there no matter what is registered here.
 /// </remarks>
@@ -76,7 +81,8 @@ public static class WriteTools
                 "A configuration is not written through this tool. Which one is active decides what "
                 + "the running server serves and what every new player is told, so the starting "
                 + "room, the welcome message and activation itself belong to a person in the Setup "
-                + "tab. Its canon is the exception - update_canon rewrites that and nothing else.");
+                + "tab. Its canon and its starting kit are the exceptions - update_canon and "
+                + "set_starting_kit rewrite those and nothing else.");
         }
 
         if (fields.ValueKind != JsonValueKind.Object)
@@ -149,7 +155,8 @@ public static class WriteTools
                 "A configuration is not written through this tool. Which one is active decides what "
                 + "the running server serves and what every new player is told, so the starting "
                 + "room, the welcome message and activation itself belong to a person in the Setup "
-                + "tab. Its canon is the exception - update_canon rewrites that and nothing else.");
+                + "tab. Its canon and its starting kit are the exceptions - update_canon and "
+                + "set_starting_kit rewrite those and nothing else.");
         }
 
         var path = ContentKinds.GetPath(kind, Require(key, "key"))
@@ -284,23 +291,9 @@ public static class WriteTools
         // Read the row and write it back with one field changed. The endpoint is a whole-object
         // upsert, so sending a partial body would blank the starting room and the welcome message -
         // and a configuration whose starting room went missing is a server that cannot place a new
-        // character. Everything but the canon is carried across untouched.
-        var list = await client
-            .GetAsync("/api/builder/configurations", cancellationToken)
-            .ConfigureAwait(false);
-
-        using var document = JsonDocument.Parse(list);
-
-        var row = document.RootElement.TryGetProperty("configurations", out var rows)
-            ? rows.EnumerateArray().FirstOrDefault(
-                c => string.Equals(c.GetProperty("key").GetString(), key, StringComparison.Ordinal))
-            : default;
-
-        if (row.ValueKind != JsonValueKind.Object)
-        {
-            throw new McpException(
-                $"No configuration '{key}'. list_content(kind: 'configuration') has the keys.");
-        }
+        // character. Everything but the canon is carried across untouched; the starting kit is
+        // left out, and a missing kit means "keep it".
+        var row = await ConfigurationRowAsync(client, key, cancellationToken).ConfigureAwait(false);
 
         var payload = JsonSerializer.Serialize(new
         {
@@ -323,6 +316,128 @@ public static class WriteTools
             $"/api/builder/configurations/{Uri.EscapeDataString(key)}",
             payload,
             cancellationToken).ConfigureAwait(false);
+    }
+
+    [McpServerTool(Name = "set_starting_kit")]
+    [Description("""
+        Sets what a new character is handed when they are made under one configuration: item
+        template keys and how many of each. Replaces the whole kit - an empty list hands out
+        nothing. Nothing else about the configuration changes, and characters that already exist
+        are given nothing. Kit items should be no-drop, or making a character becomes a way to mint
+        things to sell or give away; the reply names any that are not.
+        """)]
+    public static async Task<string> SetStartingKitAsync(
+        BuilderClient client,
+        [Description("The configuration key, from list_content(kind: 'configuration').")]
+        string configuration,
+        [Description("The kit: an array of { itemKey, count }, count defaulting to 1. A bare string is one of that item.")]
+        JsonElement items,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(client);
+
+        var key = Require(configuration, "configuration");
+
+        if (items.ValueKind != JsonValueKind.Array)
+        {
+            throw new McpException("'items' must be an array of { itemKey, count }.");
+        }
+
+        var kit = new List<(string ItemKey, int Count)>();
+
+        foreach (var entry in items.EnumerateArray())
+        {
+            var itemKey = entry.ValueKind switch
+            {
+                JsonValueKind.String => entry.GetString(),
+                JsonValueKind.Object when entry.TryGetProperty("itemKey", out var named) => named.GetString(),
+                _ => null,
+            };
+
+            if (string.IsNullOrWhiteSpace(itemKey))
+            {
+                throw new McpException("Every kit entry needs an itemKey.");
+            }
+
+            var count = entry.ValueKind == JsonValueKind.Object
+                && entry.TryGetProperty("count", out var counted)
+                && counted.TryGetInt32(out var n)
+                    ? n
+                    : 1;
+
+            kit.Add((itemKey.Trim(), count));
+        }
+
+        // The same whole-object round trip update_canon makes, for the same reason. The canon is
+        // left out, which the endpoint reads as "keep it".
+        var row = await ConfigurationRowAsync(client, key, cancellationToken).ConfigureAwait(false);
+
+        var payload = JsonSerializer.Serialize(new
+        {
+            name = row.GetProperty("name").GetString(),
+            description = Text(row, "description"),
+            startingRoomKey = row.GetProperty("startingRoomKey").GetString(),
+            welcomeMessage = Text(row, "welcomeMessage"),
+            worldKeys = row.TryGetProperty("worldKeys", out var worlds)
+                    && worlds.ValueKind == JsonValueKind.Array
+                ? worlds.EnumerateArray().Select(w => w.GetString()).ToList()
+                : null,
+            startingKit = kit.Select(e => new { itemKey = e.ItemKey, count = e.Count }).ToList(),
+        });
+
+        // The server refuses an unknown item, a duplicate or a silly count, so anything wrong with
+        // the kit itself surfaces here as its error rather than being checked twice.
+        var saved = await client.SendAsync(
+            HttpMethod.Post,
+            $"/api/builder/configurations/{Uri.EscapeDataString(key)}",
+            payload,
+            cancellationToken).ConfigureAwait(false);
+
+        // Said after the save rather than refused before it: a kit item that can be dropped is a
+        // choice a world may make, and the author should hear about it rather than be stopped.
+        var templates = await client
+            .GetAsync("/api/builder/item-templates", cancellationToken)
+            .ConfigureAwait(false);
+
+        using var catalogue = JsonDocument.Parse(templates);
+
+        var wanted = kit.Select(e => e.ItemKey).ToHashSet(StringComparer.Ordinal);
+        var droppable = catalogue.RootElement.ValueKind == JsonValueKind.Array
+            ? catalogue.RootElement.EnumerateArray()
+                .Where(t => wanted.Contains(t.GetProperty("key").GetString() ?? string.Empty)
+                    && !(t.TryGetProperty("isNoDrop", out var noDrop) && noDrop.ValueKind == JsonValueKind.True))
+                .Select(t => t.GetProperty("key").GetString())
+                .ToList()
+            : [];
+
+        return droppable.Count == 0
+            ? saved
+            : saved + "\n\nNot no-drop, so a new character can sell these or give them away: "
+                + string.Join(", ", droppable);
+    }
+
+    /// <summary>One configuration row as the list endpoint returns it, or a refusal naming the key.</summary>
+    private static async Task<JsonElement> ConfigurationRowAsync(
+        BuilderClient client, string key, CancellationToken cancellationToken)
+    {
+        var list = await client
+            .GetAsync("/api/builder/configurations", cancellationToken)
+            .ConfigureAwait(false);
+
+        using var document = JsonDocument.Parse(list);
+
+        var row = document.RootElement.TryGetProperty("configurations", out var rows)
+            ? rows.EnumerateArray().FirstOrDefault(
+                c => string.Equals(c.GetProperty("key").GetString(), key, StringComparison.Ordinal))
+            : default;
+
+        if (row.ValueKind != JsonValueKind.Object)
+        {
+            throw new McpException(
+                $"No configuration '{key}'. list_content(kind: 'configuration') has the keys.");
+        }
+
+        return row.Clone();
     }
 
     private static string? Text(JsonElement row, string name) =>

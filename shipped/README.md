@@ -42,7 +42,7 @@ server starts with; editing the panel changes what a running one enforces.
 ## The format version
 
 **`formatVersion` must match the server exactly.** It is the one hard refusal in the whole import
-path. Author against `WorldBundle.CurrentFormatVersion` — these files are at **18** — not against
+path. Author against `WorldBundle.CurrentFormatVersion` — these files are at **19** — not against
 this sentence, which has been wrong twice; a test fails if it disagrees with
 `BundleFormat.CurrentVersion`. The same applies to any world bundle imported here, whichever
 repository it comes from.

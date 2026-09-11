@@ -82,11 +82,14 @@ question rather than fetch a row.
 | `set_exit` | Points an exit at a room, or removes it. States the whole exit, so a lock left out is a lock removed. |
 | `set_flag` | Sets one flag on a room, zone or world. Three states: true, false, or null to inherit. |
 | `update_canon` | Rewrites a configuration's canon, and nothing else about it. |
+| `set_starting_kit` | Sets what a new character is handed under a configuration, and nothing else about it. Names any kit item that is not no-drop. |
 
 A configuration's *settings* are not writable here — which one is active decides what the running
 server serves and what every new player is told, so the starting room, the welcome message and
-activation itself stay a person's business, and no tool wraps those endpoints. Its **canon** is the
-exception: `update_canon` rewrites that text and carries every other field across untouched.
+activation itself stay a person's business, and no tool wraps those endpoints. Its **canon** and its
+**starting kit** are the exceptions: `update_canon` and `set_starting_kit` each rewrite one field and
+carry every other across untouched. The kit is the one of the two a player notices - the next
+character made is handed it - so the tool names any kit item that is not no-drop.
 
 That exception exists because the first zone drafted through these tools found the canon
 contradicting the world it describes — it called for two or three paragraphs a room where all

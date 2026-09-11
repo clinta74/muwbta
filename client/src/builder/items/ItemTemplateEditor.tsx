@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import {
+  type AbilityEffectSpec,
   builderApi,
   CHARACTER_PATHS,
   ITEM_SLOTS,
@@ -18,6 +19,37 @@ import { OverflowMenu } from '../../ui/OverflowMenu'
 import { ConfirmDialog } from '../../ui/ConfirmDialog'
 import { useToast } from '../../ui/Toast'
 import { asNumber, OWNED_STAT_KEYS, STAT_GROUPS } from './stats'
+
+/**
+ * Effects as typed: one per line, the effect key and then its settings as name=value -
+ * `heal.restore healPercent=40`, or `resource.restore resource=Stamina amount=25`.
+ */
+function parseEffects(text: string): { effects: AbilityEffectSpec[]; error: string | null } {
+  const effects: AbilityEffectSpec[] = []
+  for (const raw of text.split('\n')) {
+    const [key, ...settings] = raw.trim().split(/\s+/)
+    if (!key) continue
+    if (!/^[a-z]+\.[a-z-]+$/.test(key)) {
+      return { effects, error: `"${key}" is not an effect key, like heal.restore.` }
+    }
+    const params: Record<string, string> = {}
+    for (const setting of settings) {
+      const at = setting.indexOf('=')
+      if (at <= 0) return { effects, error: `"${setting}" should be name=value.` }
+      params[setting.slice(0, at)] = setting.slice(at + 1)
+    }
+    effects.push({ key, params })
+  }
+  return { effects, error: null }
+}
+
+function effectsToText(effects: AbilityEffectSpec[]): string {
+  return effects
+    .map((e) =>
+      [e.key, ...Object.entries(e.params ?? {}).map(([name, value]) => `${name}=${value}`)].join(' '),
+    )
+    .join('\n')
+}
 
 interface Props {
   templateKey: string
@@ -50,6 +82,8 @@ export function ItemTemplateEditor({ templateKey, onChanged, onDeleted }: Props)
   const [isLightSource, setIsLightSource] = useState(false)
   const [foodValue, setFoodValue] = useState('')
   const [drinkValue, setDrinkValue] = useState('')
+  const [useEffectsText, setUseEffectsText] = useState('')
+  const [useCooldownPulses, setUseCooldownPulses] = useState<number | null>(null)
   const [paths, setPaths] = useState<CharacterPath[]>([])
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -86,6 +120,8 @@ export function ItemTemplateEditor({ templateKey, onChanged, onDeleted }: Props)
         setIsLightSource(loaded.isLightSource)
         setFoodValue(loaded.foodValue?.toString() ?? '')
         setDrinkValue(loaded.drinkValue?.toString() ?? '')
+        setUseEffectsText(effectsToText(loaded.useEffects ?? []))
+        setUseCooldownPulses(loaded.useCooldownPulses ?? null)
         // Ordered to CHARACTER_PATHS rather than to whatever came back, so the checkboxes and the
         // saved list agree and a save with nothing changed is not a change.
         setPaths(CHARACTER_PATHS.filter((p) => (loaded.paths ?? []).includes(p)))
@@ -100,6 +136,12 @@ export function ItemTemplateEditor({ templateKey, onChanged, onDeleted }: Props)
   }, [templateKey])
 
   async function save() {
+    const parsedEffects = parseEffects(useEffectsText)
+    if (parsedEffects.error) {
+      setError(parsedEffects.error)
+      return
+    }
+
     setBusy(true)
     setError(null)
     try {
@@ -122,6 +164,8 @@ export function ItemTemplateEditor({ templateKey, onChanged, onDeleted }: Props)
         // apart and `eat` refuses anything without a value.
         foodValue: foodValue.trim() === '' ? null : Number(foodValue),
         drinkValue: drinkValue.trim() === '' ? null : Number(drinkValue),
+        useEffects: parsedEffects.effects,
+        useCooldownPulses,
         paths,
       })
       setTemplate(updated)
@@ -455,6 +499,37 @@ export function ItemTemplateEditor({ templateKey, onChanged, onDeleted }: Props)
             Eating or drinking consumes the item. Hunger and thirst run 0 to 100, so a value of 30
             is about a third of a full belly. A thing can be both — a stew, an ale.
           </p>
+        )}
+
+        <Field
+          label="Effects when consumed"
+          hint="What eating or drinking this does besides filling a need - one effect per line, then its settings: heal.restore healPercent=40, or resource.restore resource=Stamina amount=25. A potion is a drink with an effect, so give it a drink value too. Harmless effects only."
+        >
+          <Textarea
+            rows={3}
+            value={useEffectsText}
+            onChange={(value) => {
+              setUseEffectsText(value)
+              touch()
+            }}
+          />
+        </Field>
+
+        {useEffectsText.trim() !== '' && (
+          <Field
+            label="Wait before another"
+            width="sm"
+            hint="Seconds. Every consumable with effects shares one timer; blank is the server's 30."
+          >
+            <OptionalSecondsInput
+              pulses={useCooldownPulses}
+              aria-label="Wait before another (seconds)"
+              onChange={(pulses) => {
+                setUseCooldownPulses(pulses)
+                touch()
+              }}
+            />
+          </Field>
         )}
 
         <Field

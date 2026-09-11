@@ -243,7 +243,7 @@ public static class AssistSchema
             "The builder decides what the item is; the model describes it.",
             "Key", "Icon", "Slots", "IsTwoHanded", "Weight", "BaseValue", "BaseStats",
             "AttackDelayPulses", "AttackVerb", "IsQuestItem", "IsLore", "IsNoDrop",
-            "IsLightSource", "FoodValue", "DrinkValue", "Paths");
+            "IsLightSource", "FoodValue", "DrinkValue", "Paths", "UseEffects", "UseCooldownPulses");
 
     /// <summary>
     /// A quest's shape is referential, which is exactly what a per-entity grammar cannot check.

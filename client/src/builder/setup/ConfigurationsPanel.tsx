@@ -3,6 +3,7 @@ import {
   builderApi,
   type GameConfiguration,
   type GameConfigurationList,
+  type StartingKitItem,
   type WorldSummary,
 } from '../../net/builderApi'
 import { Button } from '../../ui/Button'
@@ -23,6 +24,27 @@ function isValidRoomKey(key: string): boolean {
   return /^[a-z0-9][a-z0-9-]*(\.[a-z0-9][a-z0-9-]*){2}$/.test(key)
 }
 
+/**
+ * A kit as typed: one item key per line, with a count when it is more than one - `bread x2`, or
+ * `bread 2`. Plain text rather than a row editor, because a kit is a handful of lines and a
+ * builder copying one between configurations should be able to paste it.
+ */
+function parseKit(text: string): { kit: StartingKitItem[]; error: string | null } {
+  const kit: StartingKitItem[] = []
+  for (const raw of text.split('\n')) {
+    const line = raw.trim()
+    if (line === '') continue
+    const match = /^([a-z0-9][a-z0-9-]*)(?:\s+x?\s*(\d+))?$/i.exec(line)
+    if (!match) return { kit, error: `"${line}" is not an item key, or a key and a count.` }
+    kit.push({ itemKey: match[1], count: match[2] ? Number(match[2]) : 1 })
+  }
+  return { kit, error: null }
+}
+
+function kitToText(kit: StartingKitItem[]): string {
+  return kit.map((k) => (k.count === 1 ? k.itemKey : `${k.itemKey} x${k.count}`)).join('\n')
+}
+
 interface Draft {
   key: string
   name: string
@@ -31,12 +53,14 @@ interface Draft {
   welcomeMessage: string
   canon: string
   worldKeys: string[]
+  /** The starting kit as typed; see parseKit. */
+  kitText: string
   /** False for a new one, so the key field is editable exactly once. */
   existing: boolean
 }
 
 function draftOf(configuration: GameConfiguration): Draft {
-  return { ...configuration, existing: true }
+  return { ...configuration, kitText: kitToText(configuration.startingKit), existing: true }
 }
 
 const BLANK: Draft = {
@@ -47,6 +71,7 @@ const BLANK: Draft = {
   welcomeMessage: 'Welcome back, {name}.',
   canon: '',
   worldKeys: [],
+  kitText: '',
   existing: false,
 }
 
@@ -99,12 +124,16 @@ export function ConfigurationsPanel({ list, onChanged }: Props) {
       ? 'Three dot-separated segments — e.g. ossara.gatetown.the-gate-yard.'
       : null
 
+  const kitParse = parseKit(draft?.kitText ?? '')
+  const kitError = draft ? kitParse.error : null
+
   const canSave =
     draft !== null &&
     draft.key !== '' &&
     draft.name.trim() !== '' &&
     keyError === null &&
     roomError === null &&
+    kitError === null &&
     draft.startingRoomKey !== ''
 
   /**
@@ -158,6 +187,7 @@ export function ConfigurationsPanel({ list, onChanged }: Props) {
         welcomeMessage: draft.welcomeMessage,
         canon: draft.canon,
         worldKeys: draft.worldKeys,
+        startingKit: kitParse.kit,
       })
       toast.notify(draft.existing ? 'Configuration saved.' : 'Configuration created.')
       setDraft(null)
@@ -238,6 +268,15 @@ export function ConfigurationsPanel({ list, onChanged }: Props) {
               </p>
 
               <p className="dim">{configuration.welcomeMessage}</p>
+
+              {configuration.startingKit.length > 0 && (
+                <p className="dim">
+                  Kit:{' '}
+                  {configuration.startingKit
+                    .map((k) => (k.count === 1 ? k.itemKey : `${k.itemKey} ×${k.count}`))
+                    .join(', ')}
+                </p>
+              )}
 
               {configuration.worldKeys.length > 0 && (
                 <p className="dim">
@@ -351,6 +390,18 @@ export function ConfigurationsPanel({ list, onChanged }: Props) {
               rows={2}
               value={draft.welcomeMessage}
               onChange={(value) => setDraft({ ...draft, welcomeMessage: value })}
+            />
+          </Field>
+
+          <Field
+            label="Starting kit"
+            error={kitError}
+            hint="What a new character is handed, once, into the pack: one item key per line, with a count when it is more than one - bread x2. Kit items should be no-drop, or making a character becomes a way to mint things to sell."
+          >
+            <Textarea
+              rows={4}
+              value={draft.kitText}
+              onChange={(value) => setDraft({ ...draft, kitText: value })}
             />
           </Field>
 

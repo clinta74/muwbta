@@ -41,6 +41,12 @@ public sealed class GameConfiguration
     /// </summary>
     public const int MaxCanonLength = 262_144;
 
+    /// <summary>How many different things a starting kit may name.</summary>
+    public const int MaxStartingKitEntries = 20;
+
+    /// <summary>How many of any one thing a starting kit may hand out.</summary>
+    public const int MaxStartingKitCount = 20;
+
     /// <summary>What <see cref="WelcomeMessage"/> substitutes for the character's name.</summary>
     public const string NameToken = "{name}";
 
@@ -125,6 +131,31 @@ public sealed class GameConfiguration
     public List<string> WorldKeys { get; set; } = [];
 
     /// <summary>
+    /// What a character created while this configuration is live is handed: item template keys,
+    /// and how many of each. Empty hands out nothing.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>On the configuration, because a kit belongs to a world.</b> A torch and a hunk of bread
+    /// are Aldenmoor; a billhook and a waterskin are the Terraces. The engine cannot know which
+    /// items a world has, let alone which fit it, so the answer lives beside the starting room,
+    /// which is the other half of "what does a new player meet".
+    /// </para>
+    /// <para>
+    /// <b>Given once, at creation, into the pack.</b> Nothing is equipped for them: wearing is a
+    /// verb every player learns in the first minute, and equipping here would mean a second copy of
+    /// the slot, Path and two-hand rules the engine already enforces. Characters that already exist
+    /// are never given a kit retroactively - changing it changes what the next one gets.
+    /// </para>
+    /// <para>
+    /// <b>Kit items should be no-drop.</b> Nothing enforces it, because a world may want a starter
+    /// loaf a player can share; but a kit that can be sold or handed on turns making a character into
+    /// a way to mint things, and the validator and the MCP tool both say so.
+    /// </para>
+    /// </remarks>
+    public List<StartingKitItem> StartingKit { get; set; } = [];
+
+    /// <summary>
     /// Whether this is the one the running server uses. Exactly one row may have it.
     /// </summary>
     /// <remarks>
@@ -163,3 +194,8 @@ public sealed class GameConfiguration
         (string.IsNullOrWhiteSpace(template) ? DefaultWelcomeMessage : template)
             .Replace(NameToken, characterName, StringComparison.Ordinal);
 }
+
+/// <summary>One line of a starting kit: which item, and how many.</summary>
+/// <param name="ItemKey">An item template key.</param>
+/// <param name="Count">How many; one when not said.</param>
+public sealed record StartingKitItem(string ItemKey, int Count = 1);

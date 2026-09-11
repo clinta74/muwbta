@@ -1,12 +1,14 @@
+using Muwbta.Domain.Abilities.Effects;
 using Muwbta.Domain.Characters;
 using Muwbta.Domain.Items;
 using Muwbta.Domain.Narration;
 using Muwbta.Engine.Quests;
+using Muwbta.Engine.Time;
 
 namespace Muwbta.Engine.Commands;
 
 /// <summary>
-/// <c>eat</c> and <c>drink</c> — the first verbs in the game that consume an item.
+/// <c>eat</c>, <c>drink</c> and <c>quaff</c> — the verbs that consume an item.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -21,9 +23,18 @@ namespace Muwbta.Engine.Commands;
 /// So an item that is both a key and a drink can now be swallowed — which is a content question
 /// rather than a code one, and the answer is to author the drink separately from the container.
 /// </para>
+/// <para>
+/// <b>A potion is a drink with effects</b> (<see cref="ItemTemplate.UseEffects"/>), run through the
+/// executors abilities use - a healing draught is <c>heal.restore</c> in a bottle. Every one shares a
+/// single timer, and a stunned character cannot drink one. Allowed in a fight, because that is where
+/// a draught earns its price; the timer is what stops a pack of them making a fight with no end.
+/// </para>
 /// </remarks>
 public static class NutritionCommands
 {
+    /// <summary>The executors a consumable's effects run through - the ones abilities use.</summary>
+    private static readonly EffectRegistry Effects = new();
+
     public static void Register(List<CommandDefinition> commands)
     {
         ArgumentNullException.ThrowIfNull(commands);
@@ -33,6 +44,10 @@ public static class NutritionCommands
 
         commands.Add(new CommandDefinition(
             "drink", 3, "drink <item> - drink something, if it is drink", Drink));
+
+        // The word people reach for with a potion in their hand. The same verb underneath.
+        commands.Add(new CommandDefinition(
+            "quaff", 3, "quaff <item> - drink something down, a draught or a tonic", Drink));
     }
 
     private static void Eat(CommandContext ctx) => Consume(
@@ -115,17 +130,58 @@ public static class NutritionCommands
             return;
         }
 
-        var vitals = ctx.Actor.Character.Vitals;
+        var character = ctx.Actor.Character;
+        var vitals = character.Vitals;
+        var effects = template.UseEffects;
+        var now = ctx.Clock?.CurrentPulse ?? 0L;
+
+        // A draught is something you do, so a stun stops it the way it stops a cast. Plain bread is
+        // not held to that: nobody is so stunned they cannot chew.
+        if (effects.Count > 0)
+        {
+            if (ctx.World.IsStunned(character.Id, now))
+            {
+                ctx.Reply("You cannot gather yourself.", "bad");
+                return;
+            }
+
+            if (StillWaiting(ctx, character.Id, template, now) is { } wait)
+            {
+                ctx.Reply(wait, "bad");
+                return;
+            }
+        }
+
+        var full = alreadyFull(vitals);
 
         // Refused rather than wasted. Taking the item and giving nothing back is the shape of a bug
-        // even when it is the rule, and the player cannot see the number they are already at.
-        if (alreadyFull(vitals))
+        // even when it is the rule, and the player cannot see the number they are already at. A
+        // draught is only wasted when the need is met *and* every bar is already full.
+        if (full && (effects.Count == 0 || AtBest(vitals)))
         {
-            ctx.Reply(nothingLeft, "bad");
+            ctx.Reply(effects.Count > 0 ? "You are already at your best." : nothingLeft, "bad");
             return;
         }
 
-        answer(vitals, value);
+        if (!full)
+        {
+            answer(vitals, value);
+        }
+
+        var before = (vitals.Health, vitals.Focus, vitals.Stamina);
+
+        foreach (var effect in effects)
+        {
+            if (!string.IsNullOrEmpty(effect.Key) && Effects.Get(effect.Key) is { } executor)
+            {
+                executor.Apply(character, character, effect.Params ?? [], ctx.World.Random);
+            }
+        }
+
+        if (effects.Count > 0)
+        {
+            ctx.World.SetAbilityCooldown(character.Id, ItemTemplate.UseCooldownKey, now);
+        }
 
         // Out of the world and out of storage. Removing it in memory alone hands it back on the
         // next load - the comment destroy carries, for the same reason.
@@ -134,6 +190,11 @@ public static class NutritionCommands
 
         ctx.Reply($"You {past} {article}.", "good");
         ctx.BroadcastSight($"{ctx.Actor.Name} {past}s {article}.", "movement");
+
+        if (effects.Count > 0)
+        {
+            ctx.Reply(Restored(before, vitals), "good");
+        }
 
         var remaining = verb == "eat"
             ? Needs.DescribeHunger(vitals.Hunger)
@@ -144,6 +205,55 @@ public static class NutritionCommands
         {
             ctx.Reply($"You are still {remaining}.", "bad");
         }
+    }
+
+    /// <summary>How long before another consumable with effects, or null when there is no wait.</summary>
+    private static string? StillWaiting(CommandContext ctx, Guid characterId, ItemTemplate template, long now)
+    {
+        if (ctx.World.GetAbilityCooldown(characterId, ItemTemplate.UseCooldownKey) is not { } last)
+        {
+            return null;
+        }
+
+        var left = last + (template.UseCooldownPulses ?? ItemTemplate.DefaultUseCooldownPulses) - now;
+
+        if (left <= 0)
+        {
+            return null;
+        }
+
+        var seconds = (int)Math.Ceiling(left * GameTiming.PulseInterval.TotalSeconds);
+        return $"You could not keep another down yet. Give it {seconds} more second{(seconds == 1 ? "" : "s")}.";
+    }
+
+    private static bool AtBest(Vitals vitals) =>
+        vitals.Health >= vitals.HealthMax
+        && vitals.Focus >= vitals.FocusMax
+        && vitals.Stamina >= vitals.StaminaMax;
+
+    /// <summary>What the effects gave back, in numbers, because "you feel better" says nothing.</summary>
+    private static string Restored((int Health, int Focus, int Stamina) before, Vitals after)
+    {
+        var gains = new List<string>();
+
+        if (after.Health > before.Health)
+        {
+            gains.Add($"+{after.Health - before.Health} health");
+        }
+
+        if (after.Focus > before.Focus)
+        {
+            gains.Add($"+{after.Focus - before.Focus} focus");
+        }
+
+        if (after.Stamina > before.Stamina)
+        {
+            gains.Add($"+{after.Stamina - before.Stamina} stamina");
+        }
+
+        return gains.Count == 0
+            ? "Nothing seems to happen."
+            : $"You feel it take hold: {string.Join(", ", gains)}.";
     }
 
     private static string Capitalise(string value) =>

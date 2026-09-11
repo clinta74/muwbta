@@ -271,6 +271,7 @@ grows, and the REST surface is shaped for a React client that already knows the 
 | `set_flag` | `PUT /{rooms,zones,worlds}/{key}/flags/{flag}` — the three-state route the editor uses |
 | `find_rooms` | the zone room lists, projected to one flag's resolved value and its source |
 | `update_canon` | `POST /configurations/{key}`, canon only — every other field carried across |
+| `set_starting_kit` | `POST /configurations/{key}`, starting kit only — every other field carried across |
 | `validate_zone` | `/zones/{key}/validate` + `/unfinished` + `/storyline`, merged — the agent wants "what is wrong here", not three calls |
 | `spawn_preview` | `/zones/{key}/preview` |
 | `check_quest` | `/quests/{key}/reachability` |

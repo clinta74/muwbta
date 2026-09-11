@@ -58,6 +58,7 @@ public sealed class ChangeRecordCompletenessTests
         ["applier:UpsertGameConfiguration.Description"] = "presentation only",
         ["writer:UpsertGameConfiguration.Live"] = "IsActive moves only through activation",
         ["applier:UpsertGameConfiguration.WorldKeys"] = "which worlds a configuration owns is export scope, not loop state",
+        ["applier:UpsertGameConfiguration.StartingKit"] = "a kit is read from the row when a character is made, which the loop never sees",
     };
 
     private static string Source(params string[] parts) =>
@@ -100,7 +101,8 @@ public sealed class ChangeRecordCompletenessTests
             var text = current.ToString().Trim();
             if (text.Length > 0)
             {
-                fields.Add(text.Split(' ', StringSplitOptions.RemoveEmptyEntries)[^1]);
+                // Before any default: `List<T>? Kit = null` is the field Kit, not the field null.
+                fields.Add(text.Split('=')[0].Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries)[^1]);
             }
 
             current.Clear();
