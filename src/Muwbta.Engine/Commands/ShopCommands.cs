@@ -149,6 +149,13 @@ public static class ShopCommands
     /// </remarks>
     private static void AppendComparison(CommandContext ctx, ItemTemplate stock)
     {
+        // A draught has no slot and no stats, and what it does is the whole reason to buy it - so
+        // it is the one item without numbers that the listing does not stay quiet about.
+        if (ItemUse.EffectsProse(stock) is { } effects)
+        {
+            ctx.Reply($"    {(stock.DrinkValue is > 0 ? "drink" : "eat")}: {effects}", "dim");
+        }
+
         var stats = ItemStatLine.For(stock.BaseStats);
         var slots = SlotRules.Normalize(stock.Slots);
 

@@ -1,3 +1,4 @@
+using Muwbta.Domain.Abilities;
 using Muwbta.Domain.Items;
 using Muwbta.Domain.Worlds;
 using Muwbta.Engine.Tests.Infrastructure;
@@ -206,5 +207,46 @@ public sealed class ItemStatDisplayTests
         Assert.Contains("a coil of rope", said, StringComparison.Ordinal);
         Assert.DoesNotContain("nothing there", said, StringComparison.Ordinal);
         Assert.DoesNotContain("Against your", said, StringComparison.Ordinal);
+    }
+
+    // -----------------------------------------------------------------------
+    // draughts: what drinking one does
+    // -----------------------------------------------------------------------
+
+    private static Domain.Items.ItemTemplate Tonic(WorldHarness harness)
+    {
+        var tonic = harness.DefineItem("tonic", "a stamina tonic", slot: null, drinkValue: 1);
+        tonic.UseEffects =
+        [
+            new AbilityEffectSpec("resource.restore", new Dictionary<string, string>
+            {
+                ["resource"] = "Stamina",
+                ["amount"] = "25",
+            }),
+        ];
+        return tonic;
+    }
+
+    [Fact]
+    public void Examining_a_draught_says_what_drinking_it_does()
+    {
+        var (harness, player) = Ready();
+        harness.GiveItem(player, Tonic(harness));
+
+        var said = Run(harness, player, "examine tonic");
+
+        Assert.Contains("Drinking it restores 25 stamina to you", said, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_shop_says_what_a_draught_does()
+    {
+        var (harness, player) = Ready();
+        Tonic(harness);
+        AddShopkeeper(harness, "tonic");
+
+        var said = Run(harness, player, "list");
+
+        Assert.Contains("drink: restores 25 stamina to you", said, StringComparison.Ordinal);
     }
 }

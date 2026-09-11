@@ -593,6 +593,13 @@ public sealed class CommandRegistry
 
         spans.Add(new TextSpan($"\n{UsageProse(template)}", "dim"));
 
+        // Something eaten or drunk says which, and what it does - a draught used to examine as
+        // only "It isn't something you can wear or wield", which is true and no help at all.
+        if (ItemUse.Describe(template) is { } consumed)
+        {
+            spans.Add(new TextSpan($"\n{consumed}", "dim"));
+        }
+
         if (ItemState.IsQuestItem(item))
         {
             // Which of the two it is, because they are different situations for the player.
