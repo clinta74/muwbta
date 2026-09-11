@@ -773,6 +773,49 @@ public sealed class BundleValidatorTests
             Dialogue: dialogue, SortOrder: 0);
 
     // -----------------------------------------------------------------------
+    // Quest summaries name their items
+    // -----------------------------------------------------------------------
+
+    private static WorldBundle LensBlankQuest(string summary)
+    {
+        var bundle = Valid();
+
+        return bundle with
+        {
+            ItemTemplates = [Item("azhen-lens-blank") with { Name = "a lens blank" }],
+            Quests =
+            [
+                Quest("a3-3", new Dictionary<string, string>())
+                    with { Summary = summary, RequiredItemKey = "azhen-lens-blank" },
+            ],
+        };
+    }
+
+    /// <summary>
+    /// A summary that asks for something the player cannot type back is worth a warning.
+    /// </summary>
+    /// <remarks>
+    /// The case playtesting found: the quest asked for "the last reading" and wanted a lens blank.
+    /// </remarks>
+    [Fact]
+    public void A_summary_that_never_names_its_item_is_a_warning()
+    {
+        var check = Check(LensBlankQuest("Take the last reading from the Last Reader."));
+
+        Assert.Contains(check.Warnings, w => w.Message.Contains("never names its item", StringComparison.Ordinal));
+    }
+
+    [Theory]
+    [InlineData("Take the lens blank from the Last Reader's seat.")]
+    [InlineData("Bring Vane six lens blanks.")]
+    public void A_summary_that_names_its_item_is_not(string summary)
+    {
+        var check = Check(LensBlankQuest(summary));
+
+        Assert.DoesNotContain(check.Warnings, w => w.Message.Contains("never names its item", StringComparison.Ordinal));
+    }
+
+    // -----------------------------------------------------------------------
     // Terrain
     // -----------------------------------------------------------------------
 

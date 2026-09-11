@@ -919,8 +919,20 @@ public static class BundleValidator
         Action<string> error,
         Action<string> warn)
     {
+        var itemNames = bundle.ItemTemplates
+            .GroupBy(i => i.Key, StringComparer.Ordinal)
+            .ToDictionary(g => g.Key, g => g.First().Name, StringComparer.Ordinal);
+
         foreach (var quest in bundle.Quests)
         {
+            if (!string.IsNullOrEmpty(quest.RequiredItemKey)
+                && itemNames.TryGetValue(quest.RequiredItemKey, out var itemName)
+                && !SummaryNames(quest.Summary, itemName))
+            {
+                warn($"quest {quest.Key}'s summary never names its item, {itemName}, "
+                    + "in a word a player could type");
+            }
+
             foreach (var (value, known, label) in new[]
             {
                 (quest.GiverMobKey, mobs, "giver"),
@@ -958,6 +970,30 @@ public static class BundleValidator
 
         CheckOfferKeywords(bundle, error);
     }
+
+    /// <summary>Words too common to count as naming anything.</summary>
+    private static readonly HashSet<string> SummaryFillers = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "a", "an", "the", "of", "from", "to", "and", "in", "on", "for", "with", "your", "their",
+    };
+
+    /// <summary>
+    /// Whether a quest's summary names its item in a word the player could type back.
+    /// </summary>
+    /// <remarks>
+    /// <b>A warning, from playtesting.</b> The summary is the one line a player can always re-read
+    /// in <c>quests</c>, and the dialogue around it is the giver talking, who may call a thing
+    /// anything. Thirty of thirty-seven quests in the Reaches used a different word for the item
+    /// than its name, and two asked for "the gold" and "the last reading" when the player had to
+    /// bring "the first mark" and "a lens blank". A word or its plural counts, so "six drive cogs"
+    /// names "a drive cog"; a prefix does not, and neither do the filler words every name shares.
+    /// </remarks>
+    private static bool SummaryNames(string? summary, string itemName) =>
+        (summary ?? string.Empty)
+            .Split(' ', StringSplitOptions.RemoveEmptyEntries)
+            .Select(word => new string([.. word.Where(c => char.IsLetterOrDigit(c) || c == '-')]))
+            .Where(word => word.Length > 0 && !SummaryFillers.Contains(word))
+            .Any(word => NameMatch.NamesAWordOf(word, itemName));
 
     /// <summary>
     /// Two quests one giver could offer at the same time must not answer to the same words.

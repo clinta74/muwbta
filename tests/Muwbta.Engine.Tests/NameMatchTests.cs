@@ -29,6 +29,58 @@ public sealed class NameMatchTests
         Assert.True(NameMatch.Matches(typed, "old coin", "old-coin"));
     }
 
+    /// <summary>
+    /// A plural reaches the singular it names. Quests ask for "eight crew tags" and the item is
+    /// "a crew tag"; playtesting found <c>give tags</c> failing on every multi-item quest there is.
+    /// </summary>
+    [Theory]
+    [InlineData("tags", "a crew tag")]
+    [InlineData("markers", "a fallen road marker")]
+    [InlineData("pages", "a page of the daily office")]
+    [InlineData("leaves", "a leaf from the deep ledger")]
+    [InlineData("knives", "a skinning knife")]
+    [InlineData("boxes", "a tinder box")]
+    [InlineData("berries", "a bramble berry")]
+    [InlineData("TAGS", "a crew tag")]
+    public void A_plural_answers_for_its_singular(string typed, string name)
+    {
+        Assert.True(NameMatch.Matches(typed, name, key: null));
+    }
+
+    /// <summary>
+    /// The plural is a fallback, so a name that really does end in s is found as typed and
+    /// ranks as it always did.
+    /// </summary>
+    [Fact]
+    public void A_name_that_ends_in_s_is_still_matched_as_typed()
+    {
+        var things = new[]
+        {
+            new Thing("a pair of quiet wraps", "wraps"),
+            new Thing("a wrap", "wrap"),
+        };
+
+        Assert.Equal("wraps", Best(things, "wraps")?.Key);
+    }
+
+    /// <summary>And a plural never turns into a match on a word the name does not have.</summary>
+    [Theory]
+    [InlineData("glass", "a glass lens")]
+    [InlineData("cogs", "a drive cog")]
+    public void Names_a_word_of_counts_whole_words_and_plurals(string typed, string name)
+    {
+        Assert.True(NameMatch.NamesAWordOf(typed, name));
+    }
+
+    [Theory]
+    [InlineData("gold", "the first mark")]
+    [InlineData("dri", "a drive cog")]
+    [InlineData("stones", "a fallen road marker")]
+    public void Names_a_word_of_refuses_prefixes_and_strangers(string typed, string name)
+    {
+        Assert.False(NameMatch.NamesAWordOf(typed, name));
+    }
+
     [Theory]
     [InlineData("crown")]
     [InlineData("x")]

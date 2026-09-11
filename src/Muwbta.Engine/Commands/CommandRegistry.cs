@@ -1332,7 +1332,10 @@ public sealed class CommandRegistry
         var inventory = ctx.World.InventoryOf(ctx.Actor.CharacterId);
         var (itemName, targetName) = SplitGive(ctx, parts, inventory);
 
-        var targetItem = FindItemByName(inventory, itemName);
+        // Someone waiting on a quest item gets that item, even when something else carried
+        // answers to the same word first.
+        var targetItem = QuestCommands.TurnInItemFor(ctx, inventory, itemName, targetName)
+            ?? FindItemByName(inventory, itemName);
 
         if (targetItem is null)
         {

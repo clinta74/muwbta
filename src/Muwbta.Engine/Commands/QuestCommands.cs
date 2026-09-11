@@ -1,6 +1,7 @@
 using System.Text.RegularExpressions;
 using Muwbta.Domain.Characters;
 using Muwbta.Domain.Inhabitants;
+using Muwbta.Domain.Items;
 using Muwbta.Domain.Narration;
 using Muwbta.Domain.Quests;
 using Muwbta.Domain.Worlds;
@@ -565,6 +566,7 @@ public static class QuestCommands
                 // asked again later, which is what makes coming back a way to remember the job.
                 ctx.Reply(Instruction(quest));
                 ctx.Reply($"You take on {quest.Name}.", "good");
+                ReplyNeeds(ctx, quest);
                 return;
             }
         }
@@ -921,7 +923,15 @@ public static class QuestCommands
                 var dormant = questDef is not null && IsDormant(ctx, questDef);
                 var suffix = dormant ? " (unavailable — content missing)" : string.Empty;
 
-                ctx.Reply($"  {questDef?.Name ?? quest.QuestKey}: {summary}{suffix}");
+                // The count and the item's own name beside the summary, so the journal answers
+                // "what am I carrying this for" without a second command. The summary is prose
+                // and may call the thing what the giver calls it; this is the name in the pack.
+                var progress = !dormant && !string.IsNullOrEmpty(questDef?.RequiredItemKey)
+                    ? $" ({Carried(ctx, character.Id, questDef.RequiredItemKey)}/{questDef.RequiredCount} "
+                        + $"{ItemName(ctx, questDef.RequiredItemKey)})"
+                    : string.Empty;
+
+                ctx.Reply($"  {questDef?.Name ?? quest.QuestKey}: {summary}{progress}{suffix}");
             }
         }
 
@@ -1041,6 +1051,68 @@ public static class QuestCommands
 
     }
 
+    /// <summary>What a quest wants brought, by the name the player will see in their pack.</summary>
+    /// <remarks>
+    /// Said when the quest is taken on, because the offer and the instruction are the giver talking,
+    /// and a giver may call a thing whatever they like. Playtesting found offers that never named
+    /// the item at all, so a player could take on a job without being told what to fetch.
+    /// </remarks>
+    private static void ReplyNeeds(CommandContext ctx, Quest quest)
+    {
+        if (!string.IsNullOrEmpty(quest.RequiredItemKey))
+        {
+            ctx.Reply($"You will need {Quantity(ctx, quest.RequiredItemKey, quest.RequiredCount)}.");
+        }
+    }
+
+    /// <summary>How many of an item this character is carrying.</summary>
+    private static int Carried(CommandContext ctx, Guid characterId, string itemKey) =>
+        ctx.World.InventoryOf(characterId)
+            .Count(i => i.TemplateKey.Equals(itemKey, StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>
+    /// The item a <c>give</c> to a quest's turn-in means, when more than one thing carried answers
+    /// to the word. Null when the target takes in nothing this character is fetching.
+    /// </summary>
+    /// <remarks>
+    /// <b>The quest wins a tie.</b> A vigil token, a debt token and a gate-shrine token all answer
+    /// to "token", and the pack's order used to decide which one <c>give token aveth</c> meant - so
+    /// a player holding the right item could hand over the wrong one as a gift, to someone who had
+    /// just asked for the right one. Only the items an active quest of this turn-in wants are
+    /// considered, so this never changes which item a give to anybody else picks.
+    /// </remarks>
+    public static ItemInstance? TurnInItemFor(
+        CommandContext ctx, IEnumerable<ItemInstance> inventory, string itemName, string npcName)
+    {
+        if (ctx.Quests is not { IsLoaded: true })
+        {
+            return null;
+        }
+
+        var character = ctx.Actor.Character;
+        var mob = NameMatch.Best(
+            ctx.World.MobsIn(character.RoomKey), npcName, m => m.TemplateName, m => m.TemplateKey);
+
+        if (mob is null)
+        {
+            return null;
+        }
+
+        var wanted = ctx.Quests.GetByTurninMobKey(mob.TemplateKey)
+            .Where(q => !string.IsNullOrEmpty(q.RequiredItemKey)
+                && ctx.World.GetQuestState(character.Id, q.Key)?.Status == QuestStatus.Active)
+            .Select(q => q.RequiredItemKey!)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        return wanted.Count == 0
+            ? null
+            : NameMatch.Best(
+                inventory.Where(i => wanted.Contains(i.TemplateKey)),
+                itemName,
+                i => i.TemplateName,
+                i => i.TemplateKey);
+    }
+
     /// <summary>What to actually do: the same line the giver repeats when asked again later.</summary>
     private static string Instruction(Quest quest) =>
         quest.Dialogue.TryGetValue(QuestDialogue.GiverInProgress, out var inProgress)
@@ -1095,6 +1167,7 @@ public static class QuestCommands
             {
                 Begin(ctx, characterId, next, timesCompleted: 0);
                 ctx.Reply(QuestOffer.Plain(OfferText(next)));
+                ReplyNeeds(ctx, next);
                 continue;
             }
 
@@ -1110,6 +1183,7 @@ public static class QuestCommands
 
             Begin(ctx, characterId, next, state.TimesCompleted);
             ctx.Reply(QuestOffer.Plain(OfferText(next)));
+            ReplyNeeds(ctx, next);
         }
     }
 
@@ -1253,8 +1327,7 @@ public static class QuestCommands
         // (BUGS.md #16).
         if (questState.Status == QuestStatus.Active && !string.IsNullOrEmpty(questDef.RequiredItemKey))
         {
-            var inventory = ctx.World.InventoryOf(character.Id);
-            var count = inventory.Count(i => i.TemplateKey.Equals(questDef.RequiredItemKey, StringComparison.OrdinalIgnoreCase));
+            var count = Carried(ctx, character.Id, questDef.RequiredItemKey);
             ctx.Reply($"Progress: {count}/{questDef.RequiredCount} — {ItemName(ctx, questDef.RequiredItemKey)}");
         }
         else if (questState.Status == QuestStatus.Active)

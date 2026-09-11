@@ -30,13 +30,24 @@ public static class NameMatch
             return null;
         }
 
-        var rank = RankOf(needle, name, key);
+        var rank = RankOfAnyForm(needle, name, key);
         return rank == NoMatch ? null : rank;
     }
 
     /// <summary>True when what was typed identifies this thing at all.</summary>
     public static bool Matches(string? typed, string? name, string? key) =>
         Rank(typed, name, key) is not null;
+
+    /// <summary>
+    /// True when what was typed is one of the words of <paramref name="name"/>, or the plural of
+    /// one: not a prefix, and not the key.
+    /// </summary>
+    /// <remarks>
+    /// The question a quest summary is asked (<c>BundleValidator</c>): does the sentence a player
+    /// reads name the thing they are meant to bring, in words they could type back?
+    /// </remarks>
+    public static bool NamesAWordOf(string? typed, string? name) =>
+        RankOfAnyForm(typed?.Trim(), name, key: null) is 0 or 2 or 4;
 
     /// <summary>
     /// The best match in <paramref name="candidates"/>, or null when nothing answers to it.
@@ -70,7 +81,7 @@ public static class NameMatch
 
         foreach (var candidate in candidates)
         {
-            var rank = RankOf(needle, name(candidate), key(candidate));
+            var rank = RankOfAnyForm(needle, name(candidate), key(candidate));
             if (rank < bestRank)
             {
                 best = candidate;
@@ -121,12 +132,71 @@ public static class NameMatch
         // "(2)" in the room listing and "crow 2" at the prompt agree about which one is second.
         // OrderBy is stable, which is what carries the tie-break through.
         var ranked = candidates
-            .Select(c => (Candidate: c, Rank: RankOf(word, name(c), key(c))))
+            .Select(c => (Candidate: c, Rank: RankOfAnyForm(word, name(c), key(c))))
             .Where(x => x.Rank != NoMatch)
             .OrderBy(x => x.Rank)
             .ToList();
 
         return wanted <= ranked.Count ? ranked[wanted - 1].Candidate : null;
+    }
+
+    /// <summary>
+    /// <see cref="RankOf"/>, and when that fails, the same question asked of the singular.
+    /// </summary>
+    /// <remarks>
+    /// <b>Players type plurals, and names are singular.</b> A quest asks for "eight crew tags" and
+    /// the item is "a crew tag", so <c>give tags vance</c> was "You don't have tags." Tried only
+    /// after the word as typed has failed, so nothing that matched before matches differently now,
+    /// and the best of the candidate singulars wins - "pages" tries "pag" and "page", and "page" is
+    /// the whole word. Only the last word is changed, since that is the noun.
+    /// </remarks>
+    private static int RankOfAnyForm(string? needle, string? name, string? key)
+    {
+        var rank = RankOf(needle, name, key);
+        if (rank != NoMatch || string.IsNullOrEmpty(needle))
+        {
+            return rank;
+        }
+
+        foreach (var form in Singulars(needle))
+        {
+            rank = Math.Min(rank, RankOf(form, name, key));
+        }
+
+        return rank;
+    }
+
+    /// <summary>The ways the last word of <paramref name="needle"/> might be a plural, undone.</summary>
+    private static IEnumerable<string> Singulars(string needle)
+    {
+        const StringComparison Ordinal = StringComparison.OrdinalIgnoreCase;
+
+        var split = needle.LastIndexOf(' ');
+        var head = needle[..(split + 1)];
+        var word = needle[(split + 1)..];
+
+        if (word.Length < 3 || !word.EndsWith("s", Ordinal) || word.EndsWith("ss", Ordinal))
+        {
+            yield break;
+        }
+
+        if (word.EndsWith("ies", Ordinal))
+        {
+            yield return head + word[..^3] + "y";       // berries -> berry
+        }
+
+        if (word.EndsWith("ves", Ordinal))
+        {
+            yield return head + word[..^3] + "f";       // leaves -> leaf
+            yield return head + word[..^3] + "fe";      // knives -> knife
+        }
+
+        if (word.EndsWith("es", Ordinal))
+        {
+            yield return head + word[..^2];             // boxes -> box
+        }
+
+        yield return head + word[..^1];                 // tags -> tag
     }
 
     private static int RankOf(string? needle, string? name, string? key)
