@@ -1,8 +1,9 @@
 # The builder assist's models
 
-`docker-compose.truenas.yml` runs Ollama on the NAS for the builder AI assist (PLAN.md §13). This
-directory holds what turns the stock model into the one the assist actually talks to, and the
-reasoning behind the one number that matters.
+Ollama runs on the NAS for the builder AI assist (PLAN.md §13) — as a service in beta's compose
+stack, of which [`example/docker-compose.truenas.yml`](../../example/docker-compose.truenas.yml) is
+the template. This directory holds what turns the stock model into the one the assist actually
+talks to, and the reasoning behind the one number that matters.
 
 ## Why this exists at all
 
@@ -14,15 +15,32 @@ That prefix does not fit in 4096, and this is the shape of the problem rather th
 
 | source | chars | tokens |
 |---|---:|---:|
-| `docs/WORLD.md` §1–9 — the canon proper | 33,970 | **10,183** |
-| `docs/WORLD.md` §10 — authoring process, not canon | 10,188 | ~3,050 |
+| the Reaches canon, at its 2026-08 high-water mark | 33,970 | **10,183** |
+| the same document's §10 — authoring process, not canon | 10,188 | ~3,050 |
 | a whole zone bundle (`content/ossara/gatetown.json`) | 107,346 | ~35,800 |
 | the room schema this repo generates | 2,840 | 946 |
 
 The first row is measured — `prompt_eval_count` from a real call, not an estimate. Gemma 3
-tokenises this prose at **3.34 chars/token**, denser than the 3.8 first assumed, so the canon is
-14% larger in tokens than first written down here. Rows without a bold figure are still estimates
-at the measured ratio.
+tokenises this prose at **3.34 chars/token**, denser than the 3.8 first assumed. Rows without a
+bold figure are estimates at that ratio.
+
+**Where the canon actually lives, and why this table is a high-water mark rather than a reading.**
+It used to be `docs/WORLD.md` in this repo, compiled into the assembly. It is not either of those
+things now: a configuration carries its own canon in `GameConfiguration.Canon`, and the Reaches'
+source document went out with the content split into its own repository. See
+[`Canon.cs`](../../src/Muwbta.Server/Assist/Canon.cs) for the whole of that reasoning — chiefly
+that a server with no canon of its own used to be handed somebody else's world.
+
+So the figures above are what the prefix cost when it was one file here, kept because the
+*arithmetic* is what the 16k window was sized against. The canon has been cut down since. A real
+builder draft on 2026-09-13 carried **7,339 prompt tokens end to end** — canon plus role, schema
+and the request's own context — so the canon proper is now comfortably under the 10,183 recorded
+here, and the budget below has more headroom than it was designed with. Slack is not a problem; it
+just means the next re-measure should be of the live configuration rather than of a file.
+
+What has not changed is the ratio. 3.34 chars/token is a property of how Gemma 3 tokenises prose
+of this kind, and it holds whatever length the canon settles at — which is the entire reason
+`Canon.CharsPerToken` is a constant rather than a bundled tokeniser.
 
 An over-long prompt is **truncated, not refused**. So the failure mode is not an error anybody
 sees — it is a model that has apparently read the world and misremembers two thirds of it, which
@@ -90,12 +108,35 @@ spinner behind it; it is a queued job with the result arriving later.
 The dev box has an RTX 5070 Ti — 16 GB, so all 49 layers are resident and `ollama ps` reads
 `100% GPU`. It is the same feature again and barely the same experience:
 
-| | NAS (4 cores, CPU) | **dev box (5070 Ti)** |
-|---|---:|---:|
-| bulk prefill (whole canon) | ~6 tok/s | **635 tok/s** |
-| generation | 0.93 tok/s | **21.5 tok/s** |
-| canon prefix, cold | ~25–30 min | **16 s** |
-| one draft, warm | ~3 min | **~7 s** |
+| | NAS (4 cores, CPU) | dev box (5070 Ti) | **NAS (RTX 3060 12 GB)** |
+|---|---:|---:|---:|
+| bulk prefill (whole canon) | ~6 tok/s | 635 tok/s | **1,223 tok/s** |
+| generation | 0.93 tok/s | 21.5 tok/s | **34.4 tok/s** |
+| canon prefix, cold | ~25–30 min | 16 s | ~8 s † |
+| one draft, cold cache | — | — | **11.6 s** |
+| one draft, warm | ~3 min | ~7 s | ~6 s † |
+
+† Derived from the two measured rates above rather than observed end to end.
+
+The 3060 figures are from a real builder draft, not a synthetic prompt: 7,339 prompt tokens in
+6.00 s and 194 generated in 5.61 s, `total time = 11614.23 ms`. That request had its context
+checkpoint invalidated and so paid a full prefill — hence the cold-cache row. A warm one skips
+almost all of those six seconds, which is where the derived ~6 s comes from.
+
+**The 3060 column is the one to trust, and it beating the 5070 Ti is a finding about the dev box.**
+Generation is bandwidth-bound, and the 3060's 360 GB/s is about 40% of the 5070 Ti's ~900, so the
+ordering should be the other way round. Against the theoretical ceiling — bandwidth over ~8.1 GB of
+weights — the 3060's 34.4 tok/s is 78% of its 44, while the 5070 Ti's 21.5 is under 20% of its 110.
+One of those is a card doing its job and the other is a card being held back by something. The
+likeliest culprit is the WSL2 `/dev/dxg` path `docker-compose.gpu.yml` has to use, which the NAS's
+native container toolkit does not pay for; the Ollama version gap (0.32.15 then, 0.34.0 now)
+confounds it enough that the dev box row deserves re-measuring before it is quoted again.
+
+The 3060 row is measured on Ollama 0.34.0 with `OLLAMA_FLASH_ATTENTION` still at its default of
+false — so it is a floor, not a ceiling. The 12 GB holds the whole model at 16k context with ~3 GB
+spare (`available="11.5 GiB"` against ~8.4 GB loaded), which is why `OLLAMA_KV_CACHE_TYPE: q8_0`
+from the 6 GB-era overlay is deliberately *not* set here: quantising the KV cache buys layers only
+on a card that cannot hold the model, and costs a little quality on one that can.
 
 **The warm prefill barely registers**: 10,181 tokens in 0.9 s, because only the ~100-token tail was
 actually new and the cache answered for the rest. That is the same prefix caching the whole design
