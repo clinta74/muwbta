@@ -1,9 +1,19 @@
 # The builder assist's models
 
-Ollama runs on the NAS for the builder AI assist (PLAN.md §13) — as a service in beta's compose
-stack, of which [`example/docker-compose.truenas.yml`](../../example/docker-compose.truenas.yml) is
-the template. This directory holds what turns the stock model into the one the assist actually
-talks to, and the reasoning behind the one number that matters.
+> **The NAS no longer runs the assist (2026-10-01).** Its RTX 3060 went to Familiar, whose model
+> and speech services need ~10.4 GB of the card's 12, leaving no room for the assist's ~8.4 GB.
+> [`example/docker-compose.truenas.yml`](../../example/docker-compose.truenas.yml) now sets
+> `Assist__Enabled: 'false'` and has no `ollama` service, and `docker-compose.truenas.gpu.yml` is
+> gone. Both are in git history, in the commit before the one that added this note.
+>
+> The assist itself is untouched and still works in local development (`--profile assist`). The
+> measurements below are kept as the record of what it cost, and as the starting point if it ever
+> comes back to the NAS.
+
+Ollama ran on the NAS for the builder AI assist (PLAN.md §13) — as a service in beta's compose
+stack, of which `example/docker-compose.truenas.yml` is the template. This directory holds what
+turns the stock model into the one the assist actually talks to, and the reasoning behind the one
+number that matters.
 
 ## Why this exists at all
 

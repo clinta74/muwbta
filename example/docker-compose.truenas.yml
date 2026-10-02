@@ -2,12 +2,17 @@ name: muwbta
 
 # TrueNAS SCALE deployment (custom app / docker compose).
 #
-# Differs from docker-compose.prod.yml in three ways, all deliberate:
+# Differs from docker-compose.prod.yml in two ways, both deliberate:
 #   - Host ports are remapped (7180, 5434) because TrueNAS itself owns 80/443 and may run its
 #     own Postgres.
 #   - prometheus/grafana are omitted. Monitoring is optional; the backup sidecar is not.
-#   - An ollama service provides the builder AI assist. It is intentionally NOT in any
-#     depends_on chain: the MUD must start and run whether or not inference is available.
+#
+# There is no ollama service and the builder AI assist is off (2026-10-01). The NAS's RTX 3060
+# went to Familiar, whose model and speech services need ~10.4 GB of its 12 - not enough room
+# left for the assist's ~8.4 GB. The assist was always optional: with Assist__Enabled false the
+# server registers no assist endpoints and the builder's Suggest buttons don't appear. To bring
+# it back, restore the ollama service and the Assist__* keys from git history (see
+# tools/ollama/README.md) and give it a GPU or accept CPU speeds.
 #
 # Hardware assumptions: i5 9600K (6c/6t, no HT), 48 GB DDR4, models on the `ssd` pool.
 
@@ -109,19 +114,11 @@ services:
       # silently keeps the seeded room. Set it only with a key that actually parses - an ignored
       # setting that reads as configured is the trap EngineContracts.cs warns about.
       #
-      # The builder AI assist (PLAN.md §13). Off unless these are set, and the server says which
-      # at startup - a deployment without them registers no assist endpoints at all, so the
-      # client's probe 404s and the Suggest buttons simply are not there.
-      #
-      # BaseUrl is the compose service name, not localhost: `web` and `ollama` are separate
-      # containers and the ollama port is deliberately not published.
-      #
-      # The MODEL NAME MATTERS. `gemma3:12b` would answer to this and would answer with a
-      # 4096-token window, silently truncating the canon (tools/ollama/README.md). Point it at the
-      # derived model, which means `sh tools/ollama/create-models.sh` has been run on this box.
-      Assist__Enabled: 'true'
-      Assist__BaseUrl: http://ollama:11434
-      Assist__Model: muwbta-builder
+      # The builder AI assist (PLAN.md §13) is off on the NAS - see the note at the top of this
+      # file. Off is also the default; it is spelled out so nobody reads its absence as an
+      # oversight. No BaseUrl or Model: there is no ollama service for them to name, and a key
+      # that configures nothing is the trap EngineContracts.cs warns about.
+      Assist__Enabled: 'false'
       SwaggerEnabled: 'false'
     volumes:
       - ./logs:/app/logs:rw
@@ -214,52 +211,6 @@ services:
       driver: json-file
       options:
         labels: service=backup
-        max-file: '3'
-        max-size: 10m
-
-  ollama:
-    # AI assist for the world builder. CPU inference on a 9600K, so every setting here exists to
-    # protect either the cached prompt prefix or the game loop.
-    image: ollama/ollama:latest
-    container_name: muwbta-ollama
-    restart: always
-    pull_policy: always
-    networks:
-      - muwbta-network
-    environment:
-      # Never unload. The default is 5m, and an unload discards the KV cache for the canon
-      # prefix - which costs minutes to rebuild on this CPU.
-      OLLAMA_KEEP_ALIVE: '-1'
-      # Generation model + embedding model resident at once.
-      OLLAMA_MAX_LOADED_MODELS: '2'
-      # One slot. Parallel slots divide the context window between them and fragment prefix
-      # caching, and this design depends on one large prefix hitting every request.
-      OLLAMA_NUM_PARALLEL: '1'
-      # 4 of 6 cores, matching the cpus limit below.
-      OLLAMA_NUM_THREAD: '4'
-    # llama.cpp will otherwise take all 6 cores, and a 90-second generation would then compete
-    # with the game loop for every one of them. Costs ~30% generation speed to keep the MUD
-    # responsive while a builder is generating - the right trade for an async authoring tool.
-    cpus: 4.0
-    volumes:
-      # The `ssd` pool, not the spinning array: Ollama mmaps model files, and evicted pages are
-      # re-read from disk on the next token.
-      - /mnt/ssd/ollama:/root/.ollama
-    healthcheck:
-      test:
-        - CMD
-        - ollama
-        - list
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
-    # Gemma 3 12B Q4 (~7.3 GB) plus KV cache, an embedding model, and headroom.
-    mem_limit: 12g
-    logging:
-      driver: json-file
-      options:
-        labels: service=ollama
         max-file: '3'
         max-size: 10m
 

@@ -1,5 +1,9 @@
 # Giving the builder assist a GPU
 
+> **Historical as of 2026-10-01.** The NAS no longer runs the assist and the 3060 belongs to
+> Familiar; `example/docker-compose.truenas.gpu.yml` was removed (see [`README.md`](README.md)).
+> The driver and toolkit steps below still apply to anything else on that box that wants the card.
+
 Putting a card in front of Ollama on the TrueNAS SCALE box. **Done on beta as of 2026-09-13**, with
 an RTX 3060 12 GB; what follows is the procedure that worked and the two traps that cost an evening
 on the way.

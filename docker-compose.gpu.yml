@@ -29,9 +29,10 @@
 #   inference compute  library=CUDA compute=12.0  name=CUDA0
 #   description="NVIDIA GeForce RTX 5070 Ti"  driver=13.2  total="15.9 GiB" available="14.7 GiB"
 #
-# On a Linux dev box with the toolkit installed, copy the `deploy` block out of
-# docker-compose.truenas.gpu.yml instead - this file will do nothing there, because /dev/dxg is a
-# WSL invention and does not exist.
+# On a Linux dev box with the toolkit installed, use a `deploy.resources.reservations.devices`
+# block (driver: nvidia, count: 1, capabilities: [gpu]) instead - this file will do nothing there,
+# because /dev/dxg is a WSL invention and does not exist. The NAS overlay that spelled that out,
+# docker-compose.truenas.gpu.yml, was removed with the NAS assist; it's in git history.
 
 services:
   ollama:
